@@ -8,7 +8,7 @@ Unofficial fork of Swifter written in [Swift](https://developer.apple.com/swift/
 
 Supports data, json, ping (text), bytes, audio and video streaming over HLS, over HTTP 1.1 protocol via http://localhost, ipv4 tcp ip
 
-SwifterLite is used in StarPlayrX and future IPTVee works by AgentiLoop Agent. This library uses a subset of features available in Swifter. Please do not attempt to merge it into http/Swifter as there are many changes and some pieces will not be available. SwifterLite is approximately 50% the size of the original Swifter repo. 
+SwifterLite is used in StarPlayrX and future IPTVee works by AgentiLoop. This library uses a subset of features available in Swifter. Please do not attempt to merge it into http/Swifter as there are many changes and some pieces will not be available. SwifterLite is approximately 50% the size of the original Swifter repo. 
 
 SwifterLite is one of the most reliable server side swift frameworks to date. It is also lean & mean. If you want https compability, you can easily combine it with nginx and cloudflare https.
 
