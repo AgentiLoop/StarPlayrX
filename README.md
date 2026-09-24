@@ -1,4 +1,4 @@
-Important: StarPlayrX was developed for the Visually Impaired, a group of paying subscribers that SiriusXM has classsically ignored.
+Important: StarPlayrX was developed for the Visually Impaired, a group of paying subscribers that SiriusXM has classically ignored.
 
 Update: macOS 26 static, hisses and popping sounds fix with AVPlayer,
 
