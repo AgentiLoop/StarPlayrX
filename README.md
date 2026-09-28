@@ -1,4 +1,6 @@
-Important: StarPlayrX was developed for the Visually Impaired, a group of paying subscribers that SiriusXM has classically ignored.
+> SiriusXM pulled this app from the App Store about 2 years ago. The source code was kept online. We no longer have an SXM account to test any bug fixes.
+
+> Important: StarPlayrX was developed for the Visually Impaired, a group of paying subscribers that SiriusXM has classically ignored.
 
 Update: macOS 26 static, hisses and popping sounds fix with AVPlayer,
 
