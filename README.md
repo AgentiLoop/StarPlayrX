@@ -62,3 +62,9 @@ See: https://agentiloop.ai, https://superbox64.com, https://inkpen.io
 Don't be a slacker, be a Star Player.
 
 F. S. X. M. for ignoring the visually impaired.
+
+---
+
+**AgentiLoop:** [agentiloop.ai](https://agentiloop.ai/)
+
+Copyright © 2026 AgentiLoop.ai, a Logos InkPen LLC company. All rights reserved.
