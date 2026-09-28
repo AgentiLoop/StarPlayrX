@@ -55,7 +55,8 @@ https://medium.com/tech-blog-today/how-to-fix-popping-sounds-on-macos-26-c2846fc
 - This trademark is licensed exclusively to StarPlayrX.com
 - NiceMac LLC is not associated with SiriusXM or its subsidiaries
 
-**StarPlayrX Doomsday**: https://starplayrx.com
+We are no longer developing StarPlayr. This company is focusing on AgentiLoop branded projects.
+See: https://agentiloop.ai, https://superbox64.com, https://inkpen.io
 
 Don't be a slacker, be a Star Player.
 
