@@ -10,6 +10,9 @@ while playing run this in the terminal
 https://medium.com/tech-blog-today/how-to-fix-popping-sounds-on-macos-26-c2846fc65ad0
 
 # 🚨 StarPlayrX 1.3.1
+
+🤖 **Built by the makers of [Agent!](https://github.com/AgentiLoop/Agent)**, an autonomous macOS agent.
+
 - macOS Doomsday Edition
 
 ## System Requirements
