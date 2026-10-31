@@ -16,7 +16,12 @@ final class Visualizer: ObservableObject {
     @Published private(set) var phase: Double = 0
     /// Bass kick above its recent average, 0...1: drives the glow and blob pulse.
     @Published private(set) var pulse: Double = 0
+    /// Background blob position, -1 (left) ... 1 (right): follows where the music's energy
+    /// sits in the spectrum plus a random wander that jumps on beats.
+    @Published private(set) var blobX: Double = 0
     private var bassAverage: Float = 0
+    private var wander: Double = 0
+    private var wanderTarget: Double = 0
 
     private var tap: AnyObject?
     private var retry: Task<Void, Never>?
@@ -58,8 +63,19 @@ final class Visualizer: ObservableObject {
         let energy = Double(new.reduce(0, +) / Float(new.count))
         phase = (phase + 0.001 + energy * 0.02).truncatingRemainder(dividingBy: 1)
         let bass = new.prefix(4).reduce(0, +) / 4
+        let kick = bass - bassAverage
         bassAverage = bassAverage * 0.95 + bass * 0.05
-        pulse = max(Double(max(0, bass - bassAverage) * 4).clamped, pulse * 0.85)
+        pulse = max(Double(max(0, kick) * 4).clamped, pulse * 0.85)
+
+        // Spectral centroid, 0 (bass-heavy) ... 1 (treble-heavy).
+        let total = new.reduce(0, +)
+        let weighted = new.enumerated().reduce(Float(0)) { $0 + Float($1.offset) * $1.element }
+        let centroid = total > 0.01 ? Double(weighted / total) / Double(new.count - 1) : 0.5
+        // New random spot on a strong kick, or now and then on its own.
+        if kick > 0.15 || Int.random(in: 0..<90) == 0 { wanderTarget = .random(in: -1...1) }
+        wander += (wanderTarget - wander) * 0.04
+        let target = Swift.min(1, Swift.max(-1, (centroid * 2 - 1) * 1.5 + wander * 0.6))
+        blobX += (target - blobX) * 0.08
     }
 }
 
@@ -102,9 +118,9 @@ struct SpectrumView: View {
             Ellipse()
                 .fill(Color(hue: hue(viz.phase + 0.5), saturation: 0.8, brightness: 1))
                 .scaleEffect(x: 0.6 + 0.3 * sin(viz.phase * 2 * .pi * 2), y: 0.6 + 0.5 * viz.pulse)
-                .offset(x: 80 * sin(viz.phase * 2 * .pi * 3))
+                .offset(x: 80 * viz.blobX)
                 .blur(radius: 14)
-                .opacity(0.15 + 0.35 * viz.pulse)
+                .opacity(0.075 + 0.175 * viz.pulse)
         }
         .animation(.linear(duration: 0.05), value: viz.levels)
         .onAppear { viz.start() }
