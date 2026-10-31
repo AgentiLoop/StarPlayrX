@@ -8,7 +8,8 @@ struct MenuView: View {
         guard !search.isEmpty else { return radio.channels }
         return radio.channels.filter { ch in
             let np = radio.nowPlaying[ch.id]
-            return [ch.id, ch.name, ch.category, np?.artist ?? "", np?.song ?? ""]
+            let xtraTerms = ch.xtraID != nil ? "Music Xtra" : ""
+            return [ch.id, ch.name, ch.category, xtraTerms, np?.artist ?? "", np?.song ?? ""]
                 .contains { $0.localizedCaseInsensitiveContains(search) }
         }
     }
