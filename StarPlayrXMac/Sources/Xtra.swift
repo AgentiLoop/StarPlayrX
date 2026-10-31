@@ -190,6 +190,11 @@ actor XtraClient {
         return (tracks, tune["sequenceToken"] as? String)
     }
 
+    /// The track an Xtra channel would start with if tuned now, without downloading anything.
+    func peek(channelID: String) async throws -> XtraTrack? {
+        try await tune(channelID: channelID).tracks.first
+    }
+
     // MARK: Download
 
     /// Downloads and decrypts one track into a playable ADTS AAC file.

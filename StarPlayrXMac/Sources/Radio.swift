@@ -43,6 +43,8 @@ final class Radio: ObservableObject {
     private var xtraTracks = [AVPlayerItem: XtraTrack]()
     private var xtraNowPlaying = [String: NowPlaying]()
     private var xtraObserver: AnyCancellable?
+    private var xtraPeekedAt = [String: Date]()
+    private var xtraPeeking = false
     private let xtraFolder = FileManager.default.temporaryDirectory.appendingPathComponent("StarPlayrXtra")
 
     private var base: String { "http://127.0.0.1:\(port)/api/v3" }
@@ -136,6 +138,7 @@ final class Radio: ObservableObject {
             if current == nil, let last = UserDefaults.standard.string(forKey: "lastChannel") {
                 current = channels.first { $0.id == last }
             }
+            await refreshXtraNowPlaying()
         } catch {
             print("Xtra channels unavailable: \(error.localizedDescription)")
         }
@@ -280,6 +283,43 @@ final class Radio: ObservableObject {
         }
         nowPlaying = np.merging(xtraNowPlaying) { live, _ in live }
         updateNowPlayingInfo()
+        Task { await refreshXtraNowPlaying() }
+    }
+
+    /// Xtra channels have no PDT feed, so ask each idle one what it would play if tuned now.
+    /// Runs on every PDT tick, refreshing the stalest channels a batch at a time.
+    private func refreshXtraNowPlaying() async {
+        guard isLoggedIn, !xtraPeeking else { return }
+        xtraPeeking = true
+        defer { xtraPeeking = false }
+        let stale = Date().addingTimeInterval(-180)
+        let batch = channels
+            .filter { $0.xtraID != nil && !isPlayingXtra($0.id) && (xtraPeekedAt[$0.id] ?? .distantPast) < stale }
+            .sorted { (xtraPeekedAt[$0.id] ?? .distantPast) < (xtraPeekedAt[$1.id] ?? .distantPast) }
+            .prefix(30)
+        guard !batch.isEmpty else { return }
+        let client = xtra
+        let results = await withTaskGroup(of: (String, XtraTrack?).self) { group in
+            var results = [(String, XtraTrack?)]()
+            for (i, ch) in batch.enumerated() {
+                if i >= 6, let r = await group.next() { results.append(r) }
+                group.addTask { (ch.id, try? await client.peek(channelID: ch.xtraID!)) }
+            }
+            for await r in group { results.append(r) }
+            return results
+        }
+        guard isLoggedIn else { return }
+        for (id, track) in results {
+            xtraPeekedAt[id] = Date()
+            guard let track, !isPlayingXtra(id) else { continue }
+            let np = NowPlaying(artist: track.artist, song: track.title, image: track.imageURL)
+            xtraNowPlaying[id] = np
+            nowPlaying[id] = np
+        }
+    }
+
+    private func isPlayingXtra(_ id: String) -> Bool {
+        isPlaying && current?.id == id && current?.xtraID != nil
     }
 
     private func updateNowPlayingInfo() {
