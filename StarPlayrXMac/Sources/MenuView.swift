@@ -72,26 +72,16 @@ struct MenuView: View {
                 Button {
                     radio.play(ch)
                 } label: {
-                    HStack {
-                        Text(ch.id).monospacedDigit().foregroundStyle(.secondary).frame(width: 34, alignment: .trailing)
-                        VStack(alignment: .leading) {
-                            Text(ch.name).fontWeight(ch == radio.current ? .bold : .regular)
-                            if let np = radio.nowPlaying[ch.id] {
-                                Text("\(np.artist) – \(np.song)").font(.caption).foregroundStyle(.secondary).lineLimit(1)
-                            }
-                        }
-                        Spacer()
-                        if ch == radio.current && radio.isPlaying {
-                            Image(systemName: "speaker.wave.2.fill").foregroundStyle(.tint)
-                        }
-                    }
-                    .contentShape(Rectangle())
+                    ChannelRow(channel: ch, nowPlaying: radio.nowPlaying[ch.id],
+                               isCurrent: ch == radio.current,
+                               isPlaying: ch == radio.current && radio.isPlaying)
                 }
                 .buttonStyle(.plain)
                 .id(ch.id)
             }
             .listStyle(.plain)
             .frame(height: 360)
+            .padding(.trailing, -12)   // scroll bar sits at the window's right edge
             .onAppear { if let id = radio.current?.id { proxy.scrollTo(id, anchor: .center) } }
         }
     }
@@ -106,5 +96,31 @@ struct MenuView: View {
             }
             Button("Quit") { NSApp.terminate(nil) }
         }
+    }
+}
+
+/// One channel row. Equatable so a now-playing update redraws only the row it changed,
+/// and always two lines tall so the list never has to re-measure rows while scrolling.
+private struct ChannelRow: View, Equatable {
+    let channel: Channel
+    let nowPlaying: NowPlaying?
+    let isCurrent: Bool
+    let isPlaying: Bool
+
+    var body: some View {
+        HStack {
+            Text(channel.id).monospacedDigit().foregroundStyle(.secondary).frame(width: 34, alignment: .trailing)
+            VStack(alignment: .leading) {
+                Text(channel.name).fontWeight(isCurrent ? .bold : .regular).lineLimit(1)
+                Text(nowPlaying.map { "\($0.artist) – \($0.song)" } ?? " ")
+                    .font(.caption).foregroundStyle(.secondary).lineLimit(1)
+            }
+            Spacer()
+            if isPlaying {
+                Image(systemName: "speaker.wave.2.fill").foregroundStyle(.tint)
+            }
+        }
+        .padding(.trailing, 12)
+        .contentShape(Rectangle())
     }
 }
