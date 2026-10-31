@@ -287,9 +287,11 @@ private final class ProcessTap {
     }
 
     /// Tap audio is 32-bit float; mix whatever channels arrive down to mono.
+    /// The aggregate lists the output device's own input streams first (BlackHole has one,
+    /// silent without mic access) and the tap's stream last, so read only the last buffer.
     private func receive(_ input: UnsafePointer<AudioBufferList>) {
-        for buffer in UnsafeMutableAudioBufferListPointer(UnsafeMutablePointer(mutating: input)) {
-            guard let data = buffer.mData else { continue }
+        if let buffer = UnsafeMutableAudioBufferListPointer(UnsafeMutablePointer(mutating: input)).last,
+           let data = buffer.mData {
             let channels = max(1, Int(buffer.mNumberChannels))
             let frames = Int(buffer.mDataByteSize) / MemoryLayout<Float>.size / channels
             let samples = data.assumingMemoryBound(to: Float.self)
@@ -298,7 +300,6 @@ private final class ProcessTap {
                 for c in 0..<channels { sum += samples[f * channels + c] }
                 pending.append(sum / Float(channels))
             }
-            break
         }
         while pending.count >= n {
             let block = Array(pending.prefix(n))
