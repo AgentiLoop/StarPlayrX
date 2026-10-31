@@ -15,6 +15,8 @@ targets:
     dependencies:
       - package: StarPlayrRadioKit
     scheme:
+      testTargets:
+        - StarPlayrXMacTests
       environmentVariables:
         OS_ACTIVITY_MODE: disable
         OS_ACTIVITY_DT_MODE: "NO"
@@ -42,3 +44,19 @@ targets:
         ENABLE_HARDENED_RUNTIME: NO
         GENERATE_INFOPLIST_FILE: NO
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+  StarPlayrXMacTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - Tests
+    dependencies:
+      - target: StarPlayrXMac
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.starplayrx.mac.tests
+        SWIFT_VERSION: "5.0"
+        GENERATE_INFOPLIST_FILE: YES
+        CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: 469UCUB275
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/StarPlayrX.app/Contents/MacOS/StarPlayrX"
+        BUNDLE_LOADER: "$(TEST_HOST)"

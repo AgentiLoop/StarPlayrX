@@ -49,6 +49,17 @@
          </EnvironmentVariable>
       </EnvironmentVariables>
       <Testables>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "EE85D016A807B2BCD10423F5"
+               BuildableName = "StarPlayrXMacTests.xctest"
+               BlueprintName = "StarPlayrXMacTests"
+               ReferencedContainer = "container:StarPlayrXMac.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
       </Testables>
    </TestAction>
    <LaunchAction

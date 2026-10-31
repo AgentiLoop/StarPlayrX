@@ -15,6 +15,8 @@ struct StarPlayrXMacApp: App {
 final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         MenuController.shared.install()
+        // Hosting unit tests: no network sign-in or password prompt.
+        guard ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil else { return }
         Task { @MainActor in
             if let saved = Keychain.load(), await Radio.shared.login(user: saved.user, pass: saved.pass) {
                 return

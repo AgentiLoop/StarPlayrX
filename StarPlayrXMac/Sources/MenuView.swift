@@ -323,7 +323,7 @@ final class MenuController: NSObject, ObservableObject {
     enum Corner { case upperLeft, upperRight, lowerLeft, lowerRight }
 
     /// Top-left point that puts a panel of `size` in `corner` of `visible`, `margin` points in.
-    static func parkedTopLeft(_ corner: Corner, size: NSSize, in visible: NSRect, margin: CGFloat = 8) -> NSPoint {
+    nonisolated static func parkedTopLeft(_ corner: Corner, size: NSSize, in visible: NSRect, margin: CGFloat = 8) -> NSPoint {
         let left = corner == .upperLeft || corner == .lowerLeft
         let upper = corner == .upperLeft || corner == .upperRight
         return NSPoint(x: left ? visible.minX + margin : visible.maxX - size.width - margin,
@@ -340,7 +340,7 @@ final class MenuController: NSObject, ObservableObject {
 
     /// AppleScript screen coordinates have y going down from the top of the main screen; Cocoa's go up.
     /// The conversion is its own inverse.
-    static func flipY(_ p: NSPoint, mainScreenHeight h: CGFloat) -> NSPoint { NSPoint(x: p.x, y: h - p.y) }
+    nonisolated static func flipY(_ p: NSPoint, mainScreenHeight h: CGFloat) -> NSPoint { NSPoint(x: p.x, y: h - p.y) }
 
     private var mainScreenHeight: CGFloat { NSScreen.screens.first?.frame.maxY ?? 0 }
 
