@@ -204,9 +204,9 @@ final class MenuController: NSObject, ObservableObject {
         }
     }
 
-    /// Icon click: toggles the panel, under the menu bar or torn off.
+    /// Icon click: open under the menu bar, close if open there, or move a torn-off panel back under it.
     @objc private func statusItemClicked() {
-        if panel.isVisible { hide(); return }
+        if panel.isVisible && !detached { hide(); return }
         detached = false
         shaded = false
         if let button = statusItem.button?.window?.frame {
