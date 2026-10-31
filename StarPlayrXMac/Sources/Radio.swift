@@ -218,13 +218,18 @@ final class Radio: ObservableObject {
             var first = true
             if let peeked {
                 seen.insert(peeked.id)
-                if let file = try? await xtra.download(peeked, into: xtraFolder), !Task.isCancelled {
-                    let item = AVPlayerItem(url: file)
-                    xtraTracks[item] = peeked
-                    xtraPlayer.insert(item, after: nil)
-                    first = false
-                    xtraPlayer.play()
-                    xtraItemChanged()
+                do {
+                    let file = try await xtra.download(peeked, into: xtraFolder)
+                    if !Task.isCancelled {
+                        let item = AVPlayerItem(url: file)
+                        xtraTracks[item] = peeked
+                        xtraPlayer.insert(item, after: nil)
+                        first = false
+                        xtraPlayer.play()
+                        xtraItemChanged()
+                    }
+                } catch {
+                    print("XTRA peeked download failed \(channel.id) \(peeked.title): \(error.localizedDescription) url=\(peeked.url)")
                 }
             }
             do {
