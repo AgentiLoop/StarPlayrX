@@ -1,10 +1,10 @@
 import SwiftUI
+import Combine
 
 struct MenuView: View {
     @EnvironmentObject var radio: Radio
+    @ObservedObject private var menu = MenuController.shared
     @State private var search = ""
-    @State private var panel: NSWindow?
-    var tornOff = false
 
     private var filtered: [Channel] {
         guard !search.isEmpty else { return radio.channels }
@@ -16,8 +16,8 @@ struct MenuView: View {
         }
     }
 
-    /// Torn-off panel only: double-click the tear-off area to roll the panel up to just that area.
-    @State private var shaded = false
+    /// Torn off only: double-click the tear-off area to roll the panel up to just that area.
+    private var shaded: Bool { menu.detached && menu.shaded }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -29,7 +29,7 @@ struct MenuView: View {
                 }
                 .contentShape(Rectangle())
                 .gesture(tearOff)
-                .simultaneousGesture(TapGesture(count: 2).onEnded { if tornOff { shaded.toggle() } })
+                .simultaneousGesture(TapGesture(count: 2).onEnded { if menu.detached { menu.shaded.toggle() } })
                 if !shaded {
                     TextField("Search channels, artists, songs", text: $search)
                         .textFieldStyle(.roundedBorder)
@@ -49,22 +49,16 @@ struct MenuView: View {
         }
         .padding(12)
         .frame(width: 340)
-        .background(WindowReader { panel = $0 })
-        // Opening the menu bar menu again puts the torn-off panel away: back to one menu.
-        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { note in
-            guard !tornOff, let panel, note.object as? NSWindow === panel else { return }
-            TornOffPanel.dismiss()
-        }
     }
 
     @State private var dragStart: (mouse: NSPoint, origin: NSPoint)?
 
-    /// Drag the header to pull the menu panel off the menu bar; let go far enough away and a
-    /// detached panel in the same menu style appears at that spot. Once torn off, it just moves it.
+    /// Drag the header to pull the panel off the menu bar; let go far enough away and the same
+    /// panel stays where it was dropped (torn off). Once torn off, dragging just moves it.
     private var tearOff: some Gesture {
         DragGesture(minimumDistance: 4)
             .onChanged { _ in
-                guard let panel else { return }
+                guard let panel = menu.panel else { return }
                 let mouse = NSEvent.mouseLocation
                 if dragStart == nil { dragStart = (mouse, panel.frame.origin) }
                 guard let start = dragStart else { return }
@@ -72,16 +66,18 @@ struct MenuView: View {
                                              y: start.origin.y + mouse.y - start.mouse.y))
             }
             .onEnded { _ in
-                guard let panel, let start = dragStart else { return }
+                guard let start = dragStart else { return }
                 dragStart = nil
-                guard !tornOff else { return }
-                let frame = panel.frame
-                panel.setFrameOrigin(start.origin)
-                guard hypot(frame.minX - start.origin.x, frame.minY - start.origin.y) > 40 else { return }
-                panel.orderOut(nil)
-                TornOffPanel.show(topLeft: NSPoint(x: frame.minX, y: frame.maxY))
+                guard !menu.detached else { return }
+                let frame = menu.panel.frame
+                if hypot(frame.minX - start.origin.x, frame.minY - start.origin.y) > 40 {
+                    menu.detach()
+                } else {
+                    menu.panel.setFrameOrigin(start.origin)
+                }
             }
     }
+
 
 
     private var nowPlaying: some View {
@@ -150,8 +146,8 @@ struct MenuView: View {
             if radio.isLoggedIn {
                 Button("Sign Out") { radio.signOut() }
             }
-            if tornOff {
-                Button("Close") { panel?.orderOut(nil) }
+            if menu.detached {
+                Button("Close") { menu.hide() }
             }
             Button("Quit") { NSApp.terminate(nil) }
         }
@@ -185,13 +181,77 @@ private struct ChannelRow: View, Equatable {
     }
 }
 
-/// Torn-off copy of the menu: a borderless panel with the same translucent menu look,
-/// rounded corners and shadow as the menu bar panel, instead of a titled window.
-final class TornOffPanel: NSPanel {
-    private static var shared: TornOffPanel?
+/// Owns the menu bar item and the one panel used both under the menu bar and torn off.
+@MainActor
+final class MenuController: NSObject, ObservableObject {
+    static let shared = MenuController()
 
+    @Published private(set) var detached = false
+    @Published var shaded = false
+    private(set) var panel: MenuPanel!
+    private var statusItem: NSStatusItem!
+    private var outsideClick: Any?
+    private var playing: AnyCancellable?
+
+    func install() {
+        panel = MenuPanel.make()
+        statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
+        statusItem.button?.target = self
+        statusItem.button?.action = #selector(statusItemClicked)
+        playing = Radio.shared.$isPlaying.sink { [weak self] on in
+            self?.statusItem.button?.image = NSImage(systemSymbolName: on ? "dot.radiowaves.left.and.right" : "radio",
+                                                      accessibilityDescription: "StarPlayrX")
+        }
+    }
+
+    /// Icon click: open under the menu bar, close if open there, or call a torn-off panel back.
+    @objc private func statusItemClicked() {
+        if panel.isVisible && !detached { hide(); return }
+        detached = false
+        shaded = false
+        if let button = statusItem.button?.window?.frame {
+            let screen = statusItem.button?.window?.screen?.visibleFrame ?? .infinite
+            let x = min(button.minX, screen.maxX - panel.frame.width)
+            panel.setFrameTopLeftPoint(NSPoint(x: x, y: button.minY - 4))
+        }
+        // Like MenuBarExtra: the app becomes active (controls draw active, not greyed) and
+        // the menu bar icon stays highlighted while the panel hangs under it.
+        NSApp.activate(ignoringOtherApps: true)
+        statusItem.button?.highlight(true)
+        panel.makeKeyAndOrderFront(nil)
+        // Under the menu bar it behaves like a menu: a click in another app closes it.
+        if outsideClick == nil {
+            outsideClick = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
+                Task { @MainActor in self?.hide() }
+            }
+        }
+    }
+
+    /// Torn off: the panel stays where it was dropped, until Close / Esc / the icon.
+    func detach() {
+        detached = true
+        statusItem.button?.highlight(false)
+        removeOutsideClick()
+    }
+
+    func hide() {
+        panel.orderOut(nil)
+        detached = false
+        shaded = false
+        statusItem.button?.highlight(false)
+        removeOutsideClick()
+    }
+
+    private func removeOutsideClick() {
+        if let outsideClick { NSEvent.removeMonitor(outsideClick) }
+        outsideClick = nil
+    }
+}
+
+/// Borderless panel with the translucent menu look, rounded corners and shadow.
+final class MenuPanel: NSPanel {
     override var canBecomeKey: Bool { true }   // borderless panels can't otherwise take typing (search)
-    override func cancelOperation(_ sender: Any?) { orderOut(nil) }   // Esc closes it
+    override func cancelOperation(_ sender: Any?) { MenuController.shared.hide() }   // Esc closes it
 
     /// Keep the top edge pinned when the content resizes (window shade), instead of the bottom.
     override func setFrame(_ frameRect: NSRect, display flag: Bool) {
@@ -202,19 +262,10 @@ final class TornOffPanel: NSPanel {
         super.setFrame(rect, display: flag)
     }
 
-    static func show(topLeft: NSPoint) {
-        let panel = shared ?? make()
-        shared = panel
-        panel.setFrameTopLeftPoint(topLeft)
-        panel.makeKeyAndOrderFront(nil)
-    }
-
-    static func dismiss() { shared?.orderOut(nil) }
-
-    private static func make() -> TornOffPanel {
-        let panel = TornOffPanel(contentRect: .zero,
-                                 styleMask: [.borderless, .nonactivatingPanel, .fullSizeContentView],
-                                 backing: .buffered, defer: false)
+    static func make() -> MenuPanel {
+        let panel = MenuPanel(contentRect: .zero,
+                              styleMask: [.borderless, .nonactivatingPanel, .fullSizeContentView],
+                              backing: .buffered, defer: false)
         panel.isFloatingPanel = true
         panel.level = .floating
         panel.hidesOnDeactivate = false
@@ -222,10 +273,15 @@ final class TornOffPanel: NSPanel {
         panel.isOpaque = false
         panel.backgroundColor = .clear
         panel.hasShadow = true
-        let root = MenuView(tornOff: true)
-            .environmentObject(Radio.shared)
-            .background(MenuMaterial())
-            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        let menu = MenuView().environmentObject(Radio.shared)
+        let root: AnyView
+        if #available(macOS 26, *) {
+            // Same Liquid Glass look as a MenuBarExtra window.
+            root = AnyView(menu.glassEffect(.regular, in: RoundedRectangle(cornerRadius: 16, style: .continuous)))
+        } else {
+            root = AnyView(menu.background(MenuMaterial())
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous)))
+        }
         // A hosting controller sizes the panel to the view (and follows it when the
         // spectrum appears); a bare hosting view in a .zero rect leaves it 0×0 and invisible.
         panel.contentViewController = NSHostingController(rootView: root)
@@ -245,17 +301,4 @@ private struct MenuMaterial: NSViewRepresentable {
     }
 
     func updateNSView(_ nsView: NSVisualEffectView, context: Context) {}
-}
-
-/// Hands back the NSWindow hosting a SwiftUI view (here: the MenuBarExtra panel).
-private struct WindowReader: NSViewRepresentable {
-    let onWindow: (NSWindow?) -> Void
-
-    func makeNSView(context: Context) -> NSView {
-        let view = NSView()
-        DispatchQueue.main.async { onWindow(view.window) }
-        return view
-    }
-
-    func updateNSView(_ nsView: NSView, context: Context) {}
 }

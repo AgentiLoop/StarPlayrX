@@ -4,21 +4,17 @@ import AppKit
 @main
 struct StarPlayrXMacApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
-    @StateObject private var radio = Radio.shared
 
+    // The menu bar item and its panel are our own (MenuController), so the same window
+    // can be used both under the menu bar and torn off. SwiftUI just needs a scene.
     var body: some Scene {
-        MenuBarExtra {
-            MenuView()
-                .environmentObject(radio)
-        } label: {
-            Image(systemName: radio.isPlaying ? "dot.radiowaves.left.and.right" : "radio")
-        }
-        .menuBarExtraStyle(.window)
+        Settings { EmptyView() }
     }
 }
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
+        MenuController.shared.install()
         Task { @MainActor in
             if let saved = Keychain.load(), await Radio.shared.login(user: saved.user, pass: saved.pass) {
                 return
