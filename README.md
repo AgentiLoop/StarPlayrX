@@ -23,6 +23,10 @@ StarPlayrX was built for visually impaired listeners, a group of paying subscrib
 
 ## 🎛️ StarPlayrX for Mac (menu bar app)
 
+<p align="center">
+  <img src="docs/screenshot-mac.png" width="391" alt="StarPlayrX menu bar app playing Lazy Eye by Goo Goo Dolls on Lithium, channel 34, with a searchable channel list showing what's playing on each channel">
+</p>
+
 - Lives in the menu bar (📻) with no Dock icon
 - Search channels, artists and songs
 - Shows what's playing on the current channel and every channel in the list
