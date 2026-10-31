@@ -264,6 +264,10 @@ final class Radio: ObservableObject {
     }
 
     private func haltXtra() {
+        // The list keeps showing the song that was playing, so tuning back in should play that song.
+        if let item = xtraPlayer.currentItem, let track = xtraTracks[item], let current, current.xtraID != nil {
+            xtraPeekedTrack[current.id] = track
+        }
         xtraTask?.cancel()
         xtraTask = nil
         xtraPlayer.pause()
