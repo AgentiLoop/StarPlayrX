@@ -1,6 +1,7 @@
 import Foundation
 import AVFoundation
 import MediaPlayer
+import Combine
 import StarPlayrRadioKit
 
 struct Channel: Identifiable, Hashable {
@@ -8,6 +9,7 @@ struct Channel: Identifiable, Hashable {
     let name: String
     let category: String
     let imageURL: String
+    var xtraID: String? = nil   // set for Xtra channels (streamed track by track)
 }
 
 struct NowPlaying: Equatable {
@@ -34,10 +36,22 @@ final class Radio: ObservableObject {
     private let player = AVPlayer()
     private var pdtTimer: Timer?
 
+    // Xtra channels: tracks are downloaded, decrypted and queued one after another.
+    private let xtra = XtraClient()
+    private let xtraPlayer = AVQueuePlayer()
+    private var xtraTask: Task<Void, Never>?
+    private var xtraTracks = [AVPlayerItem: XtraTrack]()
+    private var xtraNowPlaying = [String: NowPlaying]()
+    private var xtraObserver: AnyCancellable?
+    private let xtraFolder = FileManager.default.temporaryDirectory.appendingPathComponent("StarPlayrXtra")
+
     private var base: String { "http://127.0.0.1:\(port)/api/v3" }
 
     private init() {
         setupRemoteCommands()
+        xtraObserver = xtraPlayer.publisher(for: \.currentItem)
+            .receive(on: DispatchQueue.main)
+            .sink { _ in Task { @MainActor in Radio.shared.xtraItemChanged() } }
     }
 
     // MARK: Server
@@ -104,13 +118,34 @@ final class Radio: ObservableObject {
         }
         await updatePDT()
         startPDTTimer()
+        Task { await loadXtraChannels(user: user, pass: pass) }
         return true
+    }
+
+    /// Xtra channels come from SiriusXM's newer API; if that fails the live channels still work.
+    private func loadXtraChannels(user: String, pass: String) async {
+        do {
+            try await xtra.signIn(user: user, pass: pass)
+            let xtras = try await xtra.channels().map {
+                Channel(id: $0.number, name: $0.name, category: $0.genre, imageURL: $0.imageURL, xtraID: $0.id)
+            }
+            guard isLoggedIn else { return }
+            let live = Set(channels.map(\.id))
+            channels = (channels + xtras.filter { !live.contains($0.id) })
+                .sorted { $0.id.localizedStandardCompare($1.id) == .orderedAscending }
+            if current == nil, let last = UserDefaults.standard.string(forKey: "lastChannel") {
+                current = channels.first { $0.id == last }
+            }
+        } catch {
+            print("Xtra channels unavailable: \(error.localizedDescription)")
+        }
     }
 
     func signOut() {
         stop()
         pdtTimer?.invalidate()
         Keychain.delete()
+        Task { await xtra.signOut() }
         isLoggedIn = false
         channels = []
         current = nil
@@ -126,8 +161,15 @@ final class Radio: ObservableObject {
     // MARK: Playback
 
     func play(_ channel: Channel) {
+        haltXtra()
         current = channel
         UserDefaults.standard.set(channel.id, forKey: "lastChannel")
+        if let xtraID = channel.xtraID {
+            player.pause()
+            player.replaceCurrentItem(with: nil)
+            playXtra(channel, id: xtraID)
+            return
+        }
         Task {
             await startServerIfNeeded()
             guard let url = URL(string: "http://localhost:\(port)/api/v3/m3u/\(channel.id).m3u8") else { return }
@@ -145,7 +187,77 @@ final class Radio: ObservableObject {
     func stop() {
         player.pause()
         player.replaceCurrentItem(with: nil)
+        haltXtra()
         isPlaying = false
+        updateNowPlayingInfo()
+    }
+
+    // MARK: Xtra playback
+
+    private func playXtra(_ channel: Channel, id: String) {
+        isPlaying = true
+        updateNowPlayingInfo()
+        xtraTask = Task {
+            var pending = [XtraTrack]()
+            var token: String?
+            var seen = Set<String>()
+            var first = true
+            do {
+                while !Task.isCancelled {
+                    // Keep one track playing and one ready behind it.
+                    if xtraPlayer.items().count > 1 {
+                        try await Task.sleep(nanoseconds: 2_000_000_000)
+                        continue
+                    }
+                    if pending.isEmpty {
+                        let batch = try await xtra.tune(channelID: id, sequenceToken: token)
+                        token = batch.token
+                        pending = batch.tracks.filter { seen.insert($0.id).inserted }
+                        if pending.isEmpty { try await Task.sleep(nanoseconds: 5_000_000_000); continue }
+                    }
+                    let track = pending.removeFirst()
+                    let file = try await xtra.download(track, into: xtraFolder)
+                    guard !Task.isCancelled else { break }
+                    let item = AVPlayerItem(url: file)
+                    xtraTracks[item] = track
+                    xtraPlayer.insert(item, after: nil)
+                    if first {
+                        first = false
+                        if track.startOffset > 0 {
+                            await xtraPlayer.seek(to: CMTime(seconds: track.startOffset, preferredTimescale: 1000))
+                        }
+                        xtraPlayer.play()
+                        xtraItemChanged()
+                    }
+                }
+            } catch is CancellationError {
+            } catch {
+                print("Xtra playback error: \(error.localizedDescription)")
+                if first, current == channel { stop() }
+            }
+        }
+    }
+
+    private func haltXtra() {
+        xtraTask?.cancel()
+        xtraTask = nil
+        xtraPlayer.pause()
+        xtraPlayer.removeAllItems()
+        xtraTracks = [:]
+        try? FileManager.default.removeItem(at: xtraFolder)
+    }
+
+    /// Shows the queued track that just started and deletes files of tracks that have finished.
+    fileprivate func xtraItemChanged() {
+        let queued = Set(xtraPlayer.items())
+        for (item, track) in xtraTracks where !queued.contains(item) {
+            xtraTracks[item] = nil
+            try? FileManager.default.removeItem(at: xtraFolder.appendingPathComponent("\(track.id).aac"))
+        }
+        guard let item = xtraPlayer.currentItem, let track = xtraTracks[item], let current, current.xtraID != nil else { return }
+        let np = NowPlaying(artist: track.artist, song: track.title, image: track.imageURL)
+        xtraNowPlaying[current.id] = np
+        nowPlaying[current.id] = np
         updateNowPlayingInfo()
     }
 
@@ -166,7 +278,7 @@ final class Radio: ObservableObject {
                 np[key] = NowPlaying(artist: v["artist"] ?? "", song: v["song"] ?? "", image: v["image"] ?? "")
             }
         }
-        nowPlaying = np
+        nowPlaying = np.merging(xtraNowPlaying) { live, _ in live }
         updateNowPlayingInfo()
     }
 
