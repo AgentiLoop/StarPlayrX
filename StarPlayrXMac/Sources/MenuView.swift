@@ -31,12 +31,9 @@ struct MenuView: View {
                 .gesture(tearOff)
                 .simultaneousGesture(TapGesture(count: 2).onEnded { if menu.detached { menu.shaded.toggle() } })
                 if !shaded {
-                    Group {
-                        TextField("Search channels, artists, songs", text: $search)
-                            .textFieldStyle(.roundedBorder)
-                        channelList
-                    }
-                    .transition(.move(edge: .top).combined(with: .opacity))
+                    TextField("Search channels, artists, songs", text: $search)
+                        .textFieldStyle(.roundedBorder)
+                    channelList
                 }
             } else {
                 Text(radio.status).foregroundStyle(.secondary)
@@ -46,11 +43,8 @@ struct MenuView: View {
                 .disabled(radio.isBusy)
             }
             if !shaded {
-                Group {
-                    Divider()
-                    footer
-                }
-                .transition(.move(edge: .top).combined(with: .opacity))
+                Divider()
+                footer
             }
         }
         .padding(12)
@@ -242,10 +236,9 @@ final class MenuController: NSObject, ObservableObject {
                         timer.invalidate()
                         self.glide = nil
                         if unshade {
-                            withAnimation(.easeOut(duration: 0.3)) {
-                                self.detached = false
-                                self.shaded = false
-                            }
+                            // Same as the double-click unshade: the panel grows from its pinned top edge.
+                            self.detached = false
+                            self.shaded = false
                         }
                     }
                 }
