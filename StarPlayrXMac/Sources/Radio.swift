@@ -350,22 +350,24 @@ final class Radio: ObservableObject {
         guard isLoggedIn else { return }
         xtraPeekedAt[id] = Date()
         guard let track, !isPlayingXtra(id) else { return }
-        xtraPeekedTrack[id] = track
-        let np = NowPlaying(artist: track.artist, song: track.title, image: track.imageURL)
-        xtraNowPlaying[id] = np
-        pendingPeeks[id] = np
+        // The played track, xtraNowPlaying and the list text are committed together on flush,
+        // so tapping a channel always plays the song its row is showing.
+        pendingPeeks[id] = track
         guard !peekFlushScheduled else { return }
         peekFlushScheduled = true
         Task {
             try? await Task.sleep(for: .seconds(2))
             peekFlushScheduled = false
-            let batch = pendingPeeks.filter { !isPlayingXtra($0.key) }
+            let tracks = pendingPeeks.filter { !isPlayingXtra($0.key) }
             pendingPeeks.removeAll()
-            guard isLoggedIn, !batch.isEmpty else { return }
+            guard isLoggedIn, !tracks.isEmpty else { return }
+            let batch = tracks.mapValues { NowPlaying(artist: $0.artist, song: $0.title, image: $0.imageURL) }
+            xtraPeekedTrack.merge(tracks) { _, new in new }
+            xtraNowPlaying.merge(batch) { _, new in new }
             nowPlaying.merge(batch) { _, new in new }
         }
     }
-    private var pendingPeeks = [String: NowPlaying]()
+    private var pendingPeeks = [String: XtraTrack]()
     private var peekFlushScheduled = false
 
     private func isPlayingXtra(_ id: String) -> Bool {
