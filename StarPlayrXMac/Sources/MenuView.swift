@@ -70,8 +70,10 @@ struct MenuView: View {
                 let frame = panel.frame
                 panel.setFrameOrigin(start.origin)
                 guard hypot(frame.minX - start.origin.x, frame.minY - start.origin.y) > 40 else { return }
-                panel.orderOut(nil)
+                // Show the torn-off panel first: taking key closes the menu the normal way, so
+                // MenuBarExtra knows it's closed and the next menu bar click opens it again.
                 TornOffPanel.show(topLeft: NSPoint(x: frame.minX, y: frame.maxY))
+                panel.orderOut(nil)
             }
     }
 
