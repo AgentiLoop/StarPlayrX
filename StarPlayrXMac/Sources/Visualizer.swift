@@ -72,20 +72,27 @@ final class Visualizer: ObservableObject {
         bassAverage = bassAverage * 0.95 + bass * 0.05
         pulse = max(Double(max(0, kick) * 4).clamped, pulse * 0.85)
 
-        // Bar colours: a strong kick (at most every ~1.5 s) or a rare random moment throws a
-        // brand-new palette; each bar then glides to its new hue at a speed set by its own band,
-        // and sudden rises in a band (an onset) shove that bar's hue along on their own.
+        // Bar colours blend the old rolling wave (global phase plus a slow wave across the bars)
+        // halfway toward a random palette. A strong kick (at most every ~3 s) or a rare random
+        // moment throws a new palette; each bar glides there at a pace set by its own band,
+        // onsets nudge it, and each bar is softened toward its neighbours so colours flow sideways.
         paletteCooldown -= 1
-        if (kick > 0.2 && paletteCooldown <= 0) || Int.random(in: 0..<300) == 0 {
+        if (kick > 0.25 && paletteCooldown <= 0) || Int.random(in: 0..<450) == 0 {
             newPalette()
-            paletteCooldown = 45
+            paletteCooldown = 90
         }
-        hues = hues.indices.map { i in
+        let t = phase * 2 * .pi
+        let glided = hues.indices.map { i in
+            let x = Double(i) / Double(Self.bandCount)
+            let wave = phase + x * 0.3 + 0.08 * sin(x * 7 + t * 3)
+            let target = wave + 0.5 * Self.shortest(hueTargets[i] - wave)
             let level = Double(new[i])
             let onset = Double(max(0, new[i] - previous[i]))
-            var delta = (hueTargets[i] - hues[i]).truncatingRemainder(dividingBy: 1)
-            if delta > 0.5 { delta -= 1 } else if delta < -0.5 { delta += 1 }   // shortest way round
-            let h = hues[i] + delta * (0.02 + 0.25 * level) + onset * 0.15
+            return hues[i] + Self.shortest(target - hues[i]) * (0.01 + 0.08 * level) + onset * 0.04
+        }
+        hues = glided.indices.map { i in
+            let left = glided[max(0, i - 1)], right = glided[min(glided.count - 1, i + 1)]
+            let h = glided[i] + 0.25 * (Self.shortest(left - glided[i]) + Self.shortest(right - glided[i]))
             return (h.truncatingRemainder(dividingBy: 1) + 1).truncatingRemainder(dividingBy: 1)
         }
 
@@ -98,6 +105,13 @@ final class Visualizer: ObservableObject {
         wander += (wanderTarget - wander) * 0.04
         let target = Swift.min(1, Swift.max(-1, (centroid * 2 - 1) * 1.5 + wander * 0.6))
         blobX += (target - blobX) * 0.08
+    }
+
+    /// Hue difference taken the shortest way round the colour wheel, -0.5...0.5.
+    private static func shortest(_ d: Double) -> Double {
+        var d = d.truncatingRemainder(dividingBy: 1)
+        if d > 0.5 { d -= 1 } else if d < -0.5 { d += 1 }
+        return d
     }
 
     /// Random palette in a random scheme, so the row never settles into one predictable cycle.
