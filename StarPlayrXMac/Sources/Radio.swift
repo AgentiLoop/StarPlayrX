@@ -206,6 +206,7 @@ final class Radio: ObservableObject {
             XtraTrack(id: $0.id, artist: $0.artist, title: $0.title, url: $0.url, keyID: $0.keyID,
                       imageURL: $0.imageURL, startOffset: 0)
         }
+        print("XTRA play \(channel.id) shown=\(nowPlaying[channel.id]?.song ?? "nil") peeked=\(peeked?.title ?? "nil")")
         if peeked == nil {
             xtraNowPlaying[channel.id] = nil
             nowPlaying[channel.id] = nil
