@@ -276,8 +276,10 @@ final class MenuPanel: NSPanel {
         let menu = MenuView().environmentObject(Radio.shared)
         let root: AnyView
         if #available(macOS 26, *) {
-            // Same Liquid Glass look as a MenuBarExtra window.
-            root = AnyView(menu.glassEffect(.regular, in: RoundedRectangle(cornerRadius: 16, style: .continuous)))
+            // Same Liquid Glass look as a MenuBarExtra window. AppKit's NSGlassEffectView, not
+            // SwiftUI's .glassEffect, which leaves a dark rim in a borderless clear window.
+            root = AnyView(menu.background(MenuGlass())
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous)))
         } else {
             root = AnyView(menu.background(MenuMaterial())
                 .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous)))
@@ -288,6 +290,18 @@ final class MenuPanel: NSPanel {
         panel.setContentSize(panel.contentViewController!.view.fittingSize)
         return panel
     }
+}
+
+/// Liquid Glass background (macOS 26+).
+@available(macOS 26, *)
+private struct MenuGlass: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSGlassEffectView {
+        let view = NSGlassEffectView()
+        view.cornerRadius = 16
+        return view
+    }
+
+    func updateNSView(_ nsView: NSGlassEffectView, context: Context) {}
 }
 
 /// The blurred, behind-window material menu bar panels use.
