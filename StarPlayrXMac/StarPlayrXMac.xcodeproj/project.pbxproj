@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		37C5EF8724535B8840F96FA2 /* StarPlayrRadioKit in Frameworks */ = {isa = PBXBuildFile; productRef = AEC40F5BDDF2C049FE7182D5 /* StarPlayrRadioKit */; };
+		67113DB4036BE489BDC7FE53 /* Visualizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = B180FAFDD06BBA9CCCECBA5D /* Visualizer.swift */; };
 		8B1D211BFBA7662F1F5269C4 /* Xtra.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40AD17AD1A89E96BF1D207E3 /* Xtra.swift */; };
 		97E3C433757ED71D95CB2524 /* MenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9CF5EC7805BCA42169AF4ECE /* MenuView.swift */; };
 		B92350C46BD992AC2AA8DDCA /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 6E8F68BA0D44926EF37BBB62 /* Assets.xcassets */; };
@@ -24,6 +25,7 @@
 		6E8F68BA0D44926EF37BBB62 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		9CF5EC7805BCA42169AF4ECE /* MenuView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuView.swift; sourceTree = "<group>"; };
 		A828F86C0FE74B3D990CC160 /* Radio.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Radio.swift; sourceTree = "<group>"; };
+		B180FAFDD06BBA9CCCECBA5D /* Visualizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Visualizer.swift; sourceTree = "<group>"; };
 		B2CA3E577EDD3F8E2AC46C50 /* StarPlayrRadioKit */ = {isa = PBXFileReference; lastKnownFileType = folder; name = StarPlayrRadioKit; path = ../StarPlayrRadioKit; sourceTree = SOURCE_ROOT; };
 		B4362792013A115602196217 /* Keychain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Keychain.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -58,6 +60,7 @@
 				9CF5EC7805BCA42169AF4ECE /* MenuView.swift */,
 				A828F86C0FE74B3D990CC160 /* Radio.swift */,
 				47D0341DA36FCC82C2C684B6 /* StarPlayrXMacApp.swift */,
+				B180FAFDD06BBA9CCCECBA5D /* Visualizer.swift */,
 				40AD17AD1A89E96BF1D207E3 /* Xtra.swift */,
 			);
 			path = Sources;
@@ -159,6 +162,7 @@
 				97E3C433757ED71D95CB2524 /* MenuView.swift in Sources */,
 				F9A9498FC10093CAB657AD06 /* Radio.swift in Sources */,
 				C1BBBCF52CBE121D9E31AE22 /* StarPlayrXMacApp.swift in Sources */,
+				67113DB4036BE489BDC7FE53 /* Visualizer.swift in Sources */,
 				8B1D211BFBA7662F1F5269C4 /* Xtra.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

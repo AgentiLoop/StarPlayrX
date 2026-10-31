@@ -18,6 +18,7 @@ struct MenuView: View {
         VStack(alignment: .leading, spacing: 10) {
             if radio.isLoggedIn {
                 nowPlaying
+                if radio.isPlaying { SpectrumView() }
                 TextField("Search channels, artists, songs", text: $search)
                     .textFieldStyle(.roundedBorder)
                 channelList

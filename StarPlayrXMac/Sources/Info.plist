@@ -29,5 +29,7 @@
 		<key>NSAllowsArbitraryLoads</key>
 		<true/>
 	</dict>
+	<key>NSAudioCaptureUsageDescription</key>
+	<string>StarPlayrX listens to its own audio to draw the equalizer bars.</string>
 </dict>
 </plist>
