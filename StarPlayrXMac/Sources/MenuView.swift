@@ -16,6 +16,9 @@ struct MenuView: View {
         }
     }
 
+    /// Torn-off panel only: double-click the tear-off area to roll the panel up to just that area.
+    @State private var shaded = false
+
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             if radio.isLoggedIn {
@@ -26,9 +29,12 @@ struct MenuView: View {
                 }
                 .contentShape(Rectangle())
                 .gesture(tearOff)
-                TextField("Search channels, artists, songs", text: $search)
-                    .textFieldStyle(.roundedBorder)
-                channelList
+                .simultaneousGesture(TapGesture(count: 2).onEnded { if tornOff { shaded.toggle() } })
+                if !shaded {
+                    TextField("Search channels, artists, songs", text: $search)
+                        .textFieldStyle(.roundedBorder)
+                    channelList
+                }
             } else {
                 Text(radio.status).foregroundStyle(.secondary)
                 Button(radio.isBusy ? "Signing in…" : "Sign In…") {
@@ -36,8 +42,10 @@ struct MenuView: View {
                 }
                 .disabled(radio.isBusy)
             }
-            Divider()
-            footer
+            if !shaded {
+                Divider()
+                footer
+            }
         }
         .padding(12)
         .frame(width: 340)
@@ -184,6 +192,15 @@ final class TornOffPanel: NSPanel {
 
     override var canBecomeKey: Bool { true }   // borderless panels can't otherwise take typing (search)
     override func cancelOperation(_ sender: Any?) { orderOut(nil) }   // Esc closes it
+
+    /// Keep the top edge pinned when the content resizes (window shade), instead of the bottom.
+    override func setFrame(_ frameRect: NSRect, display flag: Bool) {
+        var rect = frameRect
+        if isVisible, rect.size != frame.size {
+            rect.origin = NSPoint(x: frame.minX, y: frame.maxY - rect.height)
+        }
+        super.setFrame(rect, display: flag)
+    }
 
     static func show(topLeft: NSPoint) {
         let panel = shared ?? make()
