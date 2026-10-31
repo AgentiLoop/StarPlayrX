@@ -39,7 +39,23 @@ struct MenuView: View {
         }
         .padding(12)
         .frame(width: 340)
-        .background(tornOff ? nil : WindowReader { panel = $0 })
+        .background(WindowReader { window in
+            if tornOff { Self.present(window) } else { panel = window }
+        })
+    }
+
+    /// Where the torn-off window's top-left corner should land (set at the end of the drag).
+    private static var tearPoint: NSPoint?
+
+    /// Called once the torn-off window exists: place it where the panel was dropped and bring
+    /// it to the front (a menu-bar app isn't active, so a new window would open behind others).
+    private static func present(_ window: NSWindow?) {
+        guard let window else { return }
+        if let point = tearPoint { window.setFrameTopLeftPoint(point) }
+        tearPoint = nil
+        NSApp.activate(ignoringOtherApps: true)
+        window.orderFrontRegardless()
+        window.makeKey()
     }
 
     @State private var dragStart: (mouse: NSPoint, origin: NSPoint)?
@@ -62,16 +78,13 @@ struct MenuView: View {
                 let frame = panel.frame
                 panel.setFrameOrigin(start.origin)
                 guard hypot(frame.minX - start.origin.x, frame.minY - start.origin.y) > 40 else { return }
+                Self.tearPoint = NSPoint(x: frame.minX, y: frame.maxY)
                 panel.orderOut(nil)
                 openWindow(id: Self.tornOffID)
-                DispatchQueue.main.async {
-                    guard let window = NSApp.windows.first(where: {
-                        $0.identifier?.rawValue.hasPrefix(Self.tornOffID) == true
-                    }) else { return }
-                    window.setFrameTopLeftPoint(NSPoint(x: frame.minX, y: frame.maxY))
-                    NSApp.activate(ignoringOtherApps: true)
-                    window.makeKeyAndOrderFront(nil)
-                }
+                // Window already open from an earlier tear-off: its view won't reappear, so front it here.
+                if let window = NSApp.windows.first(where: {
+                    $0.identifier?.rawValue.hasPrefix(Self.tornOffID) == true && $0.isVisible
+                }) { Self.present(window) }
             }
     }
 
