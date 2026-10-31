@@ -212,7 +212,19 @@ final class MenuController: NSObject, ObservableObject {
         if let button = statusItem.button?.window?.frame {
             let screen = statusItem.button?.window?.screen?.visibleFrame ?? .infinite
             let x = min(button.minX, screen.maxX - panel.frame.width)
-            panel.setFrameTopLeftPoint(NSPoint(x: x, y: button.minY - 4))
+            let top = NSPoint(x: x, y: button.minY - 4)
+            if panel.isVisible {
+                // Torn off: glide back under the menu bar instead of jumping.
+                let target = NSRect(x: top.x, y: top.y - panel.frame.height,
+                                    width: panel.frame.width, height: panel.frame.height)
+                NSAnimationContext.runAnimationGroup { context in
+                    context.duration = 0.25
+                    context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+                    panel.animator().setFrame(target, display: true)
+                }
+            } else {
+                panel.setFrameTopLeftPoint(top)
+            }
         }
         // Like MenuBarExtra: the app becomes active (controls draw active, not greyed) and
         // the menu bar icon stays highlighted while the panel hangs under it.
