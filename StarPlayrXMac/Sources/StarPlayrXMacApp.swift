@@ -14,13 +14,6 @@ struct StarPlayrXMacApp: App {
             Image(systemName: radio.isPlaying ? "dot.radiowaves.left.and.right" : "radio")
         }
         .menuBarExtraStyle(.window)
-
-        // Torn-off copy of the menu: drag the now-playing header out of the menu bar panel.
-        Window("StarPlayrX", id: MenuView.tornOffID) {
-            MenuView(tornOff: true)
-                .environmentObject(radio)
-        }
-        .windowResizability(.contentSize)
     }
 }
 
