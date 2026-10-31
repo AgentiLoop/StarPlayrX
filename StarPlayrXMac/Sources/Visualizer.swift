@@ -9,7 +9,7 @@ import Accelerate
 @MainActor
 final class Visualizer: ObservableObject {
     static let shared = Visualizer()
-    static let bandCount = 24
+    nonisolated static let bandCount = 24
 
     @Published private(set) var levels = [Float](repeating: 0, count: bandCount)
 
@@ -201,7 +201,7 @@ private final class ProcessTap {
     }
 
     private static func defaultOutputUID() -> String? {
-        var address = AudioObjectPropertyAddress(mSelector: kAudioHardwarePropertyDefaultSystemOutputDevice,
+        var address = AudioObjectPropertyAddress(mSelector: kAudioHardwarePropertyDefaultOutputDevice,
                                                  mScope: kAudioObjectPropertyScopeGlobal,
                                                  mElement: kAudioObjectPropertyElementMain)
         var device = AudioObjectID(kAudioObjectUnknown)
