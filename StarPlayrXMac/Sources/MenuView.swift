@@ -204,9 +204,9 @@ final class MenuController: NSObject, ObservableObject {
         }
     }
 
-    /// Icon click: open under the menu bar, close if open there, or call a torn-off panel back.
+    /// Icon click: toggles the panel, under the menu bar or torn off.
     @objc private func statusItemClicked() {
-        if panel.isVisible && !detached { hide(); return }
+        if panel.isVisible { hide(); return }
         detached = false
         shaded = false
         if let button = statusItem.button?.window?.frame {
@@ -220,9 +220,15 @@ final class MenuController: NSObject, ObservableObject {
         statusItem.button?.highlight(true)
         panel.makeKeyAndOrderFront(nil)
         // Under the menu bar it behaves like a menu: a click in another app closes it.
+        // Clicks on our own icon are left to statusItemClicked, or the two would fight
+        // (monitor hides, then the click reopens).
         if outsideClick == nil {
             outsideClick = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
-                Task { @MainActor in self?.hide() }
+                let point = NSEvent.mouseLocation
+                Task { @MainActor in
+                    guard let self, !(self.statusItem.button?.window?.frame.contains(point) ?? false) else { return }
+                    self.hide()
+                }
             }
         }
     }
