@@ -25,6 +25,8 @@ targets:
         CFBundleShortVersionString: "1.1.1"
         CFBundleVersion: "4"
         LSUIElement: true
+        NSAppleScriptEnabled: true
+        OSAScriptingDefinition: StarPlayrX.sdef
         LSApplicationCategoryType: public.app-category.music
         NSAudioCaptureUsageDescription: StarPlayrX listens to its own audio to draw the equalizer bars.
         NSAppTransportSecurity:

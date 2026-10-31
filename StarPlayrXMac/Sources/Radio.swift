@@ -370,6 +370,14 @@ final class Radio: ObservableObject {
     private var pendingPeeks = [String: XtraTrack]()
     private var peekFlushScheduled = false
 
+    /// What is actually coming out of the speakers: the Xtra track in the player, or the live channel's PDT.
+    var playingNow: NowPlaying? {
+        guard isPlaying, let current else { return nil }
+        guard current.xtraID != nil else { return nowPlaying[current.id] }
+        guard let item = xtraPlayer.currentItem, let track = xtraTracks[item] else { return nil }
+        return NowPlaying(artist: track.artist, song: track.title, image: track.imageURL)
+    }
+
     private func isPlayingXtra(_ id: String) -> Bool {
         isPlaying && current?.id == id && current?.xtraID != nil
     }

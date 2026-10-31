@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE dictionary SYSTEM "file://localhost/System/Library/DTDs/sdef.dtd">
+<dictionary title="StarPlayrX Terminology" xmlns:xi="http://www.w3.org/2003/XInclude">
+
+    <!-- Standard Suite (quit, count, exists, get/set …) -->
+    <xi:include href="file:///System/Library/ScriptingDefinitions/CocoaStandard.sdef" xpointer="xpointer(/dictionary/suite)"/>
+
+    <suite name="StarPlayrX Suite" code="SPrx" description="Control StarPlayrX — sign in, play channels, and compare what a channel lists (PDT) with what actually plays.">
+
+        <class-extension extends="application" description="StarPlayrX application.">
+            <property name="signed in" code="SPsi" type="boolean" access="r" description="Whether a SiriusXM account is signed in.">
+                <cocoa key="spSignedIn"/>
+            </property>
+            <property name="busy" code="SPbz" type="boolean" access="r" description="Whether a sign in is in progress.">
+                <cocoa key="spBusy"/>
+            </property>
+            <property name="playing" code="SPpl" type="boolean" access="r" description="Whether a channel is playing.">
+                <cocoa key="spPlaying"/>
+            </property>
+            <property name="status" code="SPst" type="text" access="r" description="Sign-in status text (shown in the menu when signed out).">
+                <cocoa key="spStatus"/>
+            </property>
+            <property name="canada" code="SPca" type="boolean" description="The Canada region checkbox.">
+                <cocoa key="spCanada"/>
+            </property>
+            <property name="current channel" code="SPcc" type="text" description="Number of the current channel (empty when none). Setting it plays that channel.">
+                <cocoa key="spCurrentChannel"/>
+            </property>
+            <property name="current channel name" code="SPcn" type="text" access="r" description="Name of the current channel.">
+                <cocoa key="spCurrentChannelName"/>
+            </property>
+            <property name="current xtra" code="SPcx" type="boolean" access="r" description="Whether the current channel is an Xtra channel (streamed track by track).">
+                <cocoa key="spCurrentXtra"/>
+            </property>
+            <property name="shown artist" code="SPsa" type="text" access="r" description="Artist the menu shows for the current channel (PDT).">
+                <cocoa key="spShownArtist"/>
+            </property>
+            <property name="shown song" code="SPss" type="text" access="r" description="Song the menu shows for the current channel (PDT).">
+                <cocoa key="spShownSong"/>
+            </property>
+            <property name="playing artist" code="SPpa" type="text" access="r" description="Artist of what is actually playing (the Xtra track in the player; the PDT for live channels). Empty while nothing plays yet.">
+                <cocoa key="spPlayingArtist"/>
+            </property>
+            <property name="playing song" code="SPps" type="text" access="r" description="Song of what is actually playing. Empty while nothing plays yet.">
+                <cocoa key="spPlayingSong"/>
+            </property>
+            <property name="channel numbers" code="SPcl" access="r" description="Every channel number, in list order.">
+                <type type="text" list="yes"/>
+                <cocoa key="spChannelNumbers"/>
+            </property>
+            <property name="xtra channel numbers" code="SPxl" access="r" description="Numbers of the Xtra channels.">
+                <type type="text" list="yes"/>
+                <cocoa key="spXtraChannelNumbers"/>
+            </property>
+            <property name="live channel numbers" code="SPll" access="r" description="Numbers of the live (non-Xtra) channels.">
+                <type type="text" list="yes"/>
+                <cocoa key="spLiveChannelNumbers"/>
+            </property>
+            <property name="menu visible" code="SPmv" type="boolean" description="Whether the StarPlayrX panel is open. Set true to open it under the menu bar, false to close it.">
+                <cocoa key="spMenuVisible"/>
+            </property>
+            <property name="menu detached" code="SPmd" type="boolean" description="Whether the panel is torn off the menu bar. Set true to tear it off.">
+                <cocoa key="spMenuDetached"/>
+            </property>
+            <property name="menu shaded" code="SPms" type="boolean" description="Whether the panel is rolled up (window shade).">
+                <cocoa key="spMenuShaded"/>
+            </property>
+        </class-extension>
+
+        <command name="play channel" code="SPrxPlay" description="Play a channel by number. Returns false if there is no such channel.">
+            <cocoa class="SPXCommand"/>
+            <direct-parameter type="text" description="Channel number, e.g. &quot;2&quot;."/>
+            <result type="boolean"/>
+        </command>
+
+        <command name="stop" code="SPrxStop" description="Stop playback.">
+            <cocoa class="SPXCommand"/>
+        </command>
+
+        <command name="resume" code="SPrxResm" description="Play the current channel again. Returns false if there is none.">
+            <cocoa class="SPXCommand"/>
+            <result type="boolean"/>
+        </command>
+
+        <command name="toggle playback" code="SPrxTogl" description="Play / pause button.">
+            <cocoa class="SPXCommand"/>
+        </command>
+
+        <command name="sign in" code="SPrxSgIn" description="Sign in to SiriusXM. Without a user, the Keychain credentials are used. Returns true when signed in.">
+            <cocoa class="SPXCommand"/>
+            <parameter name="user" code="SPus" type="text" optional="yes" description="Username or email.">
+                <cocoa key="user"/>
+            </parameter>
+            <parameter name="password" code="SPpw" type="text" optional="yes" description="Password.">
+                <cocoa key="password"/>
+            </parameter>
+            <result type="boolean"/>
+        </command>
+
+        <command name="sign out" code="SPrxSgOt" description="Sign out and forget the Keychain credentials.">
+            <cocoa class="SPXCommand"/>
+        </command>
+
+        <command name="refresh now playing" code="SPrxRfsh" description="Reload the PDT (what every channel is playing) now instead of waiting for the 15 second timer.">
+            <cocoa class="SPXCommand"/>
+        </command>
+
+        <command name="now playing" code="SPrxNowP" description="What the channel list shows for a channel (PDT), &quot;artist – song&quot;. Empty when unknown.">
+            <cocoa class="SPXCommand"/>
+            <direct-parameter type="text" description="Channel number."/>
+            <result type="text"/>
+        </command>
+
+        <command name="channel info" code="SPrxInfo" description="Tab-separated &quot;number, name, category, xtra|live, artist, song&quot; for a channel. Empty when there is no such channel.">
+            <cocoa class="SPXCommand"/>
+            <direct-parameter type="text" description="Channel number."/>
+            <result type="text"/>
+        </command>
+
+        <command name="search channels" code="SPrxSrch" description="Channel numbers matching the menu's search field logic (number, name, category, artist, song, &quot;Music Xtra&quot;).">
+            <cocoa class="SPXCommand"/>
+            <direct-parameter type="text" description="Search text."/>
+            <result>
+                <type type="text" list="yes"/>
+            </result>
+        </command>
+
+        <command name="test channel" code="SPrxTest" description="Tune a channel and wait until it plays, then compare what the list showed before tuning with what plays. Returns &quot;MATCH&quot; or &quot;MISMATCH&quot; (or &quot;TIMEOUT&quot; / &quot;NO CHANNEL&quot;), then tab-separated number, shown, playing.">
+            <cocoa class="SPXCommand"/>
+            <direct-parameter type="text" description="Channel number."/>
+            <parameter name="waiting up to" code="SPto" type="integer" optional="yes" description="Seconds to wait for playback to start (default 30), e.g. test channel &quot;2&quot; waiting up to 60.">
+                <cocoa key="wait"/>
+            </parameter>
+            <result type="text"/>
+        </command>
+
+        <command name="show menu" code="SPrxShow" description="Open the panel under the menu bar.">
+            <cocoa class="SPXCommand"/>
+        </command>
+
+        <command name="hide menu" code="SPrxHide" description="Close the panel.">
+            <cocoa class="SPXCommand"/>
+        </command>
+
+        <command name="detach menu" code="SPrxDtch" description="Tear the panel off the menu bar (it stays where it is).">
+            <cocoa class="SPXCommand"/>
+        </command>
+    </suite>
+</dictionary>

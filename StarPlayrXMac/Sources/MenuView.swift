@@ -206,7 +206,7 @@ final class MenuController: NSObject, ObservableObject {
     }
 
     /// Icon click: open under the menu bar, close if open there, or move a torn-off panel back under it.
-    @objc private func statusItemClicked() {
+    @objc func statusItemClicked() {
         if panel.isVisible && !detached { hide(); return }
         // Shaded and torn off: glide back still rolled up, then unroll once in place.
         let unshade = panel.isVisible && detached && shaded
