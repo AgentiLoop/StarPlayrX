@@ -287,35 +287,37 @@ final class Radio: ObservableObject {
     }
 
     /// Xtra channels have no PDT feed, so ask each idle one what it would play if tuned now.
-    /// Runs on every PDT tick, refreshing the stalest channels a batch at a time.
+    /// Channels never peeked are all filled at once; after that the stalest are refreshed
+    /// a batch at a time on every PDT tick. Each result is shown as soon as it arrives.
     private func refreshXtraNowPlaying() async {
         guard isLoggedIn, !xtraPeeking else { return }
         xtraPeeking = true
         defer { xtraPeeking = false }
         let stale = Date().addingTimeInterval(-180)
-        let batch = channels
-            .filter { $0.xtraID != nil && !isPlayingXtra($0.id) && (xtraPeekedAt[$0.id] ?? .distantPast) < stale }
-            .sorted { (xtraPeekedAt[$0.id] ?? .distantPast) < (xtraPeekedAt[$1.id] ?? .distantPast) }
-            .prefix(30)
+        let idle = channels.filter { $0.xtraID != nil && !isPlayingXtra($0.id) }
+        let unpeeked = idle.filter { xtraPeekedAt[$0.id] == nil }
+        let batch = !unpeeked.isEmpty ? unpeeked : Array(idle
+            .filter { xtraPeekedAt[$0.id]! < stale }
+            .sorted { xtraPeekedAt[$0.id]! < xtraPeekedAt[$1.id]! }
+            .prefix(30))
         guard !batch.isEmpty else { return }
         let client = xtra
-        let results = await withTaskGroup(of: (String, XtraTrack?).self) { group in
-            var results = [(String, XtraTrack?)]()
+        await withTaskGroup(of: (String, XtraTrack?).self) { group in
             for (i, ch) in batch.enumerated() {
-                if i >= 6, let r = await group.next() { results.append(r) }
+                if i >= 12, let r = await group.next() { applyXtraPeek(r.0, r.1) }
                 group.addTask { (ch.id, try? await client.peek(channelID: ch.xtraID!)) }
             }
-            for await r in group { results.append(r) }
-            return results
+            for await r in group { applyXtraPeek(r.0, r.1) }
         }
+    }
+
+    private func applyXtraPeek(_ id: String, _ track: XtraTrack?) {
         guard isLoggedIn else { return }
-        for (id, track) in results {
-            xtraPeekedAt[id] = Date()
-            guard let track, !isPlayingXtra(id) else { continue }
-            let np = NowPlaying(artist: track.artist, song: track.title, image: track.imageURL)
-            xtraNowPlaying[id] = np
-            nowPlaying[id] = np
-        }
+        xtraPeekedAt[id] = Date()
+        guard let track, !isPlayingXtra(id) else { return }
+        let np = NowPlaying(artist: track.artist, song: track.title, image: track.imageURL)
+        xtraNowPlaying[id] = np
+        nowPlaying[id] = np
     }
 
     private func isPlayingXtra(_ id: String) -> Bool {
