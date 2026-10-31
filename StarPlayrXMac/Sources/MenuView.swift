@@ -16,8 +16,8 @@ struct MenuView: View {
         }
     }
 
-    /// Torn off only: double-click the tear-off area to roll the panel up to just that area.
-    private var shaded: Bool { menu.detached && menu.shaded }
+    /// Double-click the tear-off area to roll the panel up to just that area (under the menu bar or torn off).
+    private var shaded: Bool { menu.shaded }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -29,7 +29,7 @@ struct MenuView: View {
                 }
                 .contentShape(Rectangle())
                 .gesture(tearOff)
-                .simultaneousGesture(TapGesture(count: 2).onEnded { if menu.detached { menu.shaded.toggle() } })
+                .simultaneousGesture(TapGesture(count: 2).onEnded { menu.shaded.toggle() })
                 if !shaded {
                     TextField("Search channels, artists, songs", text: $search)
                         .textFieldStyle(.roundedBorder)
