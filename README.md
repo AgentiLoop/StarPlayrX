@@ -1,72 +1,54 @@
-> SiriusXM pulled this app from the App Store about 2 years ago. The source code was kept online. We no longer have an SXM account to test any bug fixes.
+# 📻 StarPlayrX
 
-> Important: StarPlayrX was developed for the Visually Impaired, a group of paying subscribers that SiriusXM has classically ignored.
+**A lightweight, fully accessible SiriusXM player for Mac, built for people who use VoiceOver.**
 
-Update: macOS 26 static, hisses and popping sounds fix with AVPlayer,
+StarPlayrX was built for visually impaired listeners, a group of paying subscribers that SiriusXM has long ignored. It aims for 100% VoiceOver support, a small CPU and memory footprint, and low-latency streaming.
 
-while playing run this in the terminal 
+> [!NOTE]
+> SiriusXM had StarPlayrX removed from the App Store. The source code is still available here. We no longer have a SiriusXM account, so we can't test bug fixes. The project is no longer actively developed.
 
-`sudo killall coreaudiod`
-https://medium.com/tech-blog-today/how-to-fix-popping-sounds-on-macos-26-c2846fc65ad0
+🤖 Built by the makers of **[Agent!](https://github.com/AgentiLoop/Agent)**, an autonomous macOS agent.
 
-# 🚨 StarPlayrX 1.3.1
+---
 
-🤖 **Built by the makers of [Agent!](https://github.com/AgentiLoop/Agent)**, an autonomous macOS agent.
+## ✨ What's in this repo
 
-- macOS Doomsday Edition
+| Folder | What it is |
+| --- | --- |
+| [`StarPlayrXMac/`](StarPlayrXMac) | **New:** a native SwiftUI menu bar app for macOS |
+| [`StarPlayrX/`](StarPlayrX) | The original Mac Catalyst / iOS / iPadOS app (UIKit, Swift with some Objective-C) |
+| [`StarPlayrRadioKit/`](StarPlayrRadioKit) | Swift package with the SiriusXM API layer and the local HLS streaming server |
+| [`SwifterLite/`](SwifterLite) | Small embedded HTTP server used by StarPlayrRadioKit |
+| `SPX.xcworkspace` | Xcode workspace for the Catalyst app and its packages |
 
-## System Requirements
-- macOS 14.5 and later
-- Mac with Apple Silicon or Intel processor
-- Valid SiriusXM subscription
+## 🎛️ StarPlayrX for Mac (menu bar app)
 
-## 🖥️ Interface Design
-- Native Mac Catalyst application
-- Unified sidebar and title bar design
-- Adaptive layout for various Mac screen sizes
-- Optimized for both large displays and smaller MacBook screens
+- Lives in the menu bar (📻) with no Dock icon
+- Search channels, artists and songs
+- Shows what's playing on the current channel and every channel in the list
+- Play/pause from the keyboard media keys and Control Center
+- US and Canada channel lineups
+- Your password is stored only in the macOS Keychain
 
-## 🌟 Key Features
-- Seamless SiriusXM radio streaming
-- Light and dark mode support
-- Efficient resource management
-- 100% VoiceOver compatibility
-- Minimal network resource utilization
+**Requirements:** macOS 13 Ventura or later, Apple Silicon or Intel, and an active SiriusXM subscription.
 
-## 🔧 Technical Specifications
-- Primary Language: Swift (90%)
-- Secondary Language: Objective-C (10%)
-- Platforms: macOS, (iOS, iPadOS, must build locally due to SXM's recent distribution restrictions)
-- Development: Xcode 16 Workspace
+**Download:** signed, notarized builds are on the [Releases](https://github.com/AgentiLoop/StarPlayrX/releases) page.
 
-## 🚀 Performance Highlights
-- Low latency streaming
-- Minimal CPU and memory footprint
-- Smooth playback across network conditions
+## 🛠️ Building
 
-## ⚠️ Usage Notes
-- Requires active SiriusXM subscription
-- Internet connection mandatory for streaming
+You need Xcode 16 or later.
 
-## 📦 Deployment
-- Signed and Notarized by Apple
-- Available on Github Releases Side Bar
+### Mac menu bar app
 
-## 🛠️ Building StarPlayrX for Mac (menu bar app)
-
-`StarPlayrXMac` is the native macOS menu bar app (separate from the Mac Catalyst build in `SPX.xcworkspace`). It lives in `StarPlayrXMac/` and uses the local `StarPlayrRadioKit` package, which pulls in [SwifterLite](https://github.com/StarPlayrX/SwifterLite) (`mustang` branch).
-
-**Requirements:** Xcode 16 or later, macOS 13 Ventura or later deployment target.
-
-### Build in Xcode
+**In Xcode:**
 1. Open `StarPlayrXMac/StarPlayrXMac.xcodeproj`
-2. Let Swift Package Manager resolve packages
-3. Select the `StarPlayrXMac` scheme and press ⌘R
-4. Look for the 📻 icon in the menu bar (the app has no Dock icon)
+2. Wait for Swift Package Manager to resolve packages
+3. Pick the `StarPlayrXMac` scheme and press **⌘R**
+4. Look for 📻 in the menu bar
 
-To sign with your own account, change `DEVELOPMENT_TEAM` under Signing & Capabilities.
+To sign with your own account, change the team under **Signing & Capabilities**, or edit `DEVELOPMENT_TEAM` in `project.yml`.
 
-### Build from the command line
+**From the command line:**
 ```sh
 cd StarPlayrXMac
 xcodebuild -project StarPlayrXMac.xcodeproj -scheme StarPlayrXMac \
@@ -75,14 +57,18 @@ xcodebuild -project StarPlayrXMac.xcodeproj -scheme StarPlayrXMac \
 open build/Build/Products/Release/StarPlayrX.app
 ```
 
-### Regenerating the project (optional)
-The Xcode project is generated from `StarPlayrXMac/project.yml` with [XcodeGen](https://github.com/yonaskolb/XcodeGen):
+**Regenerating the project (optional):** the Xcode project is generated from `StarPlayrXMac/project.yml` with [XcodeGen](https://github.com/yonaskolb/XcodeGen).
 ```sh
 brew install xcodegen
 cd StarPlayrXMac && xcodegen generate
 ```
 
-### Release (Developer ID + notarization)
+### Catalyst / iOS / iPadOS app
+
+Open `SPX.xcworkspace`, choose the `StarPlayrX` scheme and a destination, then build. iOS and iPadOS builds have to be built and installed locally.
+
+### Release: Developer ID and notarization
+
 ```sh
 APP=build/Build/Products/Release/StarPlayrX.app
 codesign --force --options runtime --timestamp \
@@ -92,21 +78,32 @@ xcrun notarytool submit StarPlayrX.zip --keychain-profile "<profile>" --wait
 xcrun stapler staple "$APP"
 ditto -c -k --keepParent "$APP" StarPlayrX-Mac.zip
 ```
-Re-signing after `xcodebuild` matters: it enables the hardened runtime and drops the `get-task-allow` entitlement, which notarization rejects.
 
-## Licensing
-- StarPlayr Trademark is owned by NiceMac LLC
-- All material is Copyright 2025-2026 by StarPlayrX.com
-- This trademark is licensed exclusively to StarPlayrX.com
-- NiceMac LLC is not associated with SiriusXM or its subsidiaries
+Re-sign after `xcodebuild`. This turns on the hardened runtime and removes the `get-task-allow` entitlement, which notarization rejects.
 
-> We are no longer developing StarPlayr. This company is focusing on AgentiLoop branded projects.
+## 🩺 Troubleshooting
 
-See: https://agentiloop.ai, https://superbox64.com, https://inkpen.io
+**Static, hissing or popping on macOS 26:** while audio is playing, run this in Terminal:
+```sh
+sudo killall coreaudiod
+```
+More details: [How to fix popping sounds on macOS 26](https://medium.com/tech-blog-today/how-to-fix-popping-sounds-on-macos-26-c2846fc65ad0)
 
-Don't be a slacker, be a Star Player.
+**Nothing plays:** check that your SiriusXM subscription is active and that you're online. Streaming needs an internet connection.
 
-F. S. X. M. for ignoring the visually impaired.
+## 📜 License and trademarks
+
+- See [LICENSE](LICENSE).
+- The StarPlayr trademark is owned by NiceMac LLC and licensed exclusively to StarPlayrX.com.
+- All material is Copyright © 2025–2026 StarPlayrX.com.
+- NiceMac LLC is not affiliated with SiriusXM or its subsidiaries.
+
+## 🌐 More from us
+
+We're now focused on AgentiLoop projects:
+[agentiloop.ai](https://agentiloop.ai) · [superbox64.com](https://superbox64.com) · [inkpen.io](https://inkpen.io) · [starplayrx.com](https://starplayrx.com)
+
+*Don't be a slacker, be a Star Player.* ⭐
 
 ---
 
