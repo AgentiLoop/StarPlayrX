@@ -15,8 +15,10 @@ final class Visualizer: ObservableObject {
 
     private var tap: AnyObject?
     private var retry: Task<Void, Never>?
+    private var viewers = 0   // menu and torn-off window can both show bars
 
     func start() {
+        viewers += 1
         guard #available(macOS 14.2, *), tap == nil, retry == nil else { return }
         // The process only gets a Core Audio object once it has played audio, so keep trying.
         retry = Task {
@@ -34,6 +36,8 @@ final class Visualizer: ObservableObject {
     }
 
     func stop() {
+        viewers = max(0, viewers - 1)
+        guard viewers == 0 else { return }
         retry?.cancel()
         retry = nil
         tap = nil

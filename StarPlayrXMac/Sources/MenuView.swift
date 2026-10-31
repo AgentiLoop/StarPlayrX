@@ -1,8 +1,13 @@
 import SwiftUI
 
 struct MenuView: View {
+    static let tornOffID = "player"
+
     @EnvironmentObject var radio: Radio
+    @Environment(\.openWindow) private var openWindow
     @State private var search = ""
+    @State private var panel: NSWindow?
+    var tornOff = false
 
     private var filtered: [Channel] {
         guard !search.isEmpty else { return radio.channels }
@@ -17,7 +22,7 @@ struct MenuView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             if radio.isLoggedIn {
-                nowPlaying
+                if tornOff { nowPlaying } else { nowPlaying.gesture(tearOff) }
                 if radio.isPlaying { SpectrumView() }
                 TextField("Search channels, artists, songs", text: $search)
                     .textFieldStyle(.roundedBorder)
@@ -34,6 +39,40 @@ struct MenuView: View {
         }
         .padding(12)
         .frame(width: 340)
+        .background(tornOff ? nil : WindowReader { panel = $0 })
+    }
+
+    @State private var dragStart: (mouse: NSPoint, origin: NSPoint)?
+
+    /// Drag the now-playing header to pull the menu panel off the menu bar; let go far
+    /// enough away and it becomes a regular window at that spot (like a detached popover).
+    private var tearOff: some Gesture {
+        DragGesture(minimumDistance: 4)
+            .onChanged { _ in
+                guard let panel else { return }
+                let mouse = NSEvent.mouseLocation
+                if dragStart == nil { dragStart = (mouse, panel.frame.origin) }
+                guard let start = dragStart else { return }
+                panel.setFrameOrigin(NSPoint(x: start.origin.x + mouse.x - start.mouse.x,
+                                             y: start.origin.y + mouse.y - start.mouse.y))
+            }
+            .onEnded { _ in
+                guard let panel, let start = dragStart else { return }
+                dragStart = nil
+                let frame = panel.frame
+                panel.setFrameOrigin(start.origin)
+                guard hypot(frame.minX - start.origin.x, frame.minY - start.origin.y) > 40 else { return }
+                panel.orderOut(nil)
+                openWindow(id: Self.tornOffID)
+                DispatchQueue.main.async {
+                    guard let window = NSApp.windows.first(where: {
+                        $0.identifier?.rawValue.hasPrefix(Self.tornOffID) == true
+                    }) else { return }
+                    window.setFrameTopLeftPoint(NSPoint(x: frame.minX, y: frame.maxY))
+                    NSApp.activate(ignoringOtherApps: true)
+                    window.makeKeyAndOrderFront(nil)
+                }
+            }
     }
 
     private var nowPlaying: some View {
@@ -132,4 +171,17 @@ private struct ChannelRow: View, Equatable {
         .padding(.trailing, 12)
         .contentShape(Rectangle())
     }
+}
+
+/// Hands back the NSWindow hosting a SwiftUI view (here: the MenuBarExtra panel).
+private struct WindowReader: NSViewRepresentable {
+    let onWindow: (NSWindow?) -> Void
+
+    func makeNSView(context: Context) -> NSView {
+        let view = NSView()
+        DispatchQueue.main.async { onWindow(view.window) }
+        return view
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {}
 }
