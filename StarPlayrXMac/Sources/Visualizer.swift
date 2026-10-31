@@ -12,6 +12,11 @@ final class Visualizer: ObservableObject {
     nonisolated static let bandCount = 24
 
     @Published private(set) var levels = [Float](repeating: 0, count: bandCount)
+    /// Lava-lamp colour phase (in hue turns). Drifts slowly and speeds up with loudness.
+    @Published private(set) var phase: Double = 0
+    /// Bass kick above its recent average, 0...1: drives the glow and blob pulse.
+    @Published private(set) var pulse: Double = 0
+    private var bassAverage: Float = 0
 
     private var tap: AnyObject?
     private var retry: Task<Void, Never>?
@@ -42,32 +47,71 @@ final class Visualizer: ObservableObject {
         retry = nil
         tap = nil
         levels = [Float](repeating: 0, count: Self.bandCount)
+        pulse = 0
     }
 
     private func update(_ new: [Float]) {
         guard tap != nil else { return }
         // Rise instantly, fall slowly.
         levels = zip(levels, new).map { old, new in max(new, old * 0.8) }
+        // ~30 updates a second: quiet ≈ one colour cycle per 30 s, loud ≈ one per 3 s.
+        let energy = Double(new.reduce(0, +) / Float(new.count))
+        phase = (phase + 0.001 + energy * 0.02).truncatingRemainder(dividingBy: 1)
+        let bass = new.prefix(4).reduce(0, +) / 4
+        bassAverage = bassAverage * 0.95 + bass * 0.05
+        pulse = max(Double(max(0, bass - bassAverage) * 4).clamped, pulse * 0.85)
     }
 }
 
+private extension Double {
+    var clamped: Double { Swift.min(1, Swift.max(0, self)) }
+}
+
+/// Spectrum bars that flow through colours like a lava lamp, paced by the music:
+/// louder music moves the colours faster, bass kicks make the bars glow and a soft blob
+/// of colour swell behind them.
 struct SpectrumView: View {
     @ObservedObject private var viz = Visualizer.shared
+
+    private func hue(_ x: Double) -> Double { (x.truncatingRemainder(dividingBy: 1) + 1).truncatingRemainder(dividingBy: 1) }
+
+    /// Base hue for a bar: the global phase plus a slow wave rolling across the bars, so
+    /// colours drift and blend sideways instead of the whole row changing at once.
+    private func barHue(_ i: Int) -> Double {
+        let t = viz.phase * 2 * .pi
+        let x = Double(i) / Double(Visualizer.bandCount)
+        return hue(viz.phase + x * 0.3 + 0.08 * sin(x * 7 + t * 3))
+    }
 
     var body: some View {
         HStack(alignment: .bottom, spacing: 2) {
             ForEach(viz.levels.indices, id: \.self) { i in
+                let level = Double(viz.levels[i])
+                let h = barHue(i)
+                let top = Color(hue: hue(h + 0.12), saturation: 0.8, brightness: 0.7 + 0.3 * level)
                 RoundedRectangle(cornerRadius: 1.5)
-                    .fill(LinearGradient(colors: [.accentColor, .purple], startPoint: .bottom, endPoint: .top))
-                    .frame(height: max(2, CGFloat(viz.levels[i]) * 28))
+                    .fill(LinearGradient(colors: [Color(hue: h, saturation: 0.9, brightness: 0.85), top],
+                                         startPoint: .bottom, endPoint: .top))
+                    .frame(height: max(2, CGFloat(level) * 28))
+                    .shadow(color: top.opacity(0.4 + 0.6 * viz.pulse), radius: 1 + 4 * viz.pulse)
             }
         }
         .frame(height: 28, alignment: .bottom)
+        .background {
+            // The "lava": a blurred blob of the complementary colour that swells on the beat.
+            Ellipse()
+                .fill(Color(hue: hue(viz.phase + 0.5), saturation: 0.8, brightness: 1))
+                .scaleEffect(x: 0.6 + 0.3 * sin(viz.phase * 2 * .pi * 2), y: 0.6 + 0.5 * viz.pulse)
+                .offset(x: 80 * sin(viz.phase * 2 * .pi * 3))
+                .blur(radius: 14)
+                .opacity(0.15 + 0.35 * viz.pulse)
+        }
         .animation(.linear(duration: 0.05), value: viz.levels)
         .onAppear { viz.start() }
         .onDisappear { viz.stop() }
     }
 }
+
 
 @available(macOS 14.2, *)
 private final class ProcessTap {

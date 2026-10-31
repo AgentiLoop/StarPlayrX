@@ -42,6 +42,11 @@ struct MenuView: View {
         .padding(12)
         .frame(width: 340)
         .background(WindowReader { panel = $0 })
+        // Opening the menu bar menu again puts the torn-off panel away: back to one menu.
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { note in
+            guard !tornOff, let panel, note.object as? NSWindow === panel else { return }
+            TornOffPanel.dismiss()
+        }
     }
 
     @State private var dragStart: (mouse: NSPoint, origin: NSPoint)?
@@ -186,6 +191,8 @@ final class TornOffPanel: NSPanel {
         panel.setFrameTopLeftPoint(topLeft)
         panel.makeKeyAndOrderFront(nil)
     }
+
+    static func dismiss() { shared?.orderOut(nil) }
 
     private static func make() -> TornOffPanel {
         let panel = TornOffPanel(contentRect: .zero,
