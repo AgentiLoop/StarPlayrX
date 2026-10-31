@@ -66,20 +66,26 @@ struct MenuView: View {
         }
     }
 
+    /// Non-lazy VStack: every row is built once when the menu opens, so scrolling never
+    /// has to create rows on the fly (List creates them on first scroll, which stutters).
     private var channelList: some View {
         ScrollViewReader { proxy in
-            List(filtered) { ch in
-                Button {
-                    radio.play(ch)
-                } label: {
-                    ChannelRow(channel: ch, nowPlaying: radio.nowPlaying[ch.id],
-                               isCurrent: ch == radio.current,
-                               isPlaying: ch == radio.current && radio.isPlaying)
+            ScrollView {
+                VStack(spacing: 0) {
+                    ForEach(filtered) { ch in
+                        Button {
+                            radio.play(ch)
+                        } label: {
+                            ChannelRow(channel: ch, nowPlaying: radio.nowPlaying[ch.id],
+                                       isCurrent: ch == radio.current,
+                                       isPlaying: ch == radio.current && radio.isPlaying)
+                                .equatable()
+                        }
+                        .buttonStyle(.plain)
+                        .id(ch.id)
+                    }
                 }
-                .buttonStyle(.plain)
-                .id(ch.id)
             }
-            .listStyle(.plain)
             .frame(height: 360)
             .padding(.trailing, -12)   // scroll bar sits at the window's right edge
             .onAppear { if let id = radio.current?.id { proxy.scrollTo(id, anchor: .center) } }
@@ -120,6 +126,7 @@ private struct ChannelRow: View, Equatable {
                 Image(systemName: "speaker.wave.2.fill").foregroundStyle(.tint)
             }
         }
+        .padding(.vertical, 4)
         .padding(.trailing, 12)
         .contentShape(Rectangle())
     }
