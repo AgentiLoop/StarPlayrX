@@ -70,7 +70,7 @@ struct MenuView: View {
                 let frame = panel.frame
                 panel.setFrameOrigin(start.origin)
                 guard hypot(frame.minX - start.origin.x, frame.minY - start.origin.y) > 40 else { return }
-                panel.close()
+                panel.orderOut(nil)
                 TornOffPanel.show(topLeft: NSPoint(x: frame.minX, y: frame.maxY))
             }
     }
