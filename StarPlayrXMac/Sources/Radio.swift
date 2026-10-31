@@ -311,14 +311,28 @@ final class Radio: ObservableObject {
         }
     }
 
+    /// Peek results arrive many per second; publishing each one redraws the whole channel
+    /// list and stalls scrolling, so they're batched and published at most every 2 seconds.
     private func applyXtraPeek(_ id: String, _ track: XtraTrack?) {
         guard isLoggedIn else { return }
         xtraPeekedAt[id] = Date()
         guard let track, !isPlayingXtra(id) else { return }
         let np = NowPlaying(artist: track.artist, song: track.title, image: track.imageURL)
         xtraNowPlaying[id] = np
-        nowPlaying[id] = np
+        pendingPeeks[id] = np
+        guard !peekFlushScheduled else { return }
+        peekFlushScheduled = true
+        Task {
+            try? await Task.sleep(for: .seconds(2))
+            peekFlushScheduled = false
+            let batch = pendingPeeks.filter { !isPlayingXtra($0.key) }
+            pendingPeeks.removeAll()
+            guard isLoggedIn, !batch.isEmpty else { return }
+            nowPlaying.merge(batch) { _, new in new }
+        }
     }
+    private var pendingPeeks = [String: NowPlaying]()
+    private var peekFlushScheduled = false
 
     private func isPlayingXtra(_ id: String) -> Bool {
         isPlaying && current?.id == id && current?.xtraID != nil
