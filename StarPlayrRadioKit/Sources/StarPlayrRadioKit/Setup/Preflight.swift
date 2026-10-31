@@ -74,16 +74,20 @@ func storeCookiesX() {
 }
 
 func restoreCookiesX() {
-    let cookiesStorage = HTTPCookieStorage.shared
-    let userDefaults = UserDefaults.standard
+    guard let cookieDictionary = UserDefaults.standard.dictionary(forKey: "siriusxm") else { return }
     
-    if let cookieDictionary = userDefaults.dictionary(forKey: "siriusxm") {
-        
-        for (_, cookieProperties) in cookieDictionary {
-            if let cp = cookieProperties as? [HTTPCookiePropertyKey : Any],
-                let cookie = HTTPCookie(properties: cp) {
-                cookiesStorage.setCookie(cookie)
-            }
+    let cookies = cookieDictionary.values.compactMap { cookieProperties -> HTTPCookie? in
+        guard let cp = cookieProperties as? [HTTPCookiePropertyKey : Any] else { return nil }
+        return HTTPCookie(properties: cp)
+    }
+    
+    // HTTPCookieStorage serializes writes on a Default-QoS queue; setting cookies from the
+    // main (User-interactive) thread blocks on it — a priority inversion / hang risk.
+    DispatchQueue.global(qos: .default).async {
+        let cookiesStorage = HTTPCookieStorage.shared
+        for cookie in cookies {
+            cookiesStorage.setCookie(cookie)
         }
     }
 }
+
