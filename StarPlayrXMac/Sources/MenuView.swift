@@ -191,6 +191,7 @@ final class MenuController: NSObject, ObservableObject {
     private(set) var panel: MenuPanel!
     private var statusItem: NSStatusItem!
     private var outsideClick: Any?
+    private var glide: Timer?
     private var playing: AnyCancellable?
 
     func install() {
@@ -214,13 +215,21 @@ final class MenuController: NSObject, ObservableObject {
             let x = min(button.minX, screen.maxX - panel.frame.width)
             let top = NSPoint(x: x, y: button.minY - 4)
             if panel.isVisible {
-                // Torn off: glide back under the menu bar instead of jumping.
-                let target = NSRect(x: top.x, y: top.y - panel.frame.height,
-                                    width: panel.frame.width, height: panel.frame.height)
-                NSAnimationContext.runAnimationGroup { context in
-                    context.duration = 0.25
-                    context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-                    panel.animator().setFrame(target, display: true)
+                // Torn off: glide back under the menu bar instead of jumping. Stepped by hand
+                // (top-left point per frame) so the unshade resize can't cut the animation short.
+                let start = NSPoint(x: panel.frame.minX, y: panel.frame.maxY)
+                let began = CACurrentMediaTime()
+                let duration = 0.4
+                glide?.invalidate()
+                glide = Timer.scheduledTimer(withTimeInterval: 1.0 / 60.0, repeats: true) { [weak self] timer in
+                    Task { @MainActor in
+                        guard let self else { timer.invalidate(); return }
+                        let t = min((CACurrentMediaTime() - began) / duration, 1)
+                        let eased = t < 0.5 ? 2 * t * t : 1 - pow(-2 * t + 2, 2) / 2   // ease in-out
+                        self.panel.setFrameTopLeftPoint(NSPoint(x: start.x + (top.x - start.x) * eased,
+                                                                y: start.y + (top.y - start.y) * eased))
+                        if t >= 1 { timer.invalidate(); self.glide = nil }
+                    }
                 }
             } else {
                 panel.setFrameTopLeftPoint(top)
@@ -253,6 +262,8 @@ final class MenuController: NSObject, ObservableObject {
     }
 
     func hide() {
+        glide?.invalidate()
+        glide = nil
         panel.orderOut(nil)
         detached = false
         shaded = false
