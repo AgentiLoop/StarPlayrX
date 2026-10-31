@@ -31,9 +31,12 @@ struct MenuView: View {
                 .gesture(tearOff)
                 .simultaneousGesture(TapGesture(count: 2).onEnded { if menu.detached { menu.shaded.toggle() } })
                 if !shaded {
-                    TextField("Search channels, artists, songs", text: $search)
-                        .textFieldStyle(.roundedBorder)
-                    channelList
+                    Group {
+                        TextField("Search channels, artists, songs", text: $search)
+                            .textFieldStyle(.roundedBorder)
+                        channelList
+                    }
+                    .transition(.move(edge: .top).combined(with: .opacity))
                 }
             } else {
                 Text(radio.status).foregroundStyle(.secondary)
@@ -43,8 +46,11 @@ struct MenuView: View {
                 .disabled(radio.isBusy)
             }
             if !shaded {
-                Divider()
-                footer
+                Group {
+                    Divider()
+                    footer
+                }
+                .transition(.move(edge: .top).combined(with: .opacity))
             }
         }
         .padding(12)
@@ -208,8 +214,12 @@ final class MenuController: NSObject, ObservableObject {
     /// Icon click: open under the menu bar, close if open there, or move a torn-off panel back under it.
     @objc private func statusItemClicked() {
         if panel.isVisible && !detached { hide(); return }
-        detached = false
-        shaded = false
+        // Shaded and torn off: glide back still rolled up, then unroll once in place.
+        let unshade = panel.isVisible && detached && shaded
+        if !unshade {
+            detached = false
+            shaded = false
+        }
         if let button = statusItem.button?.window?.frame {
             let screen = statusItem.button?.window?.screen?.visibleFrame ?? .infinite
             let x = min(button.minX, screen.maxX - panel.frame.width)
@@ -228,7 +238,15 @@ final class MenuController: NSObject, ObservableObject {
                         let eased = t < 0.5 ? 2 * t * t : 1 - pow(-2 * t + 2, 2) / 2   // ease in-out
                         self.panel.setFrameTopLeftPoint(NSPoint(x: start.x + (top.x - start.x) * eased,
                                                                 y: start.y + (top.y - start.y) * eased))
-                        if t >= 1 { timer.invalidate(); self.glide = nil }
+                        guard t >= 1 else { return }
+                        timer.invalidate()
+                        self.glide = nil
+                        if unshade {
+                            withAnimation(.easeOut(duration: 0.3)) {
+                                self.detached = false
+                                self.shaded = false
+                            }
+                        }
                     }
                 }
             } else {
