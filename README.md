@@ -52,6 +52,48 @@ https://medium.com/tech-blog-today/how-to-fix-popping-sounds-on-macos-26-c2846fc
 - Signed and Notarized by Apple
 - Available on Github Releases Side Bar
 
+## 🛠️ Building StarPlayrX for Mac (menu bar app)
+
+`StarPlayrXMac` is the native macOS menu bar app (separate from the Mac Catalyst build in `SPX.xcworkspace`). It lives in `StarPlayrXMac/` and uses the local `StarPlayrRadioKit` package, which pulls in [SwifterLite](https://github.com/StarPlayrX/SwifterLite) (`mustang` branch).
+
+**Requirements:** Xcode 16 or later, macOS 13 Ventura or later deployment target.
+
+### Build in Xcode
+1. Open `StarPlayrXMac/StarPlayrXMac.xcodeproj`
+2. Let Swift Package Manager resolve packages
+3. Select the `StarPlayrXMac` scheme and press ⌘R
+4. Look for the 📻 icon in the menu bar (the app has no Dock icon)
+
+To sign with your own account, change `DEVELOPMENT_TEAM` under Signing & Capabilities.
+
+### Build from the command line
+```sh
+cd StarPlayrXMac
+xcodebuild -project StarPlayrXMac.xcodeproj -scheme StarPlayrXMac \
+  -configuration Release -derivedDataPath build \
+  ARCHS="arm64 x86_64" ONLY_ACTIVE_ARCH=NO build
+open build/Build/Products/Release/StarPlayrX.app
+```
+
+### Regenerating the project (optional)
+The Xcode project is generated from `StarPlayrXMac/project.yml` with [XcodeGen](https://github.com/yonaskolb/XcodeGen):
+```sh
+brew install xcodegen
+cd StarPlayrXMac && xcodegen generate
+```
+
+### Release (Developer ID + notarization)
+```sh
+APP=build/Build/Products/Release/StarPlayrX.app
+codesign --force --options runtime --timestamp \
+  --sign "Developer ID Application: <Your Name> (<TEAMID>)" "$APP"
+ditto -c -k --keepParent "$APP" StarPlayrX.zip
+xcrun notarytool submit StarPlayrX.zip --keychain-profile "<profile>" --wait
+xcrun stapler staple "$APP"
+ditto -c -k --keepParent "$APP" StarPlayrX-Mac.zip
+```
+Re-signing after `xcodebuild` matters: it enables the hardened runtime and drops the `get-task-allow` entitlement, which notarization rejects.
+
 ## Licensing
 - StarPlayr Trademark is owned by NiceMac LLC
 - All material is Copyright 2025-2026 by StarPlayrX.com
