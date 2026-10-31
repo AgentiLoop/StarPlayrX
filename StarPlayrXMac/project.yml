@@ -23,7 +23,7 @@ targets:
       properties:
         CFBundleDisplayName: StarPlayrX
         CFBundleShortVersionString: "1.1"
-        CFBundleVersion: "2"
+        CFBundleVersion: "3"
         LSUIElement: true
         LSApplicationCategoryType: public.app-category.music
         NSAppTransportSecurity:

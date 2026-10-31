@@ -30,14 +30,14 @@ StarPlayrX was built for visually impaired listeners, a group of paying subscrib
 - Lives in the menu bar (📻) with no Dock icon
 - Search channels, artists and songs
 - Shows what's playing on the current channel and every channel in the list
-- Xtra channels (1000+), searchable with "xtra" or "music"
+- Xtra channels (1000+), searchable with "xtra" or "music"; tuning in plays the song the list shows
 - Play/pause from the keyboard media keys and Control Center
 - US and Canada channel lineups
 - Your password is stored only in the macOS Keychain
 
 **Requirements:** macOS 13 Ventura or later, Apple Silicon or Intel, and an active SiriusXM subscription.
 
-**Download:** signed, notarized builds are on the [Releases](https://github.com/AgentiLoop/StarPlayrX/releases) page.
+**Download:** [StarPlayrX for Mac 1.1](https://github.com/AgentiLoop/StarPlayrX/releases/tag/mac-1.1) (signed and notarized). All builds are on the [Releases](https://github.com/AgentiLoop/StarPlayrX/releases) page.
 
 ## 🛠️ Building
 
