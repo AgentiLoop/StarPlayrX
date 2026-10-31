@@ -1,19 +1,25 @@
 import SwiftUI
 import Combine
 
-struct MenuView: View {
-    @EnvironmentObject var radio: Radio
-    @ObservedObject private var menu = MenuController.shared
-    @State private var search = ""
-
-    private var filtered: [Channel] {
-        guard !search.isEmpty else { return radio.channels }
-        return radio.channels.filter { ch in
-            let np = radio.nowPlaying[ch.id]
+extension Channel {
+    /// The search field's matching: number, name, category, "Music Xtra", artist and song.
+    static func filter(_ channels: [Channel], nowPlaying: [String: NowPlaying], search: String) -> [Channel] {
+        guard !search.isEmpty else { return channels }
+        return channels.filter { ch in
+            let np = nowPlaying[ch.id]
             let xtraTerms = ch.xtraID != nil ? "Music Xtra" : ""
             return [ch.id, ch.name, ch.category, xtraTerms, np?.artist ?? "", np?.song ?? ""]
                 .contains { $0.localizedCaseInsensitiveContains(search) }
         }
+    }
+}
+
+struct MenuView: View {
+    @EnvironmentObject var radio: Radio
+    @ObservedObject private var menu = MenuController.shared
+
+    private var filtered: [Channel] {
+        Channel.filter(radio.channels, nowPlaying: radio.nowPlaying, search: menu.search)
     }
 
     /// Double-click the tear-off area to roll the panel up to just that area (under the menu bar or torn off).
@@ -31,7 +37,7 @@ struct MenuView: View {
                 .gesture(tearOff)
                 .simultaneousGesture(TapGesture(count: 2).onEnded { menu.shaded.toggle() })
                 if !shaded {
-                    TextField("Search channels, artists, songs", text: $search)
+                    TextField("Search channels, artists, songs", text: $menu.search)
                         .textFieldStyle(.roundedBorder)
                     channelList
                 }
@@ -51,30 +57,25 @@ struct MenuView: View {
         .frame(width: 340)
     }
 
-    @State private var dragStart: (mouse: NSPoint, origin: NSPoint)?
+    @State private var dragMouseStart: NSPoint?
 
     /// Drag the header to pull the panel off the menu bar; let go far enough away and the same
     /// panel stays where it was dropped (torn off). Once torn off, dragging just moves it.
     private var tearOff: some Gesture {
         DragGesture(minimumDistance: 4)
             .onChanged { _ in
-                guard let panel = menu.panel else { return }
                 let mouse = NSEvent.mouseLocation
-                if dragStart == nil { dragStart = (mouse, panel.frame.origin) }
-                guard let start = dragStart else { return }
-                panel.setFrameOrigin(NSPoint(x: start.origin.x + mouse.x - start.mouse.x,
-                                             y: start.origin.y + mouse.y - start.mouse.y))
+                if dragMouseStart == nil {
+                    dragMouseStart = mouse
+                    menu.beginDrag()
+                }
+                guard let start = dragMouseStart else { return }
+                menu.drag(by: CGSize(width: mouse.x - start.x, height: mouse.y - start.y))
             }
             .onEnded { _ in
-                guard let start = dragStart else { return }
-                dragStart = nil
-                guard !menu.detached else { return }
-                let frame = menu.panel.frame
-                if hypot(frame.minX - start.origin.x, frame.minY - start.origin.y) > 40 {
-                    menu.detach()
-                } else {
-                    menu.panel.setFrameOrigin(start.origin)
-                }
+                guard dragMouseStart != nil else { return }
+                dragMouseStart = nil
+                menu.endDrag()
             }
     }
 
@@ -285,6 +286,131 @@ final class MenuController: NSObject, ObservableObject {
     private func removeOutsideClick() {
         if let outsideClick { NSEvent.removeMonitor(outsideClick) }
         outsideClick = nil
+    }
+
+    /// Opens the panel under the menu bar unless it is already showing (anywhere).
+    func ensureShown() {
+        if !panel.isVisible { statusItemClicked() }
+    }
+
+    // MARK: Drag / tear off (header gesture and scripts)
+
+    static let tearOffDistance: CGFloat = 40
+    private var dragOrigin: NSPoint?
+
+    func beginDrag() { dragOrigin = panel.frame.origin }
+
+    /// `delta` is in screen points (Cocoa: y up) from where the drag began.
+    func drag(by delta: CGSize) {
+        guard let start = dragOrigin else { return }
+        panel.setFrameOrigin(NSPoint(x: start.x + delta.width, y: start.y + delta.height))
+    }
+
+    /// Let go far enough from the menu bar and it stays torn off; otherwise it snaps back.
+    func endDrag() {
+        guard let start = dragOrigin else { return }
+        dragOrigin = nil
+        guard !detached else { return }
+        if hypot(panel.frame.minX - start.x, panel.frame.minY - start.y) > Self.tearOffDistance {
+            detach()
+        } else {
+            panel.setFrameOrigin(start)
+        }
+    }
+
+    // MARK: Position and parking
+
+    enum Corner { case upperLeft, upperRight, lowerLeft, lowerRight }
+
+    /// Top-left point that puts a panel of `size` in `corner` of `visible`, `margin` points in.
+    static func parkedTopLeft(_ corner: Corner, size: NSSize, in visible: NSRect, margin: CGFloat = 8) -> NSPoint {
+        let left = corner == .upperLeft || corner == .lowerLeft
+        let upper = corner == .upperLeft || corner == .upperRight
+        return NSPoint(x: left ? visible.minX + margin : visible.maxX - size.width - margin,
+                       y: upper ? visible.maxY - margin : visible.minY + size.height + margin)
+    }
+
+    /// Tears the panel off and moves it to a corner of its screen (below the menu bar, above the Dock).
+    func park(_ corner: Corner) {
+        ensureShown()
+        detach()
+        let visible = (panel.screen ?? NSScreen.main)?.visibleFrame ?? .zero
+        panel.setFrameTopLeftPoint(Self.parkedTopLeft(corner, size: panel.frame.size, in: visible))
+    }
+
+    /// AppleScript screen coordinates have y going down from the top of the main screen; Cocoa's go up.
+    /// The conversion is its own inverse.
+    static func flipY(_ p: NSPoint, mainScreenHeight h: CGFloat) -> NSPoint { NSPoint(x: p.x, y: h - p.y) }
+
+    private var mainScreenHeight: CGFloat { NSScreen.screens.first?.frame.maxY ?? 0 }
+
+    /// Top-left of the panel in AppleScript coordinates. Moving it tears it off, like dragging.
+    var scriptPosition: NSPoint {
+        get { Self.flipY(NSPoint(x: panel.frame.minX, y: panel.frame.maxY), mainScreenHeight: mainScreenHeight) }
+        set {
+            ensureShown()
+            detach()
+            panel.setFrameTopLeftPoint(Self.flipY(newValue, mainScreenHeight: mainScreenHeight))
+        }
+    }
+
+    // MARK: Channel list (search and scrolling)
+
+    @Published var search = ""
+
+    /// The channels the list shows right now (after the search field).
+    var visibleChannels: [Channel] {
+        Channel.filter(Radio.shared.channels, nowPlaying: Radio.shared.nowPlaying, search: search)
+    }
+
+    /// The channel list's NSScrollView (the SwiftUI ScrollView's backing view): the one with the tallest content.
+    var channelScrollView: NSScrollView? {
+        func all(_ view: NSView) -> [NSScrollView] {
+            ((view as? NSScrollView).map { [$0] } ?? []) + view.subviews.flatMap(all)
+        }
+        guard let root = panel.contentView else { return nil }
+        return all(root).filter { $0.documentView != nil }
+            .max { ($0.documentView?.frame.height ?? 0) < ($1.documentView?.frame.height ?? 0) }
+    }
+
+    /// Height of one channel row (rows are fixed height), 0 when the list isn't on screen.
+    var rowHeight: CGFloat {
+        let count = visibleChannels.count
+        guard count > 0, let doc = channelScrollView?.documentView else { return 0 }
+        return doc.frame.height / CGFloat(count)
+    }
+
+    /// How far the list is scrolled, in points from the top. Setting it scrolls (clamped to the list).
+    var scrollOffset: CGFloat {
+        get {
+            guard let sv = channelScrollView, let doc = sv.documentView else { return 0 }
+            let clip = sv.contentView.bounds
+            return doc.isFlipped ? clip.minY : doc.frame.height - clip.maxY
+        }
+        set {
+            guard let sv = channelScrollView, let doc = sv.documentView else { return }
+            let clip = sv.contentView.bounds
+            let offset = min(max(newValue, 0), max(doc.frame.height - clip.height, 0))
+            let y = doc.isFlipped ? offset : doc.frame.height - clip.height - offset
+            sv.contentView.scroll(to: NSPoint(x: clip.minX, y: y))
+            sv.reflectScrolledClipView(sv.contentView)
+        }
+    }
+
+    /// The first channel row at the top of the scrolled list.
+    var topVisibleChannel: Channel? {
+        let rows = visibleChannels
+        let h = rowHeight
+        guard h > 0, !rows.isEmpty else { return nil }
+        return rows[min(rows.count - 1, max(0, Int((scrollOffset + 1) / h)))]
+    }
+
+    /// Scrolls so the channel's row is at the top (or as far as the list goes). False if it isn't listed.
+    @discardableResult
+    func scroll(to id: String) -> Bool {
+        guard let index = visibleChannels.firstIndex(where: { $0.id == id }), rowHeight > 0 else { return false }
+        scrollOffset = CGFloat(index) * rowHeight
+        return true
     }
 }
 

@@ -10,7 +10,9 @@ extension AppDelegate {
         "spCurrentChannel", "spCurrentChannelName", "spCurrentXtra",
         "spShownArtist", "spShownSong", "spPlayingArtist", "spPlayingSong",
         "spChannelNumbers", "spXtraChannelNumbers", "spLiveChannelNumbers",
-        "spMenuVisible", "spMenuDetached", "spMenuShaded"]
+        "spMenuVisible", "spMenuDetached", "spMenuShaded",
+        "spMenuPosition", "spMenuSize", "spSearchText", "spVisibleChannelNumbers",
+        "spScrollPosition", "spTopVisibleChannel"]
 
     func application(_ sender: NSApplication, delegateHandlesKey key: String) -> Bool {
         Self.scriptingKeys.contains(key)
@@ -65,8 +67,38 @@ extension AppDelegate {
 
     @objc var spMenuShaded: Bool {
         get { menu.shaded }
-        set { menu.shaded = newValue }
+        set {
+            menu.ensureShown()
+            menu.shaded = newValue
+        }
     }
+
+    /// {x, y} of the panel's top-left corner, AppleScript screen coordinates (y down from the top).
+    @objc var spMenuPosition: [Int] {
+        get { let p = menu.scriptPosition; return [Int(p.x.rounded()), Int(p.y.rounded())] }
+        set {
+            guard newValue.count == 2 else { return }
+            menu.scriptPosition = NSPoint(x: newValue[0], y: newValue[1])
+        }
+    }
+
+    @objc var spMenuSize: [Int] {
+        [Int(menu.panel.frame.width.rounded()), Int(menu.panel.frame.height.rounded())]
+    }
+
+    @objc var spSearchText: String {
+        get { menu.search }
+        set { menu.search = newValue }
+    }
+
+    @objc var spVisibleChannelNumbers: [String] { menu.visibleChannels.map(\.id) }
+
+    @objc var spScrollPosition: Int {
+        get { Int(menu.scrollOffset.rounded()) }
+        set { menu.scrollOffset = CGFloat(newValue) }
+    }
+
+    @objc var spTopVisibleChannel: String { menu.topVisibleChannel?.id ?? "" }
 }
 
 @objc(SPXCommand)
@@ -114,12 +146,34 @@ final class SPXCommand: NSScriptCommand {
             return [channel.id, channel.name, channel.category, channel.xtraID != nil ? "xtra" : "live",
                     np?.artist ?? "", np?.song ?? ""].joined(separator: "\t")
         case "search channels":
-            guard !arg.isEmpty else { return radio.channels.map(\.id) }
-            return radio.channels.filter { ch in
-                let np = radio.nowPlaying[ch.id]
-                return [ch.id, ch.name, ch.category, ch.xtraID != nil ? "Music Xtra" : "", np?.artist ?? "", np?.song ?? ""]
-                    .contains { $0.localizedCaseInsensitiveContains(arg) }
-            }.map(\.id)
+            return Channel.filter(radio.channels, nowPlaying: radio.nowPlaying, search: arg).map(\.id)
+        case "select channel":
+            // A click on the row: only channels the list is showing (after the search field).
+            guard let row = menu.visibleChannels.first(where: { $0.id == arg }) else { return false }
+            radio.play(row)
+            return true
+        case "scroll to channel":
+            menu.ensureShown()
+            return menu.scroll(to: arg)
+        case "drag menu":
+            // Same steps as dragging the header with the mouse: far enough tears it off, else it snaps back.
+            guard let by = directParameter as? [NSNumber], by.count == 2 else { return fail("Give {dx, dy}.") }
+            menu.ensureShown()
+            menu.beginDrag()
+            menu.drag(by: CGSize(width: by[0].doubleValue, height: -by[1].doubleValue))
+            menu.endDrag()
+            return menu.detached
+        case "park menu":
+            let code = (evaluatedArguments?["corner"] as? NSNumber)?.uint32Value
+            let corners: [UInt32: MenuController.Corner] = [
+                Self.code("SPUL"): .upperLeft, Self.code("SPUR"): .upperRight,
+                Self.code("SPLL"): .lowerLeft, Self.code("SPLR"): .lowerRight]
+            menu.park(code.flatMap { corners[$0] } ?? .upperRight)
+            if let shaded = evaluatedArguments?["shaded"] as? Bool { menu.shaded = shaded }
+        case "toggle shade":
+            menu.ensureShown()
+            menu.shaded.toggle()
+            return menu.shaded
         case "test channel":
             guard let channel else { return "NO CHANNEL\t\(arg)" }
             let wait = (evaluatedArguments?["wait"] as? Int) ?? 30
@@ -150,6 +204,8 @@ final class SPXCommand: NSScriptCommand {
     }
 
     private static func format(_ np: NowPlaying) -> String { "\(np.artist) – \(np.song)" }
+
+    static func code(_ s: String) -> UInt32 { s.utf8.reduce(0) { $0 << 8 | UInt32($1) } }
 
     private func fail(_ message: String) -> Any? {
         scriptErrorNumber = -10000

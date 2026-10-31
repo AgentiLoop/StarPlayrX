@@ -65,7 +65,70 @@
             <property name="menu shaded" code="SPms" type="boolean" description="Whether the panel is rolled up (window shade).">
                 <cocoa key="spMenuShaded"/>
             </property>
+            <property name="menu position" code="SPmp" description="{x, y} of the panel's top-left corner in screen coordinates (y down from the top of the main screen). Setting it opens the panel if needed and tears it off, like dragging it there.">
+                <type type="integer" list="yes"/>
+                <cocoa key="spMenuPosition"/>
+            </property>
+            <property name="menu size" code="SPmz" access="r" description="{width, height} of the panel (smaller when shaded).">
+                <type type="integer" list="yes"/>
+                <cocoa key="spMenuSize"/>
+            </property>
+            <property name="search text" code="SPsx" type="text" description="Text in the panel's search field. Setting it filters the channel list.">
+                <cocoa key="spSearchText"/>
+            </property>
+            <property name="visible channel numbers" code="SPvl" access="r" description="Numbers of the channels the list shows now (after the search field).">
+                <type type="text" list="yes"/>
+                <cocoa key="spVisibleChannelNumbers"/>
+            </property>
+            <property name="scroll position" code="SPsp" type="integer" description="How far the channel list is scrolled, in points from the top. Setting it scrolls (clamped). 0 when the list isn't on screen.">
+                <cocoa key="spScrollPosition"/>
+            </property>
+            <property name="top visible channel" code="SPtv" type="text" access="r" description="Number of the channel row at the top of the scrolled list (empty when the list isn't on screen).">
+                <cocoa key="spTopVisibleChannel"/>
+            </property>
         </class-extension>
+
+        <enumeration name="corner" code="SPcr">
+            <enumerator name="upper left" code="SPUL"/>
+            <enumerator name="upper right" code="SPUR"/>
+            <enumerator name="lower left" code="SPLL"/>
+            <enumerator name="lower right" code="SPLR"/>
+        </enumeration>
+
+        <command name="select channel" code="SPrxSelc" description="Click a row in the channel list: plays it if the list is showing it (see search text). Returns false otherwise.">
+            <cocoa class="SPXCommand"/>
+            <direct-parameter type="text" description="Channel number."/>
+            <result type="boolean"/>
+        </command>
+
+        <command name="scroll to channel" code="SPrxScrl" description="Open the panel if needed and scroll the list so that channel's row is at the top (as far as the list goes). Returns false if the list isn't showing it.">
+            <cocoa class="SPXCommand"/>
+            <direct-parameter type="text" description="Channel number."/>
+            <result type="boolean"/>
+        </command>
+
+        <command name="drag menu" code="SPrxDrag" description="Drag the panel's header by {dx, dy} points (y down), like the mouse. Under the menu bar, more than 40 points tears it off; less snaps it back. Returns whether it is torn off.">
+            <cocoa class="SPXCommand"/>
+            <direct-parameter description="{dx, dy}">
+                <type type="integer" list="yes"/>
+            </direct-parameter>
+            <result type="boolean"/>
+        </command>
+
+        <command name="park menu" code="SPrxPark" description="Tear the panel off and park it in a corner of its screen (below the menu bar, above the Dock). Default upper right.">
+            <cocoa class="SPXCommand"/>
+            <parameter name="at" code="SPat" type="corner" optional="yes" description="Corner.">
+                <cocoa key="corner"/>
+            </parameter>
+            <parameter name="shaded" code="SPsh" type="boolean" optional="yes" description="Also roll it up (true) or down (false).">
+                <cocoa key="shaded"/>
+            </parameter>
+        </command>
+
+        <command name="toggle shade" code="SPrxShad" description="Double-click on the header: roll the panel up or down. Returns whether it is now shaded.">
+            <cocoa class="SPXCommand"/>
+            <result type="boolean"/>
+        </command>
 
         <command name="play channel" code="SPrxPlay" description="Play a channel by number. Returns false if there is no such channel.">
             <cocoa class="SPXCommand"/>
