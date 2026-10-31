@@ -44,6 +44,7 @@ final class Radio: ObservableObject {
     private var xtraNowPlaying = [String: NowPlaying]()
     private var xtraObserver: AnyCancellable?
     private var xtraPeekedAt = [String: Date]()
+    private var xtraPeekedTrack = [String: XtraTrack]()  // what the channel list shows, played first on tune
     private var xtraPeeking = false
     private let xtraFolder = FileManager.default.temporaryDirectory.appendingPathComponent("StarPlayrXtra")
 
@@ -199,16 +200,33 @@ final class Radio: ObservableObject {
 
     private func playXtra(_ channel: Channel, id: String) {
         isPlaying = true
-        // The peeked track is often not the one tuning starts with; show the channel logo
-        // until the first track actually plays, instead of flashing the peeked album art.
-        xtraNowPlaying[channel.id] = nil
-        nowPlaying[channel.id] = nil
+        // Tuning again returns a different track than the peek, so start with the peeked track
+        // the channel list is showing (from its beginning), then continue with the tuned queue.
+        let peeked = xtraPeekedTrack.removeValue(forKey: channel.id).map {
+            XtraTrack(id: $0.id, artist: $0.artist, title: $0.title, url: $0.url, keyID: $0.keyID,
+                      imageURL: $0.imageURL, startOffset: 0)
+        }
+        if peeked == nil {
+            xtraNowPlaying[channel.id] = nil
+            nowPlaying[channel.id] = nil
+        }
         updateNowPlayingInfo()
         xtraTask = Task {
             var pending = [XtraTrack]()
             var token: String?
             var seen = Set<String>()
             var first = true
+            if let peeked {
+                seen.insert(peeked.id)
+                if let file = try? await xtra.download(peeked, into: xtraFolder), !Task.isCancelled {
+                    let item = AVPlayerItem(url: file)
+                    xtraTracks[item] = peeked
+                    xtraPlayer.insert(item, after: nil)
+                    first = false
+                    xtraPlayer.play()
+                    xtraItemChanged()
+                }
+            }
             do {
                 while !Task.isCancelled {
                     // Keep one track playing and one ready behind it.
@@ -321,6 +339,7 @@ final class Radio: ObservableObject {
         guard isLoggedIn else { return }
         xtraPeekedAt[id] = Date()
         guard let track, !isPlayingXtra(id) else { return }
+        xtraPeekedTrack[id] = track
         let np = NowPlaying(artist: track.artist, song: track.title, image: track.imageURL)
         xtraNowPlaying[id] = np
         pendingPeeks[id] = np
