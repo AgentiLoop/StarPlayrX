@@ -14,6 +14,10 @@ targets:
       - Sources
     dependencies:
       - package: StarPlayrRadioKit
+    scheme:
+      environmentVariables:
+        OS_ACTIVITY_MODE: disable
+        OS_ACTIVITY_DT_MODE: "NO"
     info:
       path: Sources/Info.plist
       properties:
