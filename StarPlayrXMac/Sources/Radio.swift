@@ -199,6 +199,10 @@ final class Radio: ObservableObject {
 
     private func playXtra(_ channel: Channel, id: String) {
         isPlaying = true
+        // The peeked track is often not the one tuning starts with; show the channel logo
+        // until the first track actually plays, instead of flashing the peeked album art.
+        xtraNowPlaying[channel.id] = nil
+        nowPlaying[channel.id] = nil
         updateNowPlayingInfo()
         xtraTask = Task {
             var pending = [XtraTrack]()
