@@ -290,6 +290,7 @@ final class Radio: ObservableObject {
             try? FileManager.default.removeItem(at: xtraFolder.appendingPathComponent("\(track.id).aac"))
         }
         guard let item = xtraPlayer.currentItem, let track = xtraTracks[item], let current, current.xtraID != nil else { return }
+        print("XTRA playing \(current.id) \(track.artist) – \(track.title)")
         let np = NowPlaying(artist: track.artist, song: track.title, image: track.imageURL)
         xtraNowPlaying[current.id] = np
         nowPlaying[current.id] = np
