@@ -24,12 +24,13 @@ StarPlayrX was built for visually impaired listeners, a group of paying subscrib
 ## 🎛️ StarPlayrX for Mac (menu bar app)
 
 <p align="center">
-  <img src="docs/screenshot-mac.png" width="391" alt="StarPlayrX menu bar app playing Lazy Eye by Goo Goo Dolls on Lithium, channel 34, with a searchable channel list showing what's playing on each channel">
+  <img src="docs/screenshot-mac.png" width="388" alt="StarPlayrX menu bar app playing Don't Stop Believin' by Journey on Classic Rewind Top 100, channel 1034, with a searchable channel list showing what's playing on each channel">
 </p>
 
 - Lives in the menu bar (📻) with no Dock icon
 - Search channels, artists and songs
 - Shows what's playing on the current channel and every channel in the list
+- Xtra channels (1000+), searchable with "xtra" or "music"
 - Play/pause from the keyboard media keys and Control Center
 - US and Canada channel lineups
 - Your password is stored only in the macOS Keychain
