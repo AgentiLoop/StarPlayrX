@@ -202,7 +202,10 @@ final class TornOffPanel: NSPanel {
             .environmentObject(Radio.shared)
             .background(MenuMaterial())
             .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-        panel.contentView = NSHostingView(rootView: root)
+        // A hosting controller sizes the panel to the view (and follows it when the
+        // spectrum appears); a bare hosting view in a .zero rect leaves it 0×0 and invisible.
+        panel.contentViewController = NSHostingController(rootView: root)
+        panel.setContentSize(panel.contentViewController!.view.fittingSize)
         return panel
     }
 }
