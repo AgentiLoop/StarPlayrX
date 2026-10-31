@@ -9,7 +9,7 @@ import Foundation
 import SwifterLite
 
 func regionRoute(region: String) -> httpReq {{ request in
-    playerDomain = "player.siriusxm.\(region)"
+    playerDomain = region == "ca" ? "player.siriusxm.ca" : "player.siriusxm.com"
     root = "\(playerDomain)/rest/v2/experience/modules"
     appRegion = region.uppercased()
     
