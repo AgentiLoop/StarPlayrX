@@ -1,0 +1,35 @@
+name: StarPlayrXMac
+options:
+  bundleIdPrefix: com.starplayrx
+  deploymentTarget:
+    macOS: "13.0"
+packages:
+  StarPlayrRadioKit:
+    path: ../StarPlayrRadioKit
+targets:
+  StarPlayrXMac:
+    type: application
+    platform: macOS
+    sources:
+      - Sources
+    dependencies:
+      - package: StarPlayrRadioKit
+    info:
+      path: Sources/Info.plist
+      properties:
+        CFBundleDisplayName: StarPlayrX
+        CFBundleShortVersionString: "1.0"
+        CFBundleVersion: "1"
+        LSUIElement: true
+        LSApplicationCategoryType: public.app-category.music
+        NSAppTransportSecurity:
+          NSAllowsArbitraryLoads: true
+    settings:
+      base:
+        PRODUCT_NAME: StarPlayrX
+        PRODUCT_BUNDLE_IDENTIFIER: com.starplayrx.mac
+        SWIFT_VERSION: "5.0"
+        CODE_SIGN_STYLE: Automatic
+        CODE_SIGN_IDENTITY: "-"
+        ENABLE_HARDENED_RUNTIME: NO
+        GENERATE_INFOPLIST_FILE: NO
