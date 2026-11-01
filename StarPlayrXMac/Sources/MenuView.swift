@@ -573,7 +573,7 @@ private struct ChannelLogo: View {
     }
 }
 
-/// Channel logos and album art kept in memory once loaded. Nothing is fetched until it's shown,
+/// Channel logos and album art kept in memory once loaded. Nothing is fetched until it's shown or about to be (list look-ahead),
 /// and a URL that is already loading is shared instead of downloaded twice. Each image is fetched
 /// (where the server can resize) and decoded at 2x the points it is shown at, so the 32pt channel
 /// rows and the 64pt Now Playing tile each get their own size, and the cache is bounded.
