@@ -144,10 +144,11 @@ struct MenuView: View {
     /// LazyVStack: only rows near the visible part of the list exist, so the hundreds of channels
     /// don't each keep a live view (and its art) in memory; rows that scroll away are freed.
     private var channelList: some View {
-        ScrollViewReader { proxy in
+        let list = filtered
+        return ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(spacing: 0) {
-                    ForEach(filtered) { ch in
+                    ForEach(Array(list.enumerated()), id: \.element.id) { index, ch in
                         Button {
                             radio.play(ch)
                         } label: {
@@ -158,12 +159,22 @@ struct MenuView: View {
                         }
                         .buttonStyle(.plain)
                         .id(ch.id)
+                        .onAppear { prefetchArt(around: index, in: list) }
                     }
                 }
             }
             .frame(height: CachedArt<EmptyView>.listHeight)
             .padding(.trailing, -12)   // scroll bar sits at the window's right edge
             .onAppear { if let id = radio.current?.id { proxy.scrollTo(id, anchor: .center) } }
+        }
+    }
+
+    /// Look-ahead: when a row appears, start loading the art of the 10 rows above and below it,
+    /// so it's usually already in `ArtCache` by the time those rows scroll into view.
+    private func prefetchArt(around index: Int, in list: [Channel]) {
+        for ch in list[max(0, index - 10)..<min(list.count, index + 11)] {
+            let np = radio.nowPlaying[ch.id]
+            ArtCache.shared.prefetch(np?.image.isEmpty == false ? np!.image : ch.imageURL, pixels: ArtCache.pixels(32))
         }
     }
 
@@ -624,6 +635,12 @@ final class ArtCache {
         let image = NSImage(cgImage: thumb, size: NSSize(width: CGFloat(thumb.width) / Self.scale, height: CGFloat(thumb.height) / Self.scale))
         images.setObject(image, forKey: key as NSString, cost: thumb.bytesPerRow * thumb.height)
         return image
+    }
+
+    /// Starts loading art that isn't shown yet; `image` shares the download if a row asks for it meanwhile.
+    func prefetch(_ url: String, pixels: Int) {
+        guard !url.isEmpty, cached(url, pixels: pixels) == nil else { return }
+        Task { _ = await image(url, pixels: pixels) }
     }
 
     private func sizedURL(_ url: String, pixels: Int) -> String {
