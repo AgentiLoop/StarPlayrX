@@ -123,13 +123,13 @@ struct MenuView: View {
             VStack(alignment: .leading, spacing: 2) {
                 if let ch = radio.current {
                     Text("\(ch.id) · \(ch.name)").font(.caption).foregroundStyle(.secondary)
-                    Text(np?.song ?? "").font(.headline).lineLimit(1)
-                    Text(np?.artist ?? "").lineLimit(1)
+                    MarqueeText(text: np?.song ?? "", font: .headline).id(np?.song ?? "")
+                    MarqueeText(text: np?.artist ?? "", font: .body).id(np?.artist ?? "")
                 } else {
                     Text("Pick a channel").font(.headline)
                 }
             }
-            Spacer()
+            .frame(maxWidth: .infinity, alignment: .leading)
             Button {
                 radio.togglePlayPause()
             } label: {
@@ -732,4 +732,54 @@ private struct SearchField: NSViewRepresentable {
             text.wrappedValue = field.stringValue
         }
     }
+}
+
+/// One line of text that never truncates: if it doesn't fit, it scrolls smoothly left in a loop
+/// (pausing at the start of each pass); if it fits, it just sits still.
+private struct MarqueeText: View {
+    let text: String
+    let font: Font
+    @State private var textWidth: CGFloat = 0
+    @State private var start = Date()
+
+    private let gap: CGFloat = 40      // space between the end of the text and its repeat
+    private let speed: CGFloat = 30    // points per second
+    private let pause: Double = 2      // seconds held at the start of each pass
+
+    var body: some View {
+        // Invisible line sets the height; the width comes from the parent.
+        Text(" ").font(font).hidden()
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(alignment: .leading) {
+                Text(text).font(font).fixedSize().hidden()
+                    .background(GeometryReader { g in
+                        Color.clear.preference(key: MarqueeWidthKey.self, value: g.size.width)
+                    })
+            }
+            .onPreferenceChange(MarqueeWidthKey.self) { textWidth = $0 }
+            .overlay(alignment: .leading) {
+                GeometryReader { geo in
+                    if textWidth <= geo.size.width {
+                        Text(text).font(font).fixedSize()
+                    } else {
+                        TimelineView(.animation) { ctx in
+                            let cycle = textWidth + gap
+                            let period = Double(cycle / speed) + pause
+                            let t = ctx.date.timeIntervalSince(start).truncatingRemainder(dividingBy: period)
+                            HStack(spacing: gap) {
+                                Text(text).font(font).fixedSize()
+                                Text(text).font(font).fixedSize()
+                            }
+                            .offset(x: -CGFloat(max(0, t - pause)) * speed)
+                        }
+                    }
+                }
+                .clipped()
+            }
+    }
+}
+
+private struct MarqueeWidthKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = max(value, nextValue()) }
 }
