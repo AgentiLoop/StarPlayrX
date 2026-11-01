@@ -157,7 +157,7 @@ actor XtraClient {
     }
 
     private static func imageURL(key: String) -> String {
-        let spec: [String: Any] = ["key": key, "edits": [["resize": ["width": 300, "height": 300]]]]
+        let spec: [String: Any] = ["key": key, "edits": [["resize": ["width": 128, "height": 128]]]]
         guard let data = try? JSONSerialization.data(withJSONObject: spec, options: .withoutEscapingSlashes) else { return "" }
         return imageService + data.base64EncodedString()
     }

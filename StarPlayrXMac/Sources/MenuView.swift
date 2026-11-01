@@ -1,5 +1,6 @@
 import SwiftUI
 import Combine
+import ImageIO
 
 extension Channel {
     /// The search field's matching: number, name, category, "Music Xtra", artist and song.
@@ -94,7 +95,7 @@ struct MenuView: View {
         HStack(spacing: 10) {
             let np = radio.current.flatMap { radio.nowPlaying[$0.id] }
             let isAlbumArt = np?.image.isEmpty == false
-            CachedArt(url: (isAlbumArt ? np?.image : radio.current?.imageURL) ?? "") { art in
+            CachedArt(url: (isAlbumArt ? np?.image : radio.current?.imageURL) ?? "", size: 64) { art in
                 if let art, isAlbumArt {
                     // Fill and overscale slightly so the white frame baked into some album art is cropped away.
                     Image(nsImage: art).resizable().scaledToFill().scaleEffect(1.1)
@@ -193,7 +194,7 @@ private struct ChannelRow: View, Equatable {
             Text(channel.id).monospacedDigit().foregroundStyle(.secondary).frame(width: 34, alignment: .trailing)
             // Album art when the channel has it, else the channel logo, else the StarPlayrX logo.
             let albumArt = nowPlaying?.image.isEmpty == false
-            CachedArt(url: (albumArt ? nowPlaying?.image : channel.imageURL) ?? "") { art in
+            CachedArt(url: (albumArt ? nowPlaying?.image : channel.imageURL) ?? "", size: 32) { art in
                 if let art {
                     if albumArt {
                         Image(nsImage: art).resizable().scaledToFill().scaleEffect(1.1)
@@ -558,19 +559,32 @@ private struct ChannelLogo: View {
 }
 
 /// Channel logos and album art kept in memory once loaded. Nothing is fetched until it's shown,
-/// and a URL that is already loading is shared instead of downloaded twice.
+/// and a URL that is already loading is shared instead of downloaded twice. Each image is fetched
+/// (where the server can resize) and decoded at 2x the points it is shown at, so the 32pt channel
+/// rows and the 64pt Now Playing tile each get their own size, and the cache is bounded.
 @MainActor
 final class ArtCache {
     static let shared = ArtCache()
-    private let images = NSCache<NSString, NSImage>()
+    private let images: NSCache<NSString, NSImage> = {
+        let cache = NSCache<NSString, NSImage>()
+        cache.countLimit = 400
+        cache.totalCostLimit = 400 * 144 * 144 * 4
+        return cache
+    }()
     // Downloads hand back Data (Sendable); the NSImage is made here on the main actor, since
     // NSImage is only Sendable from macOS 14 and the app supports macOS 13.
     private var loading: [String: Task<Data?, Never>] = [:]
 
-    func cached(_ url: String) -> NSImage? { images.object(forKey: url as NSString) }
+    /// Pixels for art shown at `points`: 2x, plus the 1.1 zoom that crops album art frames.
+    static func pixels(_ points: CGFloat) -> Int { Int((points * 2 * 1.1).rounded(.up)) }
 
-    func image(_ url: String) async -> NSImage? {
-        if let image = cached(url) { return image }
+    func cached(_ url: String, pixels: Int) -> NSImage? {
+        images.object(forKey: Self.sized(url, pixels: pixels) as NSString)
+    }
+
+    func image(_ url: String, pixels: Int) async -> NSImage? {
+        let url = Self.sized(url, pixels: pixels)
+        if let image = images.object(forKey: url as NSString) { return image }
         guard !url.isEmpty, let address = URL(string: url) else { return nil }
         let task = loading[url] ?? Task<Data?, Never> {
             try? await URLSession.shared.data(from: address).0
@@ -578,24 +592,58 @@ final class ArtCache {
         loading[url] = task
         let data = await task.value
         loading[url] = nil
-        if let image = cached(url) { return image }   // another caller already decoded it
-        guard let data, let image = NSImage(data: data) else { return nil }
-        images.setObject(image, forKey: url as NSString)
+        if let image = images.object(forKey: url as NSString) { return image }   // another caller already decoded it
+        guard let data, let thumb = Self.thumbnail(data, pixels: pixels) else { return nil }
+        let image = NSImage(cgImage: thumb, size: NSSize(width: thumb.width / 2, height: thumb.height / 2))
+        images.setObject(image, forKey: url as NSString, cost: thumb.bytesPerRow * thumb.height)
         return image
+    }
+
+    /// The same art at the smallest size the server offers that still covers `pixels`.
+    /// Other hosts (live channel logos, Xtra track art) only have one size and are just decoded smaller.
+    private static func sized(_ url: String, pixels: Int) -> String {
+        // SiriusXM's image server (channel tiles): the resize is part of the base64 JSON path.
+        let imageServer = "https://imgsrv-sxm-prod-device.streaming.siriusxm.com/"
+        if url.hasPrefix(imageServer),
+           let data = Data(base64Encoded: String(url.dropFirst(imageServer.count))),
+           var spec = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] {
+            spec["edits"] = [["resize": ["width": pixels, "height": pixels]]]
+            guard let json = try? JSONSerialization.data(withJSONObject: spec, options: [.sortedKeys, .withoutEscapingSlashes])
+            else { return url }
+            return imageServer + json.base64EncodedString()
+        }
+        // Live album art comes as _m (450px); _t is 75px and _s 170px.
+        if url.hasPrefix("http://albumart.siriusxm.com/"), url.hasSuffix("_m.jpg") {
+            let size = pixels <= 75 ? "_t" : pixels <= 170 ? "_s" : "_m"
+            return url.dropLast("_m.jpg".count) + size + ".jpg"
+        }
+        return url
+    }
+
+    /// Decodes straight to a small bitmap, so neither the downloaded Data nor a full-size image is kept.
+    private static func thumbnail(_ data: Data, pixels: Int) -> CGImage? {
+        guard let source = CGImageSourceCreateWithData(data as CFData, nil) else { return nil }
+        let options: [CFString: Any] = [kCGImageSourceCreateThumbnailFromImageAlways: true,
+                                        kCGImageSourceCreateThumbnailWithTransform: true,
+                                        kCGImageSourceShouldCacheImmediately: true,
+                                        kCGImageSourceThumbnailMaxPixelSize: pixels]
+        return CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary)
     }
 }
 
-/// Shows the image at `url` from `ArtCache`, loading it lazily; `content` gets nil while it is
-/// missing, loading or failed.
+/// Shows the image at `url` from `ArtCache`, loading it lazily at 2x `size` points; `content`
+/// gets nil while it is missing, loading or failed.
 private struct CachedArt<Content: View>: View {
     let url: String
+    let size: CGFloat
     @ViewBuilder let content: (NSImage?) -> Content
     @State private var loaded: (url: String, image: NSImage?)?
 
     var body: some View {
-        content(loaded?.url == url ? loaded?.image : ArtCache.shared.cached(url))
+        let pixels = ArtCache.pixels(size)
+        content(loaded?.url == url ? loaded?.image : ArtCache.shared.cached(url, pixels: pixels))
             .task(id: url) {
-                let image = await ArtCache.shared.image(url)
+                let image = await ArtCache.shared.image(url, pixels: pixels)
                 if !Task.isCancelled { loaded = (url, image) }
             }
     }
