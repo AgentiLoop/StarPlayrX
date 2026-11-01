@@ -85,12 +85,13 @@ struct MenuView: View {
         HStack(spacing: 10) {
             let np = radio.current.flatMap { radio.nowPlaying[$0.id] }
             AsyncImage(url: URL(string: (np?.image.isEmpty == false ? np?.image : radio.current?.imageURL) ?? "")) { img in
-                img.resizable().scaledToFit()
+                // Fill and overscale slightly so the white frame baked into some album art is cropped away.
+                img.resizable().scaledToFill().scaleEffect(1.1)
             } placeholder: {
                 Image(systemName: "radio").font(.largeTitle).foregroundStyle(.secondary)
             }
             .frame(width: 64, height: 64)
-            .clipShape(RoundedRectangle(cornerRadius: 6))
+            .clipShape(RoundedRectangle(cornerRadius: 14.5, style: .continuous))   // squircle, app-icon ratio
 
             VStack(alignment: .leading, spacing: 2) {
                 if let ch = radio.current {
