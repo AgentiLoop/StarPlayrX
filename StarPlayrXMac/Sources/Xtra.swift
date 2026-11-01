@@ -219,8 +219,12 @@ actor XtraClient {
                 (ch[key] as? [[String: Any]] ?? []).last { $0["isAd"] as? Bool != true && (Self.date($0["validFrom"] as? String) ?? now) <= now }
             }
             guard let cut = current("cuts") else { continue }
-            let art = ((cut["image"] ?? current("shows")?["image"]) as? [String: Any])?["url"] as? String
-            result[id] = NowPlaying(artist: cut["artistName"] as? String ?? "", song: cut["name"] as? String ?? "",
+            let show = current("shows")
+            let art = ((cut["image"] ?? show?["image"]) as? [String: Any])?["url"] as? String
+            // Talk cuts have no artist; the web player shows the show's name in its place.
+            let artist = cut["artistName"] as? String ?? ""
+            result[id] = NowPlaying(artist: artist.isEmpty ? show?["name"] as? String ?? "" : artist,
+                                    song: cut["name"] as? String ?? "",
                                     image: art.map { Self.imageURL(key: $0, size: 450) } ?? "")
         }
         return result
