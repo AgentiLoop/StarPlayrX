@@ -119,6 +119,7 @@ struct MenuView: View {
             }
             .frame(width: 64, height: 64)
             .clipShape(RoundedRectangle(cornerRadius: 14.5, style: .continuous))   // squircle, app-icon ratio
+            .simultaneousGesture(TapGesture().onEnded { revealCurrent() })
 
             VStack(alignment: .leading, spacing: 2) {
                 if let ch = radio.current {
@@ -130,6 +131,8 @@ struct MenuView: View {
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
+            .simultaneousGesture(TapGesture().onEnded { revealCurrent() })
             Button {
                 radio.togglePlayPause()
             } label: {
@@ -139,6 +142,11 @@ struct MenuView: View {
             .buttonStyle(.plain)
             .disabled(radio.current == nil)
         }
+    }
+
+    /// Single click on the now-playing art or titles: bring the current channel's row into view.
+    private func revealCurrent() {
+        if let id = radio.current?.id { menu.reveal(id) }
     }
 
     /// LazyVStack: only rows near the visible part of the list exist, so the hundreds of channels
@@ -478,6 +486,16 @@ final class MenuController: NSObject, ObservableObject {
         guard let index = visibleChannels.firstIndex(where: { $0.id == id }), rowHeight > 0 else { return false }
         scrollOffset = CGFloat(index) * rowHeight
         return true
+    }
+
+    /// Centers the channel's row in the list, unless it's already fully in view.
+    func reveal(_ id: String) {
+        let h = rowHeight
+        guard h > 0, let index = visibleChannels.firstIndex(where: { $0.id == id }),
+              let clip = channelScrollView?.contentView.bounds.height else { return }
+        let top = CGFloat(index) * h
+        guard top < scrollOffset || top + h > scrollOffset + clip else { return }
+        scrollOffset = top - (clip - h) / 2
     }
 }
 

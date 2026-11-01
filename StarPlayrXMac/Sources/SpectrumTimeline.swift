@@ -58,7 +58,11 @@ final class SpectrumTimeline: @unchecked Sendable {
         // Live segments have no explicit IV: HLS uses the media sequence number, the second-last field of the name.
         let parts = name.split(separator: "_")
         guard let start, let key, parts.count > 2, let sequence = Int(parts[parts.count - 2]),
-              let plain = aes128Decrypt(data, key: key, iv: Data(sequenceIV: sequence)) else { return }
+              let plain = aes128Decrypt(data, key: key, iv: Data(sequenceIV: sequence)) else {
+            spectrumLog("SPECTRUM drop %@ date=%@ key=%d", name, "\(String(describing: start))", key?.count ?? -1)
+            return
+        }
+        spectrumLog("SPECTRUM seg %@ start=%@", name, "\(start)")
         let file = FileManager.default.temporaryDirectory.appendingPathComponent("StarPlayrX-\(name)")
         guard (try? stripID3(plain).write(to: file)) != nil else { return }
         defer { try? FileManager.default.removeItem(at: file) }
@@ -81,8 +85,12 @@ final class SpectrumTimeline: @unchecked Sendable {
             let t = date.timeIntervalSince(c.start)
             guard t >= 0 else { continue }
             let k = Int(t / c.hop)
-            if k < c.frames.count { return c.frames[k] }
+            if k < c.frames.count { spectrumLog("SPECTRUM hit"); return c.frames[k] }
         }
+        let mine = live.filter { $0.channel == liveChannel }
+        spectrumLog("SPECTRUM miss date=%@ chunks=%d first=%@ lastEnd=%@", "\(date)", mine.count,
+              "\(mine.map(\.start).min().map { "\($0)" } ?? "-")",
+              "\(mine.map { $0.start.addingTimeInterval($0.hop * Double($0.frames.count)) }.max().map { "\($0)" } ?? "-")")
         return nil
     }
 
@@ -195,4 +203,10 @@ final class SpectrumTimeline: @unchecked Sendable {
             }
         }
     }
+}
+
+func spectrumLog(_ format: String, _ args: CVarArg...) {
+    let line = "\(Date()) " + String(format: format, arguments: args) + "\n"
+    if let h = FileHandle(forWritingAtPath: "/tmp/spectrum.log") { h.seekToEndOfFile(); h.write(Data(line.utf8)); h.closeFile() }
+    else { try? line.write(toFile: "/tmp/spectrum.log", atomically: false, encoding: .utf8) }
 }
