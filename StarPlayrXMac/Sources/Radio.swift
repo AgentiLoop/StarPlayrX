@@ -342,10 +342,25 @@ final class Radio: ObservableObject {
                 np[number] = Self.keepingArt(Self.keepingArt(la, of: np[number]), of: nowPlaying[number])
             }
         }
+        // lookAround says what is on air now, but the player runs behind live. For the tuned live channel,
+        // show the cut at the player's position in the stream instead, from the channel's own timeline.
+        if isPlaying, let current, current.xtraID == nil, let id = liveIDs[current.id],
+           let at = player.currentItem?.currentDate() {
+            // Refetch on a new channel, or once playback reaches the newest known cut (its end isn't known yet).
+            if liveTimeline.channel != current.id
+                || (!liveTimeline.cuts.contains { $0.start > at } && Date().timeIntervalSince(liveTimeline.fetched) > 30),
+               let cuts = try? await xtra.liveTimeline(channelID: id) {
+                liveTimeline = (current.id, Date(), cuts)
+            }
+            if liveTimeline.channel == current.id, let cut = liveTimeline.cuts.last(where: { $0.start <= at }) {
+                np[current.id] = Self.keepingArt(cut.nowPlaying, of: nowPlaying[current.id])
+            }
+        }
         nowPlaying = np.merging(xtraNowPlaying) { live, _ in live }
         updateNowPlayingInfo()
         Task { await refreshXtraNowPlaying() }
     }
+    private var liveTimeline = (channel: "", fetched: Date.distantPast, cuts: [(start: Date, nowPlaying: NowPlaying)]())
 
     /// Xtra channels have no PDT feed, so ask each idle one what it would play if tuned now.
     /// Channels never peeked are all filled at once; after that the stalest are refreshed
