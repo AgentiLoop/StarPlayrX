@@ -84,9 +84,15 @@ struct MenuView: View {
     private var nowPlaying: some View {
         HStack(spacing: 10) {
             let np = radio.current.flatMap { radio.nowPlaying[$0.id] }
-            AsyncImage(url: URL(string: (np?.image.isEmpty == false ? np?.image : radio.current?.imageURL) ?? "")) { img in
-                // Fill and overscale slightly so the white frame baked into some album art is cropped away.
-                img.resizable().scaledToFill().scaleEffect(1.1)
+            let isAlbumArt = np?.image.isEmpty == false
+            AsyncImage(url: URL(string: (isAlbumArt ? np?.image : radio.current?.imageURL) ?? "")) { img in
+                if isAlbumArt {
+                    // Fill and overscale slightly so the white frame baked into some album art is cropped away.
+                    img.resizable().scaledToFill().scaleEffect(1.1)
+                } else {
+                    // Channel logos must stay whole.
+                    img.resizable().scaledToFit().padding(4)
+                }
             } placeholder: {
                 Image(systemName: "radio").font(.largeTitle).foregroundStyle(.secondary)
             }
