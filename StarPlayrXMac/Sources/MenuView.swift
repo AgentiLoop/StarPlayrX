@@ -220,11 +220,12 @@ private struct ChannelRow: View, Equatable {
             .frame(width: 32, height: 32)
             .clipShape(RoundedRectangle(cornerRadius: 7.25, style: .continuous))
             VStack(alignment: .leading) {
-                Text(channel.name).fontWeight(isCurrent ? .bold : .regular).lineLimit(1)
-                Text(nowPlaying.map { "\($0.artist) – \($0.song)" } ?? " ")
-                    .font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                // Same as Now Playing: text that doesn't fit scrolls instead of ending in "…".
+                MarqueeText(text: channel.name, font: isCurrent ? .body.bold() : .body).id(channel.name)
+                let line = nowPlaying.map { "\($0.artist) – \($0.song)" } ?? " "
+                MarqueeText(text: line, font: .caption).foregroundStyle(.secondary).id(line)
             }
-            Spacer()
+            .frame(maxWidth: .infinity, alignment: .leading)
             if isPlaying {
                 Image(systemName: "speaker.wave.2.fill").foregroundStyle(.tint)
             }
