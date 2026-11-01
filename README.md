@@ -53,13 +53,14 @@ StarPlayrX was built for visually impaired listeners, a group of paying subscrib
 - Search channels, artists and songs
 - Shows what's playing on the current channel and every channel in the list
 - Xtra channels (1000+), searchable with "xtra" or "music"; tuning in plays the song the list shows
-- Play/pause from the keyboard media keys and Control Center
+- Play/pause from the keyboard media keys and Control Center, with the album art or channel art showing there too
+- Picks up where you left off: the last channel you played starts again when StarPlayrX opens
 - US and Canada channel lineups
 - Your password is stored only in the macOS Keychain
 
 **Requirements:** macOS 13 Ventura or later, Apple Silicon or Intel, and an active SiriusXM subscription.
 
-**Download:** [StarPlayrX for Mac 1.1.3](https://github.com/AgentiLoop/StarPlayrX/releases/tag/mac-1.1.3) (signed and notarized). All builds are on the [Releases](https://github.com/AgentiLoop/StarPlayrX/releases) page.
+**Download:** [StarPlayrX for Mac 1.1.4](https://github.com/AgentiLoop/StarPlayrX/releases/tag/mac-1.1.4) (signed and notarized). All builds are on the [Releases](https://github.com/AgentiLoop/StarPlayrX/releases) page.
 
 ### 📜 AppleScript
 
