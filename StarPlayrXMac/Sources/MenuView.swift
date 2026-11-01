@@ -91,9 +91,15 @@ struct MenuView: View {
                     img.resizable().scaledToFill().scaleEffect(1.1)
                 } else {
                     // Channel logos must stay whole.
-                    img.resizable().scaledToFit().padding(4)
+                    let logo = img.resizable().scaledToFit().padding(4)
                         .frame(width: 64, height: 64)
-                        .background(Color(white: 0.12))   // dark tile so logos sit like album art
+                    if #available(macOS 26.0, *) {
+                        // Dark-tinted Liquid Glass tile behind the logo.
+                        logo.glassEffect(.regular.tint(Color(white: 0.12).opacity(0.6)),
+                                         in: RoundedRectangle(cornerRadius: 14.5, style: .continuous))
+                    } else {
+                        logo.background(Color(white: 0.12))   // dark tile so logos sit like album art
+                    }
                 }
             } placeholder: {
                 Image(systemName: "radio").font(.largeTitle).foregroundStyle(.secondary)
