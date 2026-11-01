@@ -25,7 +25,7 @@ targets:
       properties:
         CFBundleDisplayName: StarPlayrX
         CFBundleShortVersionString: "1.1.2"
-        CFBundleVersion: "5"
+        CFBundleVersion: "6"
         LSUIElement: true
         NSAppleScriptEnabled: true
         OSAScriptingDefinition: StarPlayrX.sdef
