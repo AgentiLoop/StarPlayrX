@@ -52,6 +52,7 @@ StarPlayrX was built for visually impaired listeners, a group of paying subscrib
 - **AppleScript support:** play, stop, and resume channels, read what's showing and what's actually playing, search, scroll, tear off, park, and shade the window. Open the StarPlayrX dictionary in Script Editor to see every command
 - Search channels, artists and songs
 - Shows what's playing on the current channel and every channel in the list, with album art that stays put for the whole song
+- **Now Playing matches what you hear:** on live channels the song shown follows the audio's own timestamp, like the SiriusXM web player, and changes when the song in the audio changes. Long titles scroll instead of getting cut off
 - Xtra channels (1000+), searchable with "xtra" or "music"; tuning in plays the song the list shows
 - Play/pause from the keyboard media keys and Control Center, with the album art or channel art showing there too
 - Picks up where you left off: the last channel you played starts again when StarPlayrX opens
@@ -60,7 +61,7 @@ StarPlayrX was built for visually impaired listeners, a group of paying subscrib
 
 **Requirements:** macOS 13 Ventura or later, Apple Silicon or Intel, and an active SiriusXM subscription.
 
-**Download:** [StarPlayrX for Mac 1.1.5](https://github.com/AgentiLoop/StarPlayrX/releases/tag/mac-1.1.5) (signed and notarized). All builds are on the [Releases](https://github.com/AgentiLoop/StarPlayrX/releases) page.
+**Download:** [StarPlayrX for Mac 1.1.6](https://github.com/AgentiLoop/StarPlayrX/releases/tag/mac-1.1.6) (signed and notarized). All builds are on the [Releases](https://github.com/AgentiLoop/StarPlayrX/releases) page.
 
 ### 📜 AppleScript
 
