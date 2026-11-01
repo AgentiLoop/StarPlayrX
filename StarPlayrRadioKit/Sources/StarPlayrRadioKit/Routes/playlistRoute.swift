@@ -66,6 +66,9 @@ func playlistRoute() -> httpReq {{ request in
                     //MARK: add audio prefix
                     playlist = playlist.replacingOccurrences(of: channelid, with: "/api/v3/aac/" + channelid)
                     
+                    // The Mac app needs true durations so the player's date matches the stream's PDT.
+                    if realSegmentDurations { return playlist }
+
                     //MARK: fix duration
                     playlist = playlist.replacingOccurrences(of: "#EXT-X-TARGETDURATION:10", with: "#EXT-X-TARGETDURATION:9")
                     

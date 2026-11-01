@@ -58,6 +58,11 @@ final class Radio: ObservableObject {
         xtraObserver = xtraPlayer.publisher(for: \.currentItem)
             .receive(on: DispatchQueue.main)
             .sink { _ in Task { @MainActor in Radio.shared.xtraItemChanged() } }
+        // Like the web player, the song shown follows the audio: every second, pick the cut whose
+        // start is the latest one at or before the player's PROGRAM-DATE-TIME.
+        _ = player.addPeriodicTimeObserver(forInterval: CMTime(seconds: 1, preferredTimescale: 1), queue: .main) { _ in
+            MainActor.assumeIsolated { Radio.shared.showTimelineCut() }
+        }
     }
 
     // MARK: Server
@@ -68,6 +73,7 @@ final class Radio: ObservableObject {
             port = UInt16(p)
             break
         }
+        realSegmentDurations = true
         startServer(port)
         preflightConfig(location: localeIsCA ? "CA" : "US")
         for _ in 0..<20 {
@@ -200,8 +206,8 @@ final class Radio: ObservableObject {
             player.replaceCurrentItem(with: item)
             player.play()
             isPlaying = true
-            // AVPlayer starts several segments behind live, so the audio would lag the on-air song
-            // the channel list shows. Jump to the live edge so tuning in plays what the list says.
+            // AVPlayer starts three segments (30 s) behind live. Jump to the newest segment so the
+            // audio is as close to live as the stream allows.
             var tries = 0
             while (item.status != .readyToPlay || item.seekableTimeRanges.isEmpty), tries < 100 {
                 try? await Task.sleep(nanoseconds: 100_000_000)
@@ -209,10 +215,11 @@ final class Radio: ObservableObject {
             }
             guard player.currentItem === item else { return }
             if let range = item.seekableTimeRanges.last?.timeRangeValue {
-                let edge = CMTimeSubtract(CMTimeRangeGetEnd(range), CMTime(seconds: 2, preferredTimescale: 1000))
+                let edge = CMTimeSubtract(CMTimeRangeGetEnd(range), CMTime(seconds: 10, preferredTimescale: 1000))
                 await item.seek(to: max(edge, range.start))
             }
             print("LIVE lag \(item.currentDate().map { Int(Date().timeIntervalSince($0)) } ?? -1)s")
+            liveTimeline = ("", .distantPast, [])
             await updatePDT()
         }
     }
@@ -362,19 +369,33 @@ final class Radio: ObservableObject {
            let at = player.currentItem?.currentDate() {
             // Refetch on a new channel, or once playback reaches the newest known cut (its end isn't known yet).
             if liveTimeline.channel != current.id
-                || (!liveTimeline.cuts.contains { $0.start > at } && Date().timeIntervalSince(liveTimeline.fetched) > 30),
+                || (!liveTimeline.cuts.contains { $0.start > at } && Date().timeIntervalSince(liveTimeline.fetched) > 10),
                let cuts = try? await xtra.liveTimeline(channelID: id) {
                 liveTimeline = (current.id, Date(), cuts)
             }
-            if liveTimeline.channel == current.id, let cut = liveTimeline.cuts.last(where: { $0.start <= at }) {
-                np[current.id] = Self.keepingArt(cut.nowPlaying, of: nowPlaying[current.id])
-            }
+        }
+        // Keep the tuned channel's timeline cut (set every second by showTimelineCut) instead of on-air data.
+        if let current, current.xtraID == nil, liveTimeline.channel == current.id, let shown = nowPlaying[current.id] {
+            np[current.id] = shown
         }
         nowPlaying = np.merging(xtraNowPlaying) { live, _ in live }
+        showTimelineCut()
         updateNowPlayingInfo()
         Task { await refreshXtraNowPlaying() }
     }
     private var liveTimeline = (channel: "", fetched: Date.distantPast, cuts: [(start: Date, nowPlaying: NowPlaying)]())
+
+    /// Shows the cut being heard on the tuned live channel: the last one starting at or before the
+    /// player's current PROGRAM-DATE-TIME. Publishes only when the song changes.
+    fileprivate func showTimelineCut() {
+        guard isPlaying, let current, current.xtraID == nil, liveTimeline.channel == current.id,
+              let at = player.currentItem?.currentDate(),
+              let cut = liveTimeline.cuts.last(where: { $0.start <= at }) else { return }
+        let np = Self.keepingArt(cut.nowPlaying, of: nowPlaying[current.id])
+        guard nowPlaying[current.id] != np else { return }
+        nowPlaying[current.id] = np
+        updateNowPlayingInfo()
+    }
 
     /// Xtra channels have no PDT feed, so ask each idle one what it would play if tuned now.
     /// Channels never peeked are all filled at once; after that the stalest are refreshed

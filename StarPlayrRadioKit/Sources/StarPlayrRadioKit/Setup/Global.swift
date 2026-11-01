@@ -8,6 +8,9 @@ public var root: String = "player.siriusxm.com/rest/v2/experience/modules"
 public var playerDomain = "player.siriusxm.com"
 public var userAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/27.0.1 Safari/605.1.15"
 public var appRegion = "US"
+/// Serve live playlists with their real segment durations, so AVPlayerItem.currentDate() is the
+/// stream's true EXT-X-PROGRAM-DATE-TIME (the Mac app matches it against the cut timeline).
+public var realSegmentDurations = false
 
 public var hls_sources = Dictionary<String, String>()
 
