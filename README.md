@@ -24,10 +24,19 @@ StarPlayrX was built for visually impaired listeners, a group of paying subscrib
 ## 🎛️ StarPlayrX for Mac (menu bar app)
 
 <p align="center">
-  <img src="docs/screenshot-mac.png" width="388" alt="StarPlayrX menu bar app playing Don't Stop Believin' by Journey on Classic Rewind Top 100, channel 1034, with a searchable channel list showing what's playing on each channel">
+  <img src="docs/screenshot-mac.png" width="388" alt="StarPlayrX menu bar panel with the color equalizer under the now-playing header and a searchable channel list showing what's playing on each channel">
+  <img src="docs/screenshot-mac-torn-off.png" width="388" alt="StarPlayrX panel torn off the menu bar and parked as its own floating window">
+</p>
+<p align="center">
+  <img src="docs/screenshot-mac-shade.png" width="388" alt="StarPlayrX window rolled up like a window shade, showing only what's playing and the equalizer">
 </p>
 
 - Lives in the menu bar (📻) with no Dock icon
+- **Tear-off window:** drag the panel off the menu bar and it becomes a floating window you can park anywhere. Click the 📻 icon to show or hide it
+- **Window shade:** double-click the header to roll the window up to just what's playing and the equalizer, and again to roll it back down. Moves between menu, tear-off and shade are animated
+- **Lava-lamp color equalizer:** live bars driven by the app's own audio (Core Audio process tap + FFT), with drifting colors and a glow that pulses on the beat. Needs macOS 14.2 or later
+- **Liquid Glass** look on macOS 26 and later
+- **AppleScript support:** play, stop, and resume channels, read what's showing and what's actually playing, search, scroll, tear off, park, and shade the window. Open the StarPlayrX dictionary in Script Editor to see every command
 - Search channels, artists and songs
 - Shows what's playing on the current channel and every channel in the list
 - Xtra channels (1000+), searchable with "xtra" or "music"; tuning in plays the song the list shows
@@ -37,7 +46,19 @@ StarPlayrX was built for visually impaired listeners, a group of paying subscrib
 
 **Requirements:** macOS 13 Ventura or later, Apple Silicon or Intel, and an active SiriusXM subscription.
 
-**Download:** [StarPlayrX for Mac 1.1.1](https://github.com/AgentiLoop/StarPlayrX/releases/tag/mac-1.1.1) (signed and notarized). All builds are on the [Releases](https://github.com/AgentiLoop/StarPlayrX/releases) page.
+**Download:** [StarPlayrX for Mac 1.1.2](https://github.com/AgentiLoop/StarPlayrX/releases/tag/mac-1.1.2) (signed and notarized). All builds are on the [Releases](https://github.com/AgentiLoop/StarPlayrX/releases) page.
+
+### 📜 AppleScript
+
+```applescript
+tell application "StarPlayrX"
+    play channel "1009"
+    get {shown artist, shown song}       -- what the list shows
+    get {playing artist, playing song}   -- what's actually playing
+    park menu at upper right
+    toggle shade
+end tell
+```
 
 ## 🛠️ Building
 
