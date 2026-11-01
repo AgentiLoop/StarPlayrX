@@ -57,6 +57,7 @@ final class PanelTests: XCTestCase {
         Radio.shared.channels = fake
         Radio.shared.nowPlaying = ["7": NowPlaying(artist: "Remi Wolf", song: "Champagne")]
         Radio.shared.isLoggedIn = true
+        Radio.shared.channelsLoaded = true
         menu.search = ""
         menu.hide()
         settle()
@@ -66,6 +67,7 @@ final class PanelTests: XCTestCase {
         menu.hide()
         menu.search = ""
         Radio.shared.isLoggedIn = false
+        Radio.shared.channelsLoaded = false
         Radio.shared.channels = []
         Radio.shared.nowPlaying = [:]
     }

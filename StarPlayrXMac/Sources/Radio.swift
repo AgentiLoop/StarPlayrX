@@ -30,6 +30,8 @@ final class Radio: ObservableObject {
     @Published var current: Channel?
     @Published var nowPlaying = [String: NowPlaying]()
     @Published var localeIsCA = UserDefaults.standard.bool(forKey: "localeIsCA")
+    /// True once sign-in has finished loading every channel, Xtra included (or Xtra failed).
+    @Published var channelsLoaded = false
 
     private var port: UInt16 = 9999
     private var serverStarted = false
@@ -78,6 +80,7 @@ final class Radio: ObservableObject {
 
     func login(user: String, pass: String) async -> Bool {
         isBusy = true
+        channelsLoaded = false
         defer { isBusy = false }
         status = "Starting…"
         await startServerIfNeeded()
@@ -127,6 +130,7 @@ final class Radio: ObservableObject {
 
     /// Xtra channels come from SiriusXM's newer API; if that fails the live channels still work.
     private func loadXtraChannels(user: String, pass: String) async {
+        defer { if isLoggedIn { channelsLoaded = true } }
         do {
             try await xtra.signIn(user: user, pass: pass)
             let xtras = try await xtra.channels().map {
@@ -151,6 +155,7 @@ final class Radio: ObservableObject {
         Keychain.delete()
         Task { await xtra.signOut() }
         isLoggedIn = false
+        channelsLoaded = false
         channels = []
         current = nil
         status = "Not signed in"
@@ -376,6 +381,12 @@ final class Radio: ObservableObject {
         guard current.xtraID != nil else { return nowPlaying[current.id] }
         guard let item = xtraPlayer.currentItem, let track = xtraTracks[item] else { return nil }
         return NowPlaying(artist: track.artist, song: track.title, image: track.imageURL)
+    }
+
+    /// Whether the player for the current channel is actually producing audio (not just buffering).
+    var audioStarted: Bool {
+        guard isPlaying, let current else { return false }
+        return (current.xtraID != nil ? xtraPlayer : player).timeControlStatus == .playing
     }
 
     private func isPlayingXtra(_ id: String) -> Bool {

@@ -101,6 +101,12 @@ extension AppDelegate {
     @objc var spTopVisibleChannel: String { menu.topVisibleChannel?.id ?? "" }
 }
 
+/// A script error with a message (raised to AppleScript as error -10000).
+struct ScriptFailure: Error {
+    let message: String
+    init(_ message: String) { self.message = message }
+}
+
 @objc(SPXCommand)
 final class SPXCommand: NSScriptCommand {
     override func performDefaultImplementation() -> Any? {
@@ -112,19 +118,16 @@ final class SPXCommand: NSScriptCommand {
         let radio = Radio.shared
         let menu = MenuController.shared
         let arg = (directParameter as? String)?.trimmingCharacters(in: .whitespaces) ?? ""
-        let channel = radio.channels.first { $0.id == arg }
 
         switch commandDescription.commandName {
         case "play channel":
-            guard let channel else { return false }
-            radio.play(channel)
-            return true
+            // Returns only once the channel is really playing and both the list (PDT) and the
+            // player know the song, so a following `get shown …` / `get playing …` has real data.
+            return playWhenReady { radio.channels.first { $0.id == arg } }
         case "stop":
             radio.stop()
         case "resume":
-            guard let current = radio.current else { return false }
-            radio.play(current)
-            return true
+            return playWhenReady { radio.current }
         case "toggle playback":
             radio.togglePlayPause()
         case "sign in":
@@ -133,28 +136,34 @@ final class SPXCommand: NSScriptCommand {
             guard let creds = user.map({ ($0, pass ?? "") }) ?? Keychain.load().map({ ($0.user, $0.pass) }) else {
                 return fail("No user given and no credentials in the Keychain.")
             }
-            return later { await radio.login(user: creds.0, pass: creds.1) }
+            return later {
+                guard await radio.login(user: creds.0, pass: creds.1) else { throw ScriptFailure(radio.status) }
+                try await Self.ready()
+                return true
+            }
         case "sign out":
             radio.signOut()
         case "refresh now playing":
-            return later { await radio.updatePDT(); return nil }
+            return later { try await Self.ready(); await radio.updatePDT(); return nil }
         case "now playing":
-            return radio.nowPlaying[arg].map(Self.format) ?? ""
+            return whenReady { radio.nowPlaying[arg].map(Self.format) ?? "" }
         case "channel info":
-            guard let channel else { return "" }
-            let np = radio.nowPlaying[channel.id]
-            return [channel.id, channel.name, channel.category, channel.xtraID != nil ? "xtra" : "live",
-                    np?.artist ?? "", np?.song ?? ""].joined(separator: "\t")
+            return whenReady {
+                guard let channel = radio.channels.first(where: { $0.id == arg }) else { return "" }
+                let np = radio.nowPlaying[channel.id]
+                return [channel.id, channel.name, channel.category, channel.xtraID != nil ? "xtra" : "live",
+                        np?.artist ?? "", np?.song ?? ""].joined(separator: "\t")
+            }
         case "search channels":
-            return Channel.filter(radio.channels, nowPlaying: radio.nowPlaying, search: arg).map(\.id)
+            return whenReady { Channel.filter(radio.channels, nowPlaying: radio.nowPlaying, search: arg).map(\.id) }
         case "select channel":
             // A click on the row: only channels the list is showing (after the search field).
-            guard let row = menu.visibleChannels.first(where: { $0.id == arg }) else { return false }
-            radio.play(row)
-            return true
+            return playWhenReady { menu.visibleChannels.first { $0.id == arg } }
         case "scroll to channel":
-            menu.ensureShown()
-            return menu.scroll(to: arg)
+            return whenReady {
+                menu.ensureShown()
+                return menu.scroll(to: arg)
+            }
         case "drag menu":
             // Same steps as dragging the header with the mouse: far enough tears it off, else it snaps back.
             guard let by = directParameter as? [NSNumber], by.count == 2 else { return fail("Give {dx, dy}.") }
@@ -175,19 +184,19 @@ final class SPXCommand: NSScriptCommand {
             menu.shaded.toggle()
             return menu.shaded
         case "test channel":
-            guard let channel else { return "NO CHANNEL\t\(arg)" }
             let wait = (evaluatedArguments?["wait"] as? Int) ?? 30
-            let shown = radio.nowPlaying[channel.id].map(Self.format) ?? ""
-            radio.play(channel)
+            if Self.isReady, !radio.channels.contains(where: { $0.id == arg }) { return "NO CHANNEL\t\(arg)" }
             return later {
-                let deadline = Date().addingTimeInterval(TimeInterval(wait))
-                while radio.playingNow == nil, radio.current == channel, Date() < deadline {
-                    try? await Task.sleep(nanoseconds: 250_000_000)
-                }
-                guard let playing = radio.playingNow, radio.current == channel else {
+                try await Self.ready()
+                guard let channel = radio.channels.first(where: { $0.id == arg }) else { return "NO CHANNEL\t\(arg)" }
+                let shown = radio.nowPlaying[channel.id].map(Self.format) ?? ""
+                guard !shown.isEmpty else { throw ScriptFailure("The list shows nothing for channel \(channel.id) yet.") }
+                do {
+                    try await Self.play(channel, timeout: TimeInterval(wait))
+                } catch {
                     return "TIMEOUT\t\(channel.id)\t\(shown)\t"
                 }
-                let played = Self.format(playing)
+                let played = radio.playingNow.map(Self.format) ?? ""
                 return "\(played == shown ? "MATCH" : "MISMATCH")\t\(channel.id)\t\(shown)\t\(played)"
             }
         case "show menu":
@@ -207,6 +216,64 @@ final class SPXCommand: NSScriptCommand {
 
     static func code(_ s: String) -> UInt32 { s.utf8.reduce(0) { $0 << 8 | UInt32($1) } }
 
+    @MainActor
+    static var isReady: Bool {
+        let radio = Radio.shared
+        return radio.isLoggedIn && radio.channelsLoaded && !radio.isBusy
+    }
+
+    /// Waits until StarPlayrX is signed in with every channel loaded (Xtra included), e.g. right
+    /// after launch while the Keychain sign-in is still running. Throws if that doesn't happen.
+    @MainActor
+    static func ready(timeout: TimeInterval = 60) async throws {
+        let radio = Radio.shared
+        let deadline = Date().addingTimeInterval(timeout)
+        while !isReady {
+            guard Date() < deadline else {
+                throw ScriptFailure("StarPlayrX isn't ready (\(radio.status)). Sign in first.")
+            }
+            try await Task.sleep(nanoseconds: 250_000_000)
+        }
+    }
+
+    /// Tunes `channel` and waits until audio is actually coming out and both what the list shows
+    /// (PDT) and what plays are known. Throws if that doesn't happen in time.
+    @MainActor
+    static func play(_ channel: Channel, timeout: TimeInterval = 30) async throws {
+        let radio = Radio.shared
+        radio.play(channel)
+        let deadline = Date().addingTimeInterval(timeout)
+        while !(radio.audioStarted && radio.playingNow != nil && radio.nowPlaying[channel.id] != nil) {
+            guard radio.current == channel else {
+                throw ScriptFailure("Channel \(channel.id) was replaced by another channel before it started.")
+            }
+            guard Date() < deadline else {
+                throw ScriptFailure("Channel \(channel.id) didn't start playing within \(Int(timeout)) seconds.")
+            }
+            try await Task.sleep(nanoseconds: 250_000_000)
+        }
+    }
+
+    /// Runs `body` now when StarPlayrX is ready, else suspends the Apple Event until it is
+    /// (an error if it never gets there), so nothing answers from a half-loaded channel list.
+    @MainActor
+    private func whenReady(_ body: @escaping @MainActor () -> Any?) -> Any? {
+        Self.isReady ? body() : later { try await Self.ready(); return body() }
+    }
+
+    /// Waits until ready, plays the channel `pick` returns and waits until it really plays.
+    /// Returns false (right away when ready) if there is no such channel.
+    @MainActor
+    private func playWhenReady(_ pick: @escaping @MainActor () -> Channel?) -> Any? {
+        if Self.isReady, pick() == nil { return false }
+        return later {
+            try await Self.ready()
+            guard let channel = pick() else { return false }
+            try await Self.play(channel)
+            return true
+        }
+    }
+
     private func fail(_ message: String) -> Any? {
         scriptErrorNumber = -10000
         scriptErrorString = message
@@ -214,12 +281,18 @@ final class SPXCommand: NSScriptCommand {
     }
 
     /// Suspends the Apple Event until `work` finishes, so the script gets the real result.
+    /// A thrown error becomes an AppleScript error instead of a false or empty result.
     @MainActor
-    private func later(_ work: @escaping @MainActor () async -> Any?) -> Any? {
+    private func later(_ work: @escaping @MainActor () async throws -> Any?) -> Any? {
         suspendExecution()
         Task { @MainActor in
-            let result = await work()
-            resumeExecution(withResult: result)
+            do {
+                resumeExecution(withResult: try await work())
+            } catch {
+                scriptErrorNumber = -10000
+                scriptErrorString = (error as? ScriptFailure)?.message ?? error.localizedDescription
+                resumeExecution(withResult: nil)
+            }
         }
         return nil
     }

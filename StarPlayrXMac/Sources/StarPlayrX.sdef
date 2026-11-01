@@ -95,7 +95,7 @@
             <enumerator name="lower right" code="SPLR"/>
         </enumeration>
 
-        <command name="select channel" code="SPrxSelc" description="Click a row in the channel list: plays it if the list is showing it (see search text). Returns false otherwise.">
+        <command name="select channel" code="SPrxSelc" description="Click a row in the channel list: plays it if the list is showing it (see search text) and waits until it is really playing, like play channel. Returns false otherwise.">
             <cocoa class="SPXCommand"/>
             <direct-parameter type="text" description="Channel number."/>
             <result type="boolean"/>
@@ -130,7 +130,7 @@
             <result type="boolean"/>
         </command>
 
-        <command name="play channel" code="SPrxPlay" description="Play a channel by number. Returns false if there is no such channel.">
+        <command name="play channel" code="SPrxPlay" description="Play a channel by number. Waits until StarPlayrX is signed in with its channels loaded, then until the channel is really playing and its song is known, so shown/playing artist and song are filled in when it returns. Returns false if there is no such channel; raises an error if it isn't ready or doesn't start playing within 30 seconds. Use with timeout of 120 seconds right after launch.">
             <cocoa class="SPXCommand"/>
             <direct-parameter type="text" description="Channel number, e.g. &quot;2&quot;."/>
             <result type="boolean"/>
@@ -140,7 +140,7 @@
             <cocoa class="SPXCommand"/>
         </command>
 
-        <command name="resume" code="SPrxResm" description="Play the current channel again. Returns false if there is none.">
+        <command name="resume" code="SPrxResm" description="Play the current channel again and wait until it is really playing (like play channel). Returns false if there is none.">
             <cocoa class="SPXCommand"/>
             <result type="boolean"/>
         </command>
@@ -149,7 +149,7 @@
             <cocoa class="SPXCommand"/>
         </command>
 
-        <command name="sign in" code="SPrxSgIn" description="Sign in to SiriusXM. Without a user, the Keychain credentials are used. Returns true when signed in.">
+        <command name="sign in" code="SPrxSgIn" description="Sign in to SiriusXM. Without a user, the Keychain credentials are used. Returns true once signed in with every channel loaded; raises an error with the reason if sign in fails.">
             <cocoa class="SPXCommand"/>
             <parameter name="user" code="SPus" type="text" optional="yes" description="Username or email.">
                 <cocoa key="user"/>
