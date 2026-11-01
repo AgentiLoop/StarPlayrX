@@ -328,7 +328,8 @@ final class Radio: ObservableObject {
         var np = [String: NowPlaying]()
         for (key, value) in cache {
             if let v = value as? [String: String] {
-                np[key] = NowPlaying(artist: v["artist"] ?? "", song: v["song"] ?? "", image: v["image"] ?? "")
+                np[key] = Self.keepingArt(NowPlaying(artist: v["artist"] ?? "", song: v["song"] ?? "", image: v["image"] ?? ""),
+                                          of: nowPlaying[key])
             }
         }
         nowPlaying = np.merging(xtraNowPlaying) { live, _ in live }
@@ -378,11 +379,22 @@ final class Radio: ObservableObject {
             let tracks = pendingPeeks.filter { !isPlayingXtra($0.key) }
             pendingPeeks.removeAll()
             guard isLoggedIn, !tracks.isEmpty else { return }
-            let batch = tracks.mapValues { NowPlaying(artist: $0.artist, song: $0.title, image: $0.imageURL) }
+            let batch = Dictionary(uniqueKeysWithValues: tracks.map { id, track in
+                (id, Self.keepingArt(NowPlaying(artist: track.artist, song: track.title, image: track.imageURL), of: nowPlaying[id]))
+            })
             xtraPeekedTrack.merge(tracks) { _, new in new }
             xtraNowPlaying.merge(batch) { _, new in new }
             nowPlaying.merge(batch) { _, new in new }
         }
+    }
+    /// The PDT feed only has album art for songs the server has just seen on a now-playing-live
+    /// fetch (it forgets them on the next one), so a later poll of the same song often comes back
+    /// without art. Keep the album art until the song changes, instead of flipping back to the logo.
+    nonisolated static func keepingArt(_ new: NowPlaying, of old: NowPlaying?) -> NowPlaying {
+        guard new.image.isEmpty, let old, !old.image.isEmpty, old.artist == new.artist, old.song == new.song else { return new }
+        var kept = new
+        kept.image = old.image
+        return kept
     }
     private var pendingPeeks = [String: XtraTrack]()
     private var peekFlushScheduled = false

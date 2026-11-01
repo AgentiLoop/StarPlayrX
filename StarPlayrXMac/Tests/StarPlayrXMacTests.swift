@@ -43,6 +43,19 @@ final class LogicTests: XCTestCase {
     func testFourCharCode() {
         XCTAssertEqual(SPXCommand.code("SPUR"), 0x5350_5552)
     }
+
+    func testAlbumArtStaysUntilTheSongChanges() {
+        let shown = NowPlaying(artist: "Boston", song: "Foreplay", image: "http://albumart.siriusxm.com/a_m.jpg")
+        // Same song polled again without art: keep the album art.
+        XCTAssertEqual(Radio.keepingArt(NowPlaying(artist: "Boston", song: "Foreplay"), of: shown), shown)
+        // New art for the same song replaces it.
+        let newer = NowPlaying(artist: "Boston", song: "Foreplay", image: "http://albumart.siriusxm.com/b_m.jpg")
+        XCTAssertEqual(Radio.keepingArt(newer, of: shown), newer)
+        // Another song: the old art is wrong, drop it.
+        let next = NowPlaying(artist: "Boston", song: "Long Time")
+        XCTAssertEqual(Radio.keepingArt(next, of: shown), next)
+        XCTAssertEqual(Radio.keepingArt(next, of: nil), next)
+    }
 }
 
 /// The real panel in the test host: drag / tear off, park, shade, scroll, search, and the

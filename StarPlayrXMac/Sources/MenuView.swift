@@ -95,7 +95,7 @@ struct MenuView: View {
         HStack(spacing: 10) {
             let np = radio.current.flatMap { radio.nowPlaying[$0.id] }
             let isAlbumArt = np?.image.isEmpty == false
-            CachedArt(url: (isAlbumArt ? np?.image : radio.current?.imageURL) ?? "", size: 64) { art in
+            CachedArt(url: (isAlbumArt ? np?.image : radio.current?.imageURL) ?? "", size: 64, isAlbumArt: isAlbumArt) { art, isAlbumArt in
                 if let art, isAlbumArt {
                     // Fill only: square art fits exactly; non-square art is enlarged just enough to cover the tile.
                     Image(nsImage: art).resizable().scaledToFill()
@@ -196,7 +196,7 @@ private struct ChannelRow: View, Equatable {
             Text(channel.id).monospacedDigit().foregroundStyle(.secondary).frame(width: 34, alignment: .trailing)
             // Album art when the channel has it, else the channel logo, else the StarPlayrX logo.
             let albumArt = nowPlaying?.image.isEmpty == false
-            CachedArt(url: (albumArt ? nowPlaying?.image : channel.imageURL) ?? "", size: 32, inChannelList: true) { art in
+            CachedArt(url: (albumArt ? nowPlaying?.image : channel.imageURL) ?? "", size: 32, isAlbumArt: albumArt) { art, albumArt in
                 if let art {
                     if albumArt {
                         Image(nsImage: art).resizable().scaledToFill()
@@ -665,26 +665,27 @@ final class ArtCache {
     }
 }
 
-/// Shows the image at `url` from `ArtCache`, loading it lazily at 2x `size` points; `content`
-/// gets nil while it is missing, loading or failed.
+/// Shows the image at `url` from `ArtCache`, loading it lazily at 2x `size` points. `content` gets
+/// the image and whether it is album art (`isAlbumArt` belongs to `url`); nil when nothing is loaded.
 private struct CachedArt<Content: View>: View {
     let url: String
     let size: CGFloat
-    /// In the channel list (a LazyVStack, so the row only exists, and fetches, near the visible part).
-    var inChannelList = false
-    @ViewBuilder let content: (NSImage?) -> Content
-    @State private var loaded: (url: String, image: NSImage?)?
+    var isAlbumArt = false
+    @ViewBuilder let content: (NSImage?, Bool) -> Content
+    @State private var loaded: (url: String, image: NSImage?, isAlbumArt: Bool)?
 
     var body: some View {
         let pixels = ArtCache.pixels(size)
         let image = loaded?.url == url ? loaded?.image : ArtCache.shared.cached(url, pixels: pixels)
-        // Header: until the new art arrives at full size, keep showing the previous sharp art
-        // (never the row's blurry 32pt copy, never the logo flash).
-        content(image ?? (inChannelList ? nil : loaded?.image))
-            .task(id: url) {
-                let image = await ArtCache.shared.image(url, pixels: pixels)
-                if !Task.isCancelled { loaded = (url, image) }
-            }
+        // Until the new art arrives, keep showing the previous art as it was (album art stays album
+        // art): no flash of the logo or the StarPlayrX icon in between, in the header or in a row.
+        Group {
+            if let image { content(image, isAlbumArt) } else { content(loaded?.image, loaded?.isAlbumArt ?? false) }
+        }
+        .task(id: url) {
+            let image = await ArtCache.shared.image(url, pixels: pixels)
+            if !Task.isCancelled { loaded = (url, image, isAlbumArt) }
+        }
     }
 }
 
