@@ -102,7 +102,13 @@ actor XtraClient {
             let pages = try await withThrowingTaskGroup(of: (Int, [[String: Any]]).self) { group in
                 for i in 0..<6 {
                     let o = offset + i * 30
-                    group.addTask { (o, try await self.channelPage(offset: o, bearer: auth)) }
+                    // A page the server fails on (it sometimes answers 500) is retried once, then
+                    // treated as the end of the list, so one bad page doesn't lose every tile.
+                    group.addTask {
+                        if let items = try? await self.channelPage(offset: o, bearer: auth) { return (o, items) }
+                        try await Task.sleep(nanoseconds: 500_000_000)
+                        return (o, (try? await self.channelPage(offset: o, bearer: auth)) ?? [])
+                    }
                 }
                 var pages = [(Int, [[String: Any]])]()
                 for try await page in group { pages.append(page) }
