@@ -58,11 +58,6 @@ final class Radio: ObservableObject {
         xtraObserver = xtraPlayer.publisher(for: \.currentItem)
             .receive(on: DispatchQueue.main)
             .sink { _ in Task { @MainActor in Radio.shared.xtraItemChanged() } }
-        // Like the web player, the song shown follows the audio: every second, pick the cut whose
-        // start is the latest one at or before the player's PROGRAM-DATE-TIME.
-        _ = player.addPeriodicTimeObserver(forInterval: CMTime(seconds: 1, preferredTimescale: 1), queue: .main) { _ in
-            MainActor.assumeIsolated { Radio.shared.showTimelineCut() }
-        }
     }
 
     // MARK: Server
@@ -163,7 +158,7 @@ final class Radio: ObservableObject {
                 // Auto play a last-played Xtra channel, which wasn't available at login.
                 if wasNil, let current, current.xtraID != nil, !isPlaying { play(current) }
             }
-            await refreshXtraNowPlaying()
+            await updatePDT()   // live rows from lookAround right away, not on the next 5 s tick
         } catch {
             print("Xtra channels unavailable: \(error.localizedDescription)")
         }
@@ -227,7 +222,6 @@ final class Radio: ObservableObject {
             }
             guard player.currentItem === item else { return }
             player.play()
-            liveTimeline = ("", .distantPast, [])
             await updatePDT()
         }
     }
@@ -355,61 +349,18 @@ final class Radio: ObservableObject {
     }
 
     func updatePDT() async {
-        var np = [String: NowPlaying]()
-        if !liveIDs.isEmpty {
-            // Like Xtra channels, live channels take artist, song and art only from the newer API
-            // (lookAround). No PDT mixing, so nothing flip-flops. The player runs at live, so the cut
-            // on air now is what would be heard on tuning.
-            if let live = try? await xtra.liveNowPlaying() {
-                for (number, id) in liveIDs {
-                    guard let la = live[id] else { continue }
-                    lookAround[number] = Self.keepingArt(la, of: lookAround[number])
-                }
-            }
-            np = lookAround
-        } else if let cache = await get("pdt")?["data"] as? [String: Any] {
-            // PDT only until the newer API has loaded (or if it is unavailable).
-            for (key, value) in cache {
-                if let v = value as? [String: String] {
-                    np[key] = Self.keepingArt(NowPlaying(artist: v["artist"] ?? "", song: v["song"] ?? "", image: v["image"] ?? ""),
-                                              of: nowPlaying[key])
-                }
+        // One source for every live row, tuned or not: the newer API (lookAround).
+        if let live = try? await xtra.liveNowPlaying() {
+            for (number, id) in liveIDs {
+                guard let la = live[id] else { continue }
+                lookAround[number] = Self.keepingArt(la, of: lookAround[number])
             }
         }
-        // lookAround says what is on air now, but the player runs behind live. For the tuned live channel,
-        // show the cut at the player's position in the stream instead, from the channel's own timeline.
-        if isPlaying, let current, current.xtraID == nil, let id = liveIDs[current.id],
-           let at = player.currentItem?.currentDate() {
-            // Refetch on a new channel, or once playback reaches the newest known cut (its end isn't known yet).
-            if liveTimeline.channel != current.id
-                || (!liveTimeline.cuts.contains { $0.start > at } && Date().timeIntervalSince(liveTimeline.fetched) > 10),
-               let cuts = try? await xtra.liveTimeline(channelID: id) {
-                liveTimeline = (current.id, Date(), cuts)
-            }
-        }
-        // Keep the tuned channel's timeline cut (set every second by showTimelineCut) instead of on-air data.
-        if let current, current.xtraID == nil, liveTimeline.channel == current.id, let shown = nowPlaying[current.id] {
-            np[current.id] = shown
-        }
-        nowPlaying = np.merging(xtraNowPlaying) { live, _ in live }
-        showTimelineCut()
+        nowPlaying = lookAround.merging(xtraNowPlaying) { live, _ in live }
         updateNowPlayingInfo()
         Task { await refreshXtraNowPlaying() }
     }
     private var lookAround = [String: NowPlaying]()   // last lookAround cut per live channel number
-    private var liveTimeline = (channel: "", fetched: Date.distantPast, cuts: [(start: Date, nowPlaying: NowPlaying)]())
-
-    /// Shows the cut being heard on the tuned live channel: the last one starting at or before the
-    /// player's current PROGRAM-DATE-TIME. Publishes only when the song changes.
-    fileprivate func showTimelineCut() {
-        guard isPlaying, let current, current.xtraID == nil, liveTimeline.channel == current.id,
-              let at = player.currentItem?.currentDate(),
-              let cut = liveTimeline.cuts.last(where: { $0.start <= at }) else { return }
-        let np = Self.keepingArt(cut.nowPlaying, of: nowPlaying[current.id])
-        guard nowPlaying[current.id] != np else { return }
-        nowPlaying[current.id] = np
-        updateNowPlayingInfo()
-    }
 
     /// Xtra channels have no PDT feed, so ask each idle one what it would play if tuned now.
     /// Channels never peeked are all filled at once; after that the stalest are refreshed

@@ -238,36 +238,6 @@ actor XtraClient {
         return result
     }
 
-    /// A live channel's recent cuts, oldest first, from the tuneSource call the web player makes when tuning.
-    /// The audio itself carries no song metadata (each segment's ID3 tag is only a timestamp), but these
-    /// timestamps line up with the stream's EXT-X-PROGRAM-DATE-TIME, so the cut that started last before
-    /// the player's current date is the one actually being heard, even though playback runs behind live.
-    func liveTimeline(channelID: String) async throws -> [(start: Date, nowPlaying: NowPlaying)] {
-        let body: [String: Any] = ["id": channelID, "type": "channel-linear", "hlsVersion": "V3",
-                                   "manifestVariant": "FULL", "mtcVersion": "V2"]
-        let tune = try await json("POST", "/playback/play/v1/tuneSource", body: body, bearer: try await bearer())
-        let live = ((tune["streams"] as? [[String: Any]])?.first?["metadata"] as? [String: Any])?["live"] as? [String: Any] ?? [:]
-        let episodes = (live["episodes"] as? [[String: Any]] ?? []).compactMap { e in
-            Self.date(e["startTimestamp"] as? String).map { (start: $0, episode: e) }
-        }
-        return (live["items"] as? [[String: Any]] ?? []).compactMap { item -> (start: Date, nowPlaying: NowPlaying)? in
-            guard item["isInterstitial"] as? Bool != true, let start = Self.date(item["timestamp"] as? String) else { return nil }
-            let show = episodes.filter { $0.start <= start }.max { $0.start < $1.start }?.episode
-            let art = Self.tileKey(item["images"]) ?? Self.tileKey(show?["images"]) ?? Self.tileKey(show?["showImages"])
-            // Talk cuts have no artist; the web player shows the show's name in its place.
-            let artist = item["artistName"] as? String ?? ""
-            return (start, NowPlaying(artist: artist.isEmpty ? show?["showName"] as? String ?? "" : artist,
-                                      song: item["name"] as? String ?? "",
-                                      image: art.map { Self.imageURL(key: $0, size: 450) } ?? ""))
-        }
-        .sorted { $0.start < $1.start }
-    }
-
-    private static func tileKey(_ images: Any?) -> String? {
-        let tile = ((images as? [String: Any])?["tile"] as? [String: Any])?["aspect_1x1"] as? [String: Any]
-        return ((tile?["preferredImage"] ?? tile?["defaultImage"]) as? [String: Any])?["url"] as? String
-    }
-
     // MARK: Download
 
     /// Downloads and decrypts one track into a playable ADTS AAC file.
