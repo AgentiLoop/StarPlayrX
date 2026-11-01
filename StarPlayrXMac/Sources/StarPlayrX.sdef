@@ -88,6 +88,10 @@
             </property>
         </class-extension>
 
+        <!-- Referenced by the Standard Suite's save command; StarPlayrX has no documents to save. -->
+        <enumeration name="saveable file format" code="savf" hidden="yes">
+            <enumerator name="none" code="SPnf" description="Not used."/>
+        </enumeration>
         <enumeration name="corner" code="SPcr">
             <enumerator name="upper left" code="SPUL"/>
             <enumerator name="upper right" code="SPUR"/>
