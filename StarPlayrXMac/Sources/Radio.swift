@@ -121,6 +121,8 @@ final class Radio: ObservableObject {
         status = "Signed in"
         if let last = UserDefaults.standard.string(forKey: "lastChannel") {
             current = channels.first { $0.id == last }
+            // Auto play the last channel played (Xtra channels auto play once they load below).
+            if let current, !isPlaying { play(current) }
         }
         await updatePDT()
         startPDTTimer()
@@ -147,8 +149,11 @@ final class Radio: ObservableObject {
             let live = Set(withTiles.map(\.id))
             channels = (withTiles + xtras.filter { !live.contains($0.id) })
                 .sorted { $0.id.localizedStandardCompare($1.id) == .orderedAscending }
+            let wasNil = current == nil
             if let id = current?.id ?? UserDefaults.standard.string(forKey: "lastChannel") {
                 current = channels.first { $0.id == id }   // pick up the new art for the current channel too
+                // Auto play a last-played Xtra channel, which wasn't available at login.
+                if wasNil, let current, current.xtraID != nil, !isPlaying { play(current) }
             }
             await refreshXtraNowPlaying()
         } catch {
