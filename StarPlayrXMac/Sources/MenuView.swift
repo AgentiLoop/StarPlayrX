@@ -85,13 +85,13 @@ struct MenuView: View {
         HStack(spacing: 10) {
             let np = radio.current.flatMap { radio.nowPlaying[$0.id] }
             let isAlbumArt = np?.image.isEmpty == false
-            AsyncImage(url: URL(string: (isAlbumArt ? np?.image : radio.current?.imageURL) ?? "")) { img in
-                if isAlbumArt {
+            CachedArt(url: (isAlbumArt ? np?.image : radio.current?.imageURL) ?? "") { art in
+                if let art, isAlbumArt {
                     // Fill and overscale slightly so the white frame baked into some album art is cropped away.
-                    img.resizable().scaledToFill().scaleEffect(1.1)
-                } else {
+                    Image(nsImage: art).resizable().scaledToFill().scaleEffect(1.1)
+                } else if let art {
                     // Channel logos must stay whole; square channel art is enlarged to fill the squircle.
-                    let logo = ChannelLogo(image: img)
+                    let logo = ChannelLogo(image: Image(nsImage: art))
                         .frame(width: 64, height: 64)
                     if #available(macOS 26.0, *) {
                         // Dark-tinted Liquid Glass tile behind the logo.
@@ -100,9 +100,10 @@ struct MenuView: View {
                     } else {
                         logo.background(Color(white: 0.12))   // dark tile so logos sit like album art
                     }
+                } else {
+                    // No channel art or logo (or not loaded yet): the StarPlayrX logo.
+                    Image(nsImage: NSApp.applicationIconImage).resizable().scaledToFill()
                 }
-            } placeholder: {
-                Image(systemName: "radio").font(.largeTitle).foregroundStyle(.secondary)
             }
             .frame(width: 64, height: 64)
             .clipShape(RoundedRectangle(cornerRadius: 14.5, style: .continuous))   // squircle, app-icon ratio
@@ -519,5 +520,47 @@ private struct ChannelLogo: View {
             .onGeometryChange(for: Bool.self) { abs($0.size.width - $0.size.height) < 2 } action: { isSquare = $0 }
             .scaleEffect(isSquare ? 1.12 : 1)
             .padding(isSquare ? 0 : 4)
+    }
+}
+
+/// Channel logos and album art kept in memory once loaded. Nothing is fetched until it's shown,
+/// and a URL that is already loading is shared instead of downloaded twice.
+@MainActor
+final class ArtCache {
+    static let shared = ArtCache()
+    private let images = NSCache<NSString, NSImage>()
+    private var loading: [String: Task<NSImage?, Never>] = [:]
+
+    func cached(_ url: String) -> NSImage? { images.object(forKey: url as NSString) }
+
+    func image(_ url: String) async -> NSImage? {
+        if let image = cached(url) { return image }
+        if let task = loading[url] { return await task.value }
+        guard !url.isEmpty, let address = URL(string: url) else { return nil }
+        let task = Task<NSImage?, Never> {
+            guard let (data, _) = try? await URLSession.shared.data(from: address) else { return nil }
+            return NSImage(data: data)
+        }
+        loading[url] = task
+        let image = await task.value
+        loading[url] = nil
+        if let image { images.setObject(image, forKey: url as NSString) }
+        return image
+    }
+}
+
+/// Shows the image at `url` from `ArtCache`, loading it lazily; `content` gets nil while it is
+/// missing, loading or failed.
+private struct CachedArt<Content: View>: View {
+    let url: String
+    @ViewBuilder let content: (NSImage?) -> Content
+    @State private var loaded: (url: String, image: NSImage?)?
+
+    var body: some View {
+        content(loaded?.url == url ? loaded?.image : ArtCache.shared.cached(url))
+            .task(id: url) {
+                let image = await ArtCache.shared.image(url)
+                if !Task.isCancelled { loaded = (url, image) }
+            }
     }
 }
