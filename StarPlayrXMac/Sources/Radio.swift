@@ -203,11 +203,12 @@ final class Radio: ObservableObject {
             await startServerIfNeeded()
             guard let url = URL(string: "http://localhost:\(port)/api/v3/m3u/\(channel.id).m3u8") else { return }
             let item = AVPlayerItem(url: url)
+            player.pause()
             player.replaceCurrentItem(with: item)
-            player.play()
             isPlaying = true
             // AVPlayer starts three segments (30 s) behind live. Jump to the newest segment so the
-            // audio is as close to live as the stream allows.
+            // audio is as close to live as the stream allows. Stay paused until the seek lands so
+            // the old start position never plays (that was the half-second stutter).
             var tries = 0
             while (item.status != .readyToPlay || item.seekableTimeRanges.isEmpty), tries < 100 {
                 try? await Task.sleep(nanoseconds: 100_000_000)
@@ -218,6 +219,8 @@ final class Radio: ObservableObject {
                 let edge = CMTimeSubtract(CMTimeRangeGetEnd(range), CMTime(seconds: 10, preferredTimescale: 1000))
                 await item.seek(to: max(edge, range.start))
             }
+            guard player.currentItem === item else { return }
+            player.play()
             print("LIVE lag \(item.currentDate().map { Int(Date().timeIntervalSince($0)) } ?? -1)s")
             liveTimeline = ("", .distantPast, [])
             await updatePDT()
