@@ -23,13 +23,25 @@ StarPlayrX was built for visually impaired listeners, a group of paying subscrib
 
 ## 🎛️ StarPlayrX for Mac (menu bar app)
 
-<p align="center">
-  <img src="docs/screenshot-mac.png" width="388" alt="StarPlayrX menu bar panel with the color equalizer under the now-playing header and a searchable channel list showing what's playing on each channel">
-  <img src="docs/screenshot-mac-torn-off.png" width="388" alt="StarPlayrX panel torn off the menu bar and parked as its own floating window">
-</p>
-<p align="center">
-  <img src="docs/screenshot-mac-shade.png" width="388" alt="StarPlayrX window rolled up like a window shade, showing only what's playing and the equalizer">
-</p>
+<table align="center">
+  <tr>
+    <td align="center" valign="top" width="33%">
+      <img src="docs/screenshot-mac.png" width="260" alt="StarPlayrX menu bar panel with the color equalizer under the now-playing header and a searchable channel list showing what's playing on each channel"><br>
+      <b>📻 Menu bar panel</b><br>
+      Now playing, the lava-lamp equalizer and a searchable list of every channel with what's on it right now
+    </td>
+    <td align="center" valign="top" width="33%">
+      <img src="docs/screenshot-mac-torn-off.png" width="260" alt="StarPlayrX panel torn off the menu bar and parked as its own floating window"><br>
+      <b>✂️ Tear-off window</b><br>
+      Drag the panel off the menu bar and it becomes its own floating window you can park anywhere
+    </td>
+    <td align="center" valign="top" width="33%">
+      <img src="docs/screenshot-mac-shade.png" width="260" alt="StarPlayrX window rolled up like a window shade, showing only what's playing and the equalizer"><br>
+      <b>🎬 Window shade</b><br>
+      Double-click the header to roll the window up to just what's playing and the equalizer
+    </td>
+  </tr>
+</table>
 
 - Lives in the menu bar (📻) with no Dock icon
 - **Tear-off window:** drag the panel off the menu bar and it becomes a floating window you can park anywhere. Click the 📻 icon to show or hide it
