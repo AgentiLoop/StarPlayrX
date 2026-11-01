@@ -4,9 +4,6 @@
 
 StarPlayrX was built for visually impaired listeners, a group of paying subscribers that SiriusXM has long ignored. It aims for 100% VoiceOver support, a small CPU and memory footprint, and low-latency streaming.
 
-> [!NOTE]
-> SiriusXM had StarPlayrX removed from the App Store. The source code is still available here. We no longer have a SiriusXM account, so we can't test bug fixes. The project is no longer actively developed.
-
 🤖 Built by the makers of **[Agent!](https://github.com/AgentiLoop/Agent)**, an autonomous macOS agent.
 
 ---
