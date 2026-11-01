@@ -400,17 +400,33 @@ final class Radio: ObservableObject {
         isPlaying && current?.id == id && current?.xtraID != nil
     }
 
+    private var artworkURL = ""
+    private var artwork: MPMediaItemArtwork?
+
     private func updateNowPlayingInfo() {
         let center = MPNowPlayingInfoCenter.default()
         guard let current else { center.nowPlayingInfo = nil; return }
         let np = nowPlaying[current.id]
-        center.nowPlayingInfo = [
+        var info: [String: Any] = [
             MPMediaItemPropertyTitle: np?.song ?? current.name,
             MPMediaItemPropertyArtist: np?.artist ?? "",
             MPMediaItemPropertyAlbumTitle: current.name,
             MPNowPlayingInfoPropertyIsLiveStream: true
         ]
+        // Same art as the menu's Now Playing tile: album art when there is some, else the channel logo.
+        let url = np?.image.isEmpty == false ? np!.image : current.imageURL
+        if url == artworkURL, let artwork { info[MPMediaItemPropertyArtwork] = artwork }
+        center.nowPlayingInfo = info
         center.playbackState = isPlaying ? .playing : .paused
+        guard url != artworkURL else { return }
+        artworkURL = url
+        artwork = nil
+        Task {
+            guard let image = await ArtCache.shared.image(url, pixels: ArtCache.pixels(150)),
+                  artworkURL == url else { return }
+            artwork = MPMediaItemArtwork(boundsSize: image.size) { _ in image }
+            updateNowPlayingInfo()
+        }
     }
 
     private func setupRemoteCommands() {
