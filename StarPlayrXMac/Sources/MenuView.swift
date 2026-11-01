@@ -90,8 +90,8 @@ struct MenuView: View {
                     // Fill and overscale slightly so the white frame baked into some album art is cropped away.
                     img.resizable().scaledToFill().scaleEffect(1.1)
                 } else {
-                    // Channel logos must stay whole.
-                    let logo = img.resizable().scaledToFit().padding(4)
+                    // Channel logos must stay whole; square channel art is enlarged to fill the squircle.
+                    let logo = ChannelLogo(image: img)
                         .frame(width: 64, height: 64)
                     if #available(macOS 26.0, *) {
                         // Dark-tinted Liquid Glass tile behind the logo.
@@ -251,6 +251,7 @@ final class MenuController: NSObject, ObservableObject {
                         guard t >= 1 else { return }
                         timer.invalidate()
                         self.glide = nil
+                        self.panel.refreshShadow()
                         if unshade {
                             // Same as the double-click unshade: the panel grows from its pinned top edge.
                             self.detached = false
@@ -325,6 +326,7 @@ final class MenuController: NSObject, ObservableObject {
     func endDrag() {
         guard let start = dragOrigin else { return }
         dragOrigin = nil
+        defer { panel.refreshShadow() }
         guard !detached else { return }
         if hypot(panel.frame.minX - start.x, panel.frame.minY - start.y) > Self.tearOffDistance {
             detach()
@@ -441,6 +443,15 @@ final class MenuPanel: NSPanel {
             rect.origin = NSPoint(x: frame.minX, y: frame.maxY - rect.height)
         }
         super.setFrame(rect, display: flag)
+        if isVisible { refreshShadow() }
+    }
+
+    /// A clear borderless window can leave its old shadow on screen after it moves or resizes
+    /// (a ghost the compositor shows but screenshots don't). Rebuild the shadow from scratch.
+    func refreshShadow() {
+        hasShadow = false
+        hasShadow = true
+        invalidateShadow()
     }
 
     static func make() -> MenuPanel {
@@ -496,4 +507,17 @@ private struct MenuMaterial: NSViewRepresentable {
     }
 
     func updateNSView(_ nsView: NSVisualEffectView, context: Context) {}
+}
+/// Channel art scaled to fit; when the art is square (it would fit the squircle but leave a margin
+/// and show its own baked-in corners) it's enlarged to fill the squircle instead.
+private struct ChannelLogo: View {
+    let image: Image
+    @State private var isSquare = false
+
+    var body: some View {
+        image.resizable().scaledToFit()
+            .onGeometryChange(for: Bool.self) { abs($0.size.width - $0.size.height) < 2 } action: { isSquare = $0 }
+            .scaleEffect(isSquare ? 1.12 : 1)
+            .padding(isSquare ? 0 : 4)
+    }
 }
