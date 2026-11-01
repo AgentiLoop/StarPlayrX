@@ -1,0 +1,2343 @@
+● Radio edits (5 tasks)
+[1] edit_file: Error: edit_file refused — this file had not been read this task. It has now been read FOR YOU and is marked as read. Do NOT call file(action:"read") on it. Your very next call must be the same edit_file, with old_string/source/line numbers copied verbatim from the content below.
+
+/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrXMac/Sources/Radio.swift:
+1  	import Foundation
+2  	import AVFoundation
+3  	import MediaPlayer
+4  	import Combine
+5  	import StarPlayrRadioKit
+6  	
+7  	struct Channel: Identifiable, Hashable {
+8  	    let id: String          // channel number
+9  	    let name: String
+10 	    let category: String
+11 	    let imageURL: String
+12 	    var xtraID: String? = nil   // set for Xtra channels (streamed track by track)
+13 	}
+14 	
+15 	struct NowPlaying: Equatable {
+16 	    var artist = ""
+17 	    var song = ""
+18 	    var image = ""
+19 	}
+20 	
+21 	@MainActor
+22 	final class Radio: ObservableObject {
+23 	    static let shared = Radio()
+24 	
+25 	    @Published var status = "Not signed in"
+26 	    @Published var isBusy = false
+27 	    @Published var isLoggedIn = false
+28 	    @Published var isPlaying = false
+29 	    @Published var channels = [Channel]()
+30 	    @Published var current: Channel?
+31 	    @Published var nowPlaying = [String: NowPlaying]()
+32 	    @Published var localeIsCA = UserDefaults.standard.bool(forKey: "localeIsCA")
+33 	
+34 	    private var port: UInt16 = 9999
+35 	    private var serverStarted = false
+36 	    private let player = AVPlayer()
+37 	    private var pdtTimer: Timer?
+38 	
+39 	    // Xtra channels: tracks are downloaded, decrypted and queued one after another.
+40 	    private let xtra = XtraClient()
+41 	    private let xtraPlayer = AVQueuePlayer()
+42 	    private var xtraTask: Task<Void, Never>?
+43 	    private var xtraTracks = [AVPlayerItem: XtraTrack]()
+44 	    private var xtraNowPlaying = [String: NowPlaying]()
+45 	    private var xtraObserver: AnyCancellable?
+46 	    private var xtraPeekedAt = [String: Date]()
+47 	    private var xtraPeekedTrack = [String: XtraTrack]()  // what the channel list shows, played first on tune
+48 	    private var xtraPeeking = false
+49 	    private let xtraFolder = FileManager.default.temporaryDirectory.appendingPathComponent("StarPlayrXtra")
+50 	
+51 	    private var base: String { "http://127.0.0.1:\(port)/api/v3" }
+52 	
+53 	    private init() {
+54 	        setupRemoteCommands()
+55 	        xtraObserver = xtraPlayer.publisher(for: \.currentItem)
+56 	            .receive(on: DispatchQueue.main)
+57 	            .sink { _ in Task { @MainActor in Radio.shared.xtraItemChanged() } }
+58 	    }
+59 	
+60 	    // MARK: Server
+61 	
+62 	    private func startServerIfNeeded() async {
+63 	        if serverStarted, await text("ping") == "pong" { return }
+64 	        for p in port..<65000 where portIsOpen(UInt16(p)) {
+65 	            port = UInt16(p)
+66 	            break
+67 	        }
+68 	        startServer(port)
+69 	        preflightConfig(location: localeIsCA ? "CA" : "US")
+70 	        for _ in 0..<20 {
+71 	            if await text("ping") == "pong" { break }
+72 	            try? await Task.sleep(nanoseconds: 100_000_000)
+73 	        }
+74 	        serverStarted = true
+75 	    }
+76 	
+77 	    // MARK: Login
+78 	
+79 	    func login(user: String, pass: String) async -> Bool {
+80 	        isBusy = true
+81 	        defer { isBusy = false }
+82 	        status = "Starting…"
+83 	        await startServerIfNeeded()
+84 	        _ = await text(localeIsCA ? "ca" : "us")
+85 	
+86 	        status = "Signing in…"
+87 	        let result = await post("login", ["user": user, "pass": pass])
+88 	        // StarPlayrRadioKit caches the password in UserDefaults; the Mac app keeps it only in the Keychain.
+89 	        UserDefaults.standard.removeObject(forKey: "pass")
+90 	
+91 	        guard let result, result["success"] as? Bool == true else {
+92 	            status = (result?["message"] as? String) ?? "Login failed. Check your connection."
+93 	            return false
+94 	        }
+95 	        Keychain.save(user: user, pass: pass)
+96 	
+97 	        status = "Loading channels…"
+98 	        _ = await post("session", ["channelid": "siriushits1"])
+99 	        guard let data = await post("channels", ["channeltype": ""])?["data"] as? [String: Any], !data.isEmpty else {
+100	            status = "Error reading channels."
+101	            return false
+102	        }
+103	
+104	        channels = data.compactMap { key, value in
+105	            guard let v = value as? [String: Any],
+106	                  let number = v["channelNumber"] as? String,
+107	                  var name = v["name"] as? String else { return nil }
+108	            for prefix in ["SiriusXM ", "Sirius XM ", "Sirius ", "SXM ", "SPX "] {
+109	                name = name.replacingOccurrences(of: prefix, with: "")
+110	            }
+111	            return Channel(id: number, name: name,
+112	                           category: v["category"] as? String ?? "",
+113	                           imageURL: v["mediumImage"] as? String ?? "")
+114	        }
+115	        .sorted { $0.id.localizedStandardCompare($1.id) == .orderedAscending }
+116	
+117	        isLoggedIn = true
+118	        status = "Signed in"
+119	        if let last = UserDefaults.standard.string(forKey: "lastChannel") {
+120	            current = channels.first { $0.id == last }
+121	        }
+122	        await updatePDT()
+123	        startPDTTimer()
+124	        Task { await loadXtraChannels(user: user, pass: pass) }
+125	        return true
+126	    }
+127	
+128	    /// Xtra channels come from SiriusXM's newer API; if that fails the live channels still work.
+129	    private func loadXtraChannels(user: String, pass: String) async {
+130	        do {
+131	            try await xtra.signIn(user: user, pass: pass)
+132	            let xtras = try await xtra.channels().map {
+133	                Channel(id: $0.number, name: $0.name, category: $0.genre, imageURL: $0.imageURL, xtraID: $0.id)
+134	            }
+135	            guard isLoggedIn else { return }
+136	            let live = Set(channels.map(\.id))
+137	            channels = (channels + xtras.filter { !live.contains($0.id) })
+138	                .sorted { $0.id.localizedStandardCompare($1.id) == .orderedAscending }
+139	            if current == nil, let last = UserDefaults.standard.string(forKey: "lastChannel") {
+140	                current = channels.first { $0.id == last }
+141	            }
+142	            await refreshXtraNowPlaying()
+143	        } catch {
+144	            print("Xtra channels unavailable: \(error.localizedDescription)")
+145	        }
+146	    }
+147	
+148	    func signOut() {
+149	        stop()
+150	        pdtTimer?.invalidate()
+151	        Keychain.delete()
+152	        Task { await xtra.signOut() }
+153	        isLoggedIn = false
+154	        channels = []
+155	        current = nil
+156	        status = "Not signed in"
+157	    }
+158	
+159	    func setRegion(ca: Bool) {
+160	        localeIsCA = ca
+161	        UserDefaults.standard.set(ca, forKey: "localeIsCA")
+162	        if serverStarted { Task { _ = await text(ca ? "ca" : "us") } }
+163	    }
+164	
+165	    // MARK: Playback
+166	
+167	    func play(_ channel: Channel) {
+168	        haltXtra()
+169	        current = channel
+170	        UserDefaults.standard.set(channel.id, forKey: "lastChannel")
+171	        if let xtraID = channel.xtraID {
+172	            player.pause()
+173	            player.replaceCurrentItem(with: nil)
+174	            playXtra(channel, id: xtraID)
+175	            return
+176	        }
+177	        Task {
+178	            await startServerIfNeeded()
+179	            guard let url = URL(string: "http://localhost:\(port)/api/v3/m3u/\(channel.id).m3u8") else { return }
+180	            player.replaceCurrentItem(with: AVPlayerItem(url: url))
+181	            player.play()
+182	            isPlaying = true
+183	            await updatePDT()
+184	        }
+185	    }
+186	
+187	    func togglePlayPause() {
+188	        if isPlaying { stop() } else if let current { play(current) }
+189	    }
+190	
+191	    func stop() {
+192	        player.pause()
+193	        player.replaceCurrentItem(with: nil)
+194	        haltXtra()
+195	        isPlaying = false
+196	        updateNowPlayingInfo()
+197	    }
+198	
+199	    // MARK: Xtra playback
+200	
+201	    private func playXtra(_ channel: Channel, id: String) {
+202	        isPlaying = true
+203	        // Tuning again returns a different track than the peek, so start with the peeked track
+204	        // the channel list is showing (from its beginning), then continue with the tuned queue.
+205	        let peeked = xtraPeekedTrack.removeValue(forKey: channel.id).map {
+206	            XtraTrack(id: $0.id, artist: $0.artist, title: $0.title, url: $0.url, keyID: $0.keyID,
+207	                      imageURL: $0.imageURL, startOffset: 0)
+208	        }
+209	        print("XTRA play \(channel.id) shown=\(nowPlaying[channel.id]?.song ?? "nil") peeked=\(peeked?.title ?? "nil")")
+210	        if peeked == nil {
+211	            xtraNowPlaying[channel.id] = nil
+212	            nowPlaying[channel.id] = nil
+213	        }
+214	        updateNowPlayingInfo()
+215	        xtraTask = Task {
+216	            var pending = [XtraTrack]()
+217	            var token: String?
+218	            var seen = Set<String>()
+219	            var first = true
+220	            if let peeked {
+221	                seen.insert(peeked.id)
+222	                do {
+223	                    let file = try await xtra.download(peeked, into: xtraFolder)
+224	                    if !Task.isCancelled {
+225	                        let item = AVPlayerItem(url: file)
+226	                        xtraTracks[item] = peeked
+227	                        xtraPlayer.insert(item, after: nil)
+228	                        first = false
+229	                        xtraPlayer.play()
+230	                        xtraItemChanged()
+231	                    }
+232	                } catch {
+233	                    print("XTRA peeked download failed \(channel.id) \(peeked.title): \(error.localizedDescription) url=\(peeked.url)")
+234	                }
+235	            }
+236	            do {
+237	                while !Task.isCancelled {
+238	                    // Keep one track playing and one ready behind it.
+239	                    if xtraPlayer.items().count > 1 {
+240	                        try await Task.sleep(nanoseconds: 2_000_000_000)
+241	                        continue
+242	                    }
+243	                    if pending.isEmpty {
+244	                        let batch = try await xtra.tune(channelID: id, sequenceToken: token)
+245	                        token = batch.token
+246	                        pending = batch.tracks.filter { seen.insert($0.id).inserted }
+247	                        if pending.isEmpty { try await Task.sleep(nanoseconds: 5_000_000_000); continue }
+248	                    }
+249	                    let track = pending.removeFirst()
+250	                    let file = try await xtra.download(track, into: xtraFolder)
+251	                    guard !Task.isCancelled else { break }
+252	                    let item = AVPlayerItem(url: file)
+253	                    xtraTracks[item] = track
+254	                    xtraPlayer.insert(item, after: nil)
+255	                    if first {
+256	                        first = false
+257	                        if track.startOffset > 0 {
+258	                            await xtraPlayer.seek(to: CMTime(seconds: track.startOffset, preferredTimescale: 1000))
+259	                        }
+260	                        xtraPlayer.play()
+261	                        xtraItemChanged()
+262	                    }
+263	                }
+264	            } catch is CancellationError {
+265	            } catch {
+266	                print("Xtra playback error: \(error.localizedDescription)")
+267	                if first, current == channel { stop() }
+268	            }
+269	        }
+270	    }
+271	
+272	    private func haltXtra() {
+273	        // The list keeps showing the song that was playing, so tuning back in should play that song.
+274	        if let item = xtraPlayer.currentItem, let track = xtraTracks[item], let current, current.xtraID != nil {
+275	            xtraPeekedTrack[current.id] = track
+276	        }
+277	        xtraTask?.cancel()
+278	        xtraTask = nil
+279	        xtraPlayer.pause()
+280	        xtraPlayer.removeAllItems()
+281	        xtraTracks = [:]
+282	        try? FileManager.default.removeItem(at: xtraFolder)
+283	    }
+284	
+285	    /// Shows the queued track that just started and deletes files of tracks that have finished.
+286	    fileprivate func xtraItemChanged() {
+287	        let queued = Set(xtraPlayer.items())
+288	        for (item, track) in xtraTracks where !queued.contains(item) {
+289	            xtraTracks[item] = nil
+290	            try? FileManager.default.removeItem(at: xtraFolder.appendingPathComponent("\(track.id).aac"))
+291	        }
+292	        guard let item = xtraPlayer.currentItem, let track = xtraTracks[item], let current, current.xtraID != nil else { return }
+293	        print("XTRA playing \(current.id) \(track.artist) – \(track.title)")
+294	        let np = NowPlaying(artist: track.artist, song: track.title, image: track.imageURL)
+295	        xtraNowPlaying[current.id] = np
+296	        nowPlaying[current.id] = np
+297	        updateNowPlayingInfo()
+298	    }
+299	
+300	    // MARK: Now playing (PDT)
+301	
+302	    private func startPDTTimer() {
+303	        pdtTimer?.invalidate()
+304	        pdtTimer = Timer.scheduledTimer(withTimeInterval: 15, repeats: true) { _ in
+305	            Task { @MainActor in await Radio.shared.updatePDT() }
+306	        }
+307	    }
+308	
+309	    func updatePDT() async {
+310	        guard let cache = await get("pdt")?["data"] as? [String: Any] else { return }
+311	        var np = [String: NowPlaying]()
+312	        for (key, value) in cache {
+313	            if let v = value as? [String: String] {
+314	                np[key] = NowPlaying(artist: v["artist"] ?? "", song: v["song"] ?? "", image: v["image"] ?? "")
+315	            }
+316	        }
+317	        nowPlaying = np.merging(xtraNowPlaying) { live, _ in live }
+318	        updateNowPlayingInfo()
+319	        Task { await refreshXtraNowPlaying() }
+320	    }
+321	
+322	    /// Xtra channels have no PDT feed, so ask each idle one what it would play if tuned now.
+323	    /// Channels never peeked are all filled at once; after that the stalest are refreshed
+324	    /// a batch at a time on every PDT tick. Each result is shown as soon as it arrives.
+325	    private func refreshXtraNowPlaying() async {
+326	        guard isLoggedIn, !xtraPeeking else { return }
+327	        xtraPeeking = true
+328	        defer { xtraPeeking = false }
+329	        let stale = Date().addingTimeInterval(-180)
+330	        let idle = channels.filter { $0.xtraID != nil && !isPlayingXtra($0.id) }
+331	        let unpeeked = idle.filter { xtraPeekedAt[$0.id] == nil }
+332	        let batch = !unpeeked.isEmpty ? unpeeked : Array(idle
+333	            .filter { xtraPeekedAt[$0.id]! < stale }
+334	            .sorted { xtraPeekedAt[$0.id]! < xtraPeekedAt[$1.id]! }
+335	            .prefix(30))
+336	        guard !batch.isEmpty else { return }
+337	        let client = xtra
+338	        await withTaskGroup(of: (String, XtraTrack?).self) { group in
+339	            for (i, ch) in batch.enumerated() {
+340	                if i >= 12, let r = await group.next() { applyXtraPeek(r.0, r.1) }
+341	                group.addTask { (ch.id, try? await client.peek(channelID: ch.xtraID!)) }
+342	            }
+343	            for await r in group { applyXtraPeek(r.0, r.1) }
+344	        }
+345	    }
+346	
+347	    /// Peek results arrive many per second; publishing each one redraws the whole channel
+348	    /// list and stalls scrolling, so they're batched and published at most every 2 seconds.
+349	    private func applyXtraPeek(_ id: String, _ track: XtraTrack?) {
+350	        guard isLoggedIn else { return }
+351	        xtraPeekedAt[id] = Date()
+352	        guard let track, !isPlayingXtra(id) else { return }
+353	        // The played track, xtraNowPlaying and the list text are committed together on flush,
+354	        // so tapping a channel always plays the song its row is showing.
+355	        pendingPeeks[id] = track
+356	        guard !peekFlushScheduled else { return }
+357	        peekFlushScheduled = true
+358	        Task {
+359	            try? await Task.sleep(for: .seconds(2))
+360	            peekFlushScheduled = false
+361	            let tracks = pendingPeeks.filter { !isPlayingXtra($0.key) }
+362	            pendingPeeks.removeAll()
+363	            guard isLoggedIn, !tracks.isEmpty else { return }
+364	            let batch = tracks.mapValues { NowPlaying(artist: $0.artist, song: $0.title, image: $0.imageURL) }
+365	            xtraPeekedTrack.merge(tracks) { _, new in new }
+366	            xtraNowPlaying.merge(batch) { _, new in new }
+367	            nowPlaying.merge(batch) { _, new in new }
+368	        }
+369	    }
+370	    private var pendingPeeks = [String: XtraTrack]()
+371	    private var peekFlushScheduled = false
+372	
+373	    /// What is actually coming out of the speakers: the Xtra track in the player, or the live channel's PDT.
+374	    var playingNow: NowPlaying? {
+375	        guard isPlaying, let current else { return nil }
+376	        guard current.xtraID != nil else { return nowPlaying[current.id] }
+377	        guard let item = xtraPlayer.currentItem, let track = xtraTracks[item] else { return nil }
+378	        return NowPlaying(artist: track.artist, song: track.title, image: track.imageURL)
+379	    }
+380	
+381	    private func isPlayingXtra(_ id: String) -> Bool {
+382	        isPlaying && current?.id == id && current?.xtraID != nil
+383	    }
+384	
+385	    private func updateNowPlayingInfo() {
+386	        let center = MPNowPlayingInfoCenter.default()
+387	        guard let current else { center.nowPlayingInfo = nil; return }
+388	        let np = nowPlaying[current.id]
+389	        center.nowPlayingInfo = [
+390	            MPMediaItemPropertyTitle: np?.song ?? current.name,
+391	            MPMediaItemPropertyArtist: np?.artist ?? "",
+392	            MPMediaItemPropertyAlbumTitle: current.name,
+393	            MPNowPlayingInfoPropertyIsLiveStream: true
+394	        ]
+395	        center.playbackState = isPlaying ? .playing : .paused
+396	    }
+397	
+398	    private func setupRemoteCommands() {
+399	        let cc = MPRemoteCommandCenter.shared()
+400	        cc.playCommand.addTarget { _ in
+401	            Task { @MainActor in if let c = Radio.shared.current { Radio.shared.play(c) } }
+402	            return .success
+403	        }
+404	        cc.pauseCommand.addTarget { _ in
+405	            Task { @MainActor in Radio.shared.stop() }
+406	            return .success
+407	        }
+408	        cc.togglePlayPauseCommand.addTarget { _ in
+409	            Task { @MainActor in Radio.shared.togglePlayPause() }
+410	            return .success
+411	        }
+412	    }
+413	
+414	    // MARK: Local server HTTP helpers
+415	
+416	    private func text(_ path: String) async -> String? {
+417	        guard let url = URL(string: "\(base)/\(path)") else { return nil }
+418	        var req = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalAndRemoteCacheData, timeoutInterval: 2)
+419	        req.httpMethod = "GET"
+420	        guard let (data, _) = try? await URLSession.shared.data(for: req) else { return nil }
+421	        return String(data: data, encoding: .utf8)
+422	    }
+423	
+424	    private func get(_ path: String) async -> [String: Any]? {
+425	        guard let url = URL(string: "\(base)/\(path)") else { return nil }
+426	        let req = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalAndRemoteCacheData, timeoutInterval: 60)
+427	        guard let (data, _) = try? await URLSession.shared.data(for: req) else { return nil }
+428	        return (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
+429	    }
+430	
+431	    private func post(_ path: String, _ body: [String: Any]) async -> [String: Any]? {
+432	        guard let url = URL(string: "\(base)/\(path)") else { return nil }
+433	        var req = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalAndRemoteCacheData, timeoutInterval: 60)
+434	        req.httpMethod = "POST"
+435	        req.httpBody = try? JSONSerialization.data(withJSONObject: body)
+436	        req.addValue("application/json", forHTTPHeaderField: "Content-Type")
+437	        guard let (data, _) = try? await URLSession.shared.data(for: req) else { return nil }
+438	        return (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
+439	    }
+440	
+441	    // MARK: Port finder
+442	
+443	    private func portIsOpen(_ port: in_port_t) -> Bool {
+444	        let fd = socket(AF_INET, SOCK_STREAM, 0)
+445	        guard fd != -1 else { return false }
+446	        defer { Darwin.shutdown(fd, SHUT_RDWR); close(fd) }
+447	
+448	        var addr = sockaddr_in()
+449	        addr.sin_len = __uint8_t(MemoryLayout<sockaddr_in>.size)
+450	        addr.sin_family = sa_family_t(AF_INET)
+451	        addr.sin_port = port.bigEndian
+452	        addr.sin_addr = in_addr(s_addr: inet_addr("127.0.0.1"))
+453	
+454	        let bound = withUnsafePointer(to: &addr) {
+455	            $0.withMemoryRebound(to: sockaddr.self, capacity: 1) {
+456	                Darwin.bind(fd, $0, socklen_t(MemoryLayout<sockaddr_in>.size))
+457	            }
+458	        }
+459	        return bound != -1 && listen(fd, SOMAXCONN) != -1
+460	    }
+461	}
+462	
+
+[2] edit_file: Replaced 1 occurrence in /Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrXMac/Sources/Radio.swift [verified: true]
+
+📎import Foundation
+📎import AVFoundation
+📎import MediaPlayer
+📎import Combine
+📎import StarPlayrRadioKit
+📎
+📎struct Channel: Identifiable, Hashable {
+📎    let id: String          // channel number
+📎    let name: String
+📎    let category: String
+📎    let imageURL: String
+📎    var xtraID: String? = nil   // set for Xtra channels (streamed track by track)
+📎}
+📎
+📎struct NowPlaying: Equatable {
+📎    var artist = ""
+📎    var song = ""
+📎    var image = ""
+📎}
+📎
+📎@MainActor
+📎final class Radio: ObservableObject {
+📎    static let shared = Radio()
+📎
+📎    @Published var status = "Not signed in"
+📎    @Published var isBusy = false
+📎    @Published var isLoggedIn = false
+📎    @Published var isPlaying = false
+📎    @Published var channels = [Channel]()
+📎    @Published var current: Channel?
+📎    @Published var nowPlaying = [String: NowPlaying]()
+📎    @Published var localeIsCA = UserDefaults.standard.bool(forKey: "localeIsCA")
+📎
+📎    private var port: UInt16 = 9999
+📎    private var serverStarted = false
+📎    private let player = AVPlayer()
+📎    private var pdtTimer: Timer?
+📎
+📎    // Xtra channels: tracks are downloaded, decrypted and queued one after another.
+📎    private let xtra = XtraClient()
+📎    private let xtraPlayer = AVQueuePlayer()
+📎    private var xtraTask: Task<Void, Never>?
+📎    private var xtraTracks = [AVPlayerItem: XtraTrack]()
+📎    private var xtraNowPlaying = [String: NowPlaying]()
+📎    private var xtraObserver: AnyCancellable?
+📎    private var xtraPeekedAt = [String: Date]()
+📎    private var xtraPeekedTrack = [String: XtraTrack]()  // what the channel list shows, played first on tune
+📎    private var xtraPeeking = false
+📎    private let xtraFolder = FileManager.default.temporaryDirectory.appendingPathComponent("StarPlayrXtra")
+📎
+📎    private var base: String { "http://127.0.0.1:\(port)/api/v3" }
+📎
+📎    private init() {
+📎        setupRemoteCommands()
+📎        xtraObserver = xtraPlayer.publisher(for: \.currentItem)
+📎            .receive(on: DispatchQueue.main)
+📎            .sink { _ in Task { @MainActor in Radio.shared.xtraItemChanged() } }
+📎    }
+📎
+📎    // MARK: Server
+📎
+📎    private func startServerIfNeeded() async {
+📎        if serverStarted, await text("ping") == "pong" { return }
+📎        for p in port..<65000 where portIsOpen(UInt16(p)) {
+📎            port = UInt16(p)
+📎            break
+📎        }
+📎        startServer(port)
+📎        preflightConfig(location: localeIsCA ? "CA" : "US")
+📎        for _ in 0..<20 {
+📎            if await text("ping") == "pong" { break }
+📎            try? await Task.sleep(nanoseconds: 100_000_000)
+📎        }
+📎        serverStarted = true
+📎    }
+📎
+📎    // MARK: Login
+📎
+📎    func login(user: String, pass: String) async -> Bool {
+📎        isBusy = true
+📎        defer { isBusy = false }
+📎        status = "Starting…"
+📎        await startServerIfNeeded()
+📎        _ = await text(localeIsCA ? "ca" : "us")
+📎
+📎        status = "Signing in…"
+📎        let result = await post("login", ["user": user, "pass": pass])
+📎        // StarPlayrRadioKit caches the password in UserDefaults; the Mac app keeps it only in the Keychain.
+📎        UserDefaults.standard.removeObject(forKey: "pass")
+📎
+📎        guard let result, result["success"] as? Bool == true else {
+📎            status = (result?["message"] as? String) ?? "Login failed. Check your connection."
+📎            return false
+📎        }
+📎        Keychain.save(user: user, pass: pass)
+📎
+📎        status = "Loading channels…"
+📎        _ = await post("session", ["channelid": "siriushits1"])
+📎        guard let data = await post("channels", ["channeltype": ""])?["data"] as? [String: Any], !data.isEmpty else {
+📎            status = "Error reading channels."
+📎            return false
+📎        }
+📎
+📎        channels = data.compactMap { key, value in
+📎            guard let v = value as? [String: Any],
+📎                  let number = v["channelNumber"] as? String,
+📎                  var name = v["name"] as? String else { return nil }
+📎            for prefix in ["SiriusXM ", "Sirius XM ", "Sirius ", "SXM ", "SPX "] {
+📎                name = name.replacingOccurrences(of: prefix, with: "")
+📎            }
+📎            return Channel(id: number, name: name,
+📎                           category: v["category"] as? String ?? "",
+📎                           imageURL: v["mediumImage"] as? String ?? "")
+📎        }
+📎        .sorted { $0.id.localizedStandardCompare($1.id) == .orderedAscending }
+📎
+📎        isLoggedIn = true
+📎        status = "Signed in"
+📎        if let last = UserDefaults.standard.string(forKey: "lastChannel") {
+📎            current = channels.first { $0.id == last }
+📎        }
+📎        await updatePDT()
+📎        startPDTTimer()
+📎        Task { await loadXtraChannels(user: user, pass: pass) }
+📎        return true
+📎    }
+📎
+📎    /// Xtra channels come from SiriusXM's newer API; if that fails the live channels still work.
+📎    private func loadXtraChannels(user: String, pass: String) async {
+📎        d
+✅efer { if isLoggedIn { channelsLoaded = true } }
+✅        d
+📎o {
+📎            try await xtra.signIn(user: user, pass: pass)
+📎            let xtras = try await xtra.channels().map {
+📎                Channel(id: $0.number, name: $0.name, category: $0.genre, imageURL: $0.imageURL, xtraID: $0.id)
+📎            }
+📎            guard isLoggedIn else { return }
+📎            let live = Set(channels.map(\.id))
+📎            channels = (channels + xtras.filter { !live.contains($0.id) })
+📎                .sorted { $0.id.localizedStandardCompare($1.id) == .orderedAscending }
+📎            if current == nil, let last = UserDefaults.standard.string(forKey: "lastChannel") {
+📎                current = channels.first { $0.id == last }
+📎            }
+📎            await refreshXtraNowPlaying()
+📎        } catch {
+📎            print("Xtra channels unavailable: \(error.localizedDescription)")
+📎        }
+📎    }
+📎
+📎    func signOut() {
+📎        stop()
+📎        pdtTimer?.invalidate()
+📎        Keychain.delete()
+📎        Task { await xtra.signOut() }
+📎        isLoggedIn = false
+📎        channels = []
+📎        current = nil
+📎        status = "Not signed in"
+📎    }
+📎
+📎    func setRegion(ca: Bool) {
+📎        localeIsCA = ca
+📎        UserDefaults.standard.set(ca, forKey: "localeIsCA")
+📎        if serverStarted { Task { _ = await text(ca ? "ca" : "us") } }
+📎    }
+📎
+📎    // MARK: Playback
+📎
+📎    func play(_ channel: Channel) {
+📎        haltXtra()
+📎        current = channel
+📎        UserDefaults.standard.set(channel.id, forKey: "lastChannel")
+📎        if let xtraID = channel.xtraID {
+📎            player.pause()
+📎            player.replaceCurrentItem(with: nil)
+📎            playXtra(channel, id: xtraID)
+📎            return
+📎        }
+📎        Task {
+📎            await startServerIfNeeded()
+📎            guard let url = URL(string: "http://localhost:\(port)/api/v3/m3u/\(channel.id).m3u8") else { return }
+📎            player.replaceCurrentItem(with: AVPlayerItem(url: url))
+📎            player.play()
+📎            isPlaying = true
+📎            await updatePDT()
+📎        }
+📎    }
+📎
+📎    func togglePlayPause() {
+📎        if isPlaying { stop() } else if let current { play(current) }
+📎    }
+📎
+📎    func stop() {
+📎        player.pause()
+📎        player.replaceCurrentItem(with: nil)
+📎        haltXtra()
+📎        isPlaying = false
+📎        updateNowPlayingInfo()
+📎    }
+📎
+📎    // MARK: Xtra playback
+📎
+📎    private func playXtra(_ channel: Channel, id: String) {
+📎        isPlaying = true
+📎        // Tuning again returns a different track than the peek, so start with the peeked track
+📎        // the channel list is showing (from its beginning), then continue with the tuned queue.
+📎        let peeked = xtraPeekedTrack.removeValue(forKey: channel.id).map {
+📎            XtraTrack(id: $0.id, artist: $0.artist, title: $0.title, url: $0.url, keyID: $0.keyID,
+📎                      imageURL: $0.imageURL, startOffset: 0)
+📎        }
+📎        print("XTRA play \(channel.id) shown=\(nowPlaying[channel.id]?.song ?? "nil") peeked=\(peeked?.title ?? "nil")")
+📎        if peeked == nil {
+📎            xtraNowPlaying[channel.id] = nil
+📎            nowPlaying[channel.id] = nil
+📎        }
+📎        updateNowPlayingInfo()
+📎        xtraTask = Task {
+📎            var pending = [XtraTrack]()
+📎            var token: String?
+📎            var seen = Set<String>()
+📎            var first = true
+📎            if let peeked {
+📎                seen.insert(peeked.id)
+📎                do {
+📎                    let file = try await xtra.download(peeked, into: xtraFolder)
+📎                    if !Task.isCancelled {
+📎                        let item = AVPlayerItem(url: file)
+📎                        xtraTracks[item] = peeked
+📎                        xtraPlayer.insert(item, after: nil)
+📎                        first = false
+📎                        xtraPlayer.play()
+📎                        xtraItemChanged()
+📎                    }
+📎                } catch {
+📎                    print("XTRA peeked download failed \(channel.id) \(peeked.title): \(error.localizedDescription) url=\(peeked.url)")
+📎                }
+📎            }
+📎            do {
+📎                while !Task.isCancelled {
+📎                    // Keep one track playing and one ready behind it.
+📎                    if xtraPlayer.items().count > 1 {
+📎                        try await Task.sleep(nanoseconds: 2_000_000_000)
+📎                        continue
+📎                    }
+📎                    if pending.isEmpty {
+📎                        let batch = try await xtra.tune(channelID: id, sequenceToken: token)
+📎                        token = batch.token
+📎                        pending = batch.tracks.filter { seen.insert($0.id).inserted }
+📎                        if pending.isEmpty { try await Task.sleep(nanoseconds: 5_000_000_000); continue }
+📎                    }
+📎                    let track = pending.removeFirst()
+📎                    let file = try await xtra.download(track, into: xtraFolder)
+📎                    guard !Task.isCancelled else { break }
+📎                    let item = AVPlayerItem(url: file)
+📎                    xtraTracks[item] = track
+📎                    xtraPlayer.insert(item, after: nil)
+📎                    if first {
+📎                        first = false
+📎                        if track.startOffset > 0 {
+📎                            await xtraPlayer.seek(to: CMTime(seconds: track.startOffset, preferredTimescale: 1000))
+📎                        }
+📎                        xtraPlayer.play()
+📎                        xtraItemChanged()
+📎                    }
+📎                }
+📎            } catch is CancellationError {
+📎            } catch {
+📎                print("Xtra playback error: \(error.localizedDescription)")
+📎                if first, current == channel { stop() }
+📎            }
+📎        }
+📎    }
+📎
+📎    private func haltXtra() {
+📎        // The list keeps showing the song that was playing, so tuning back in should play that song.
+📎        if let item = xtraPlayer.currentItem, let track = xtraTracks[item], let current, current.xtraID != nil {
+📎            xtraPeekedTrack[current.id] = track
+📎        }
+📎        xtraTask?.cancel()
+📎        xtraTask = nil
+📎        xtraPlayer.pause()
+📎        xtraPlayer.removeAllItems()
+📎        xtraTracks = [:]
+📎        try? FileManager.default.removeItem(at: xtraFolder)
+📎    }
+📎
+📎    /// Shows the queued track that just started and deletes files of tracks that have finished.
+📎    fileprivate func xtraItemChanged() {
+📎        let queued = Set(xtraPlayer.items())
+📎        for (item, track) in xtraTracks where !queued.contains(item) {
+📎            xtraTracks[item] = nil
+📎            try? FileManager.default.removeItem(at: xtraFolder.appendingPathComponent("\(track.id).aac"))
+📎        }
+📎        guard let item = xtraPlayer.currentItem, let track = xtraTracks[item], let current, current.xtraID != nil else { return }
+📎        print("XTRA playing \(current.id) \(track.artist) – \(track.title)")
+📎        let np = NowPlaying(artist: track.artist, song: track.title, image: track.imageURL)
+📎        xtraNowPlaying[current.id] = np
+📎        nowPlaying[current.id] = np
+📎        updateNowPlayingInfo()
+📎    }
+📎
+📎    // MARK: Now playing (PDT)
+📎
+📎    private func startPDTTimer() {
+📎        pdtTimer?.invalidate()
+📎        pdtTimer = Timer.scheduledTimer(withTimeInterval: 15, repeats: true) { _ in
+📎            Task { @MainActor in await Radio.shared.updatePDT() }
+📎        }
+📎    }
+📎
+📎    func updatePDT() async {
+📎        guard let cache = await get("pdt")?["data"] as? [String: Any] else { return }
+📎        var np = [String: NowPlaying]()
+📎        for (key, value) in cache {
+📎            if let v = value as? [String: String] {
+📎                np[key] = NowPlaying(artist: v["artist"] ?? "", song: v["song"] ?? "", image: v["image"] ?? "")
+📎            }
+📎        }
+📎        nowPlaying = np.merging(xtraNowPlaying) { live, _ in live }
+📎        updateNowPlayingInfo()
+📎        Task { await refreshXtraNowPlaying() }
+📎    }
+📎
+📎    /// Xtra channels have no PDT feed, so ask each idle one what it would play if tuned now.
+📎    /// Channels never peeked are all filled at once; after that the stalest are refreshed
+📎    /// a batch at a time on every PDT tick. Each result is shown as soon as it arrives.
+📎    private func refreshXtraNowPlaying() async {
+📎        guard isLoggedIn, !xtraPeeking else { return }
+📎        xtraPeeking = true
+📎        defer { xtraPeeking = false }
+📎        let stale = Date().addingTimeInterval(-180)
+📎        let idle = channels.filter { $0.xtraID != nil && !isPlayingXtra($0.id) }
+📎        let unpeeked = idle.filter { xtraPeekedAt[$0.id] == nil }
+📎        let batch = !unpeeked.isEmpty ? unpeeked : Array(idle
+📎            .filter { xtraPeekedAt[$0.id]! < stale }
+📎            .sorted { xtraPeekedAt[$0.id]! < xtraPeekedAt[$1.id]! }
+📎            .prefix(30))
+📎        guard !batch.isEmpty else { return }
+📎        let client = xtra
+📎        await withTaskGroup(of: (String, XtraTrack?).self) { group in
+📎            for (i, ch) in batch.enumerated() {
+📎                if i >= 12, let r = await group.next() { applyXtraPeek(r.0, r.1) }
+📎                group.addTask { (ch.id, try? await client.peek(channelID: ch.xtraID!)) }
+📎            }
+📎            for await r in group { applyXtraPeek(r.0, r.1) }
+📎        }
+📎    }
+📎
+📎    /// Peek results arrive many per second; publishing each one redraws the whole channel
+📎    /// list and stalls scrolling, so they're batched and published at most every 2 seconds.
+📎    private func applyXtraPeek(_ id: String, _ track: XtraTrack?) {
+📎        guard isLoggedIn else { return }
+📎        xtraPeekedAt[id] = Date()
+📎        guard let track, !isPlayingXtra(id) else { return }
+📎        // The played track, xtraNowPlaying and the list text are committed together on flush,
+📎        // so tapping a channel always plays the song its row is showing.
+📎        pendingPeeks[id] = track
+📎        guard !peekFlushScheduled else { return }
+📎        peekFlushScheduled = true
+📎        Task {
+📎            try? await Task.sleep(for: .seconds(2))
+📎            peekFlushScheduled = false
+📎            let tracks = pendingPeeks.filter { !isPlayingXtra($0.key) }
+📎            pendingPeeks.removeAll()
+📎            guard isLoggedIn, !tracks.isEmpty else { return }
+📎            let batch = tracks.mapValues { NowPlaying(artist: $0.artist, song: $0.title, image: $0.imageURL) }
+📎            xtraPeekedTrack.merge(tracks) { _, new in new }
+📎            xtraNowPlaying.merge(batch) { _, new in new }
+📎            nowPlaying.merge(batch) { _, new in new }
+📎        }
+📎    }
+📎    private var pendingPeeks = [String: XtraTrack]()
+📎    private var peekFlushScheduled = false
+📎
+📎    /// What is actually coming out of the speakers: the Xtra track in the player, or the live channel's PDT.
+📎    var playingNow: NowPlaying? {
+📎        guard isPlaying, let current else { return nil }
+📎        guard current.xtraID != nil else { return nowPlaying[current.id] }
+📎        guard let item = xtraPlayer.currentItem, let track = xtraTracks[item] else { return nil }
+📎        return NowPlaying(artist: track.artist, song: track.title, image: track.imageURL)
+📎    }
+📎
+📎    private func isPlayingXtra(_ id: String) -> Bool {
+📎        isPlaying && current?.id == id && current?.xtraID != nil
+📎    }
+📎
+📎    private func updateNowPlayingInfo() {
+📎        let center = MPNowPlayingInfoCenter.default()
+📎        guard let current else { center.nowPlayingInfo = nil; return }
+📎        let np = nowPlaying[current.id]
+📎        center.nowPlayingInfo = [
+📎            MPMediaItemPropertyTitle: np?.song ?? current.name,
+📎            MPMediaItemPropertyArtist: np?.artist ?? "",
+📎            MPMediaItemPropertyAlbumTitle: current.name,
+📎            MPNowPlayingInfoPropertyIsLiveStream: true
+📎        ]
+📎        center.playbackState = isPlaying ? .playing : .paused
+📎    }
+📎
+📎    private func setupRemoteCommands() {
+📎        let cc = MPRemoteCommandCenter.shared()
+📎        cc.playCommand.addTarget { _ in
+📎            Task { @MainActor in if let c = Radio.shared.current { Radio.shared.play(c) } }
+📎            return .success
+📎        }
+📎        cc.pauseCommand.addTarget { _ in
+📎            Task { @MainActor in Radio.shared.stop() }
+📎            return .success
+📎        }
+📎        cc.togglePlayPauseCommand.addTarget { _ in
+📎            Task { @MainActor in Radio.shared.togglePlayPause() }
+📎            return .success
+📎        }
+📎    }
+📎
+📎    // MARK: Local server HTTP helpers
+📎
+📎    private func text(_ path: String) async -> String? {
+📎        guard let url = URL(string: "\(base)/\(path)") else { return nil }
+📎        var req = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalAndRemoteCacheData, timeoutInterval: 2)
+📎        req.httpMethod = "GET"
+📎        guard let (data, _) = try? await URLSession.shared.data(for: req) else { return nil }
+📎        return String(data: data, encoding: .utf8)
+📎    }
+📎
+📎    private func get(_ path: String) async -> [String: Any]? {
+📎        guard let url = URL(string: "\(base)/\(path)") else { return nil }
+📎        let req = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalAndRemoteCacheData, timeoutInterval: 60)
+📎        guard let (data, _) = try? await URLSession.shared.data(for: req) else { return nil }
+📎        return (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
+📎    }
+📎
+📎    private func post(_ path: String, _ body: [String: Any]) async -> [String: Any]? {
+📎        guard let url = URL(string: "\(base)/\(path)") else { return nil }
+📎        var req = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalAndRemoteCacheData, timeoutInterval: 60)
+📎        req.httpMethod = "POST"
+📎        req.httpBody = try? JSONSerialization.data(withJSONObject: body)
+📎        req.addValue("application/json", forHTTPHeaderField: "Content-Type")
+📎        guard let (data, _) = try? await URLSession.shared.data(for: req) else { return nil }
+📎        return (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
+📎    }
+📎
+📎    // MARK: Port finder
+📎
+📎    private func portIsOpen(_ port: in_port_t) -> Bool {
+📎        let fd = socket(AF_INET, SOCK_STREAM, 0)
+📎        guard fd != -1 else { return false }
+📎        defer { Darwin.shutdown(fd, SHUT_RDWR); close(fd) }
+📎
+📎        var addr = sockaddr_in()
+📎        addr.sin_len = __uint8_t(MemoryLayout<sockaddr_in>.size)
+📎        addr.sin_family = sa_family_t(AF_INET)
+📎        addr.sin_port = port.bigEndian
+📎        addr.sin_addr = in_addr(s_addr: inet_addr("127.0.0.1"))
+📎
+📎        let bound = withUnsafePointer(to: &addr) {
+📎            $0.withMemoryRebound(to: sockaddr.self, capacity: 1) {
+📎                Darwin.bind(fd, $0, socklen_t(MemoryLayout<sockaddr_in>.size))
+📎            }
+📎        }
+📎        return bound != -1 && listen(fd, SOMAXCONN) != -1
+📎    }
+📎} of 461 lines
+[3] edit_file: Replaced 1 occurrence in /Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrXMac/Sources/Radio.swift [verified: true]
+
+📎import Foundation
+📎import AVFoundation
+📎import MediaPlayer
+📎import Combine
+📎import StarPlayrRadioKit
+📎
+📎struct Channel: Identifiable, Hashable {
+📎    let id: String          // channel number
+📎    let name: String
+📎    let category: String
+📎    let imageURL: String
+📎    var xtraID: String? = nil   // set for Xtra channels (streamed track by track)
+📎}
+📎
+📎struct NowPlaying: Equatable {
+📎    var artist = ""
+📎    var song = ""
+📎    var image = ""
+📎}
+📎
+📎@MainActor
+📎final class Radio: ObservableObject {
+📎    static let shared = Radio()
+📎
+📎    @Published var status = "Not signed in"
+📎    @Published var isBusy = false
+📎    @Published var isLoggedIn = false
+📎    @Published var isPlaying = false
+📎    @Published var channels = [Channel]()
+📎    @Published var current: Channel?
+📎    @Published var nowPlaying = [String: NowPlaying]()
+📎    @Published var localeIsCA = UserDefaults.standard.bool(forKey: "localeIsCA")
+📎
+📎    private var port: UInt16 = 9999
+📎    private var serverStarted = false
+📎    private let player = AVPlayer()
+📎    private var pdtTimer: Timer?
+📎
+📎    // Xtra channels: tracks are downloaded, decrypted and queued one after another.
+📎    private let xtra = XtraClient()
+📎    private let xtraPlayer = AVQueuePlayer()
+📎    private var xtraTask: Task<Void, Never>?
+📎    private var xtraTracks = [AVPlayerItem: XtraTrack]()
+📎    private var xtraNowPlaying = [String: NowPlaying]()
+📎    private var xtraObserver: AnyCancellable?
+📎    private var xtraPeekedAt = [String: Date]()
+📎    private var xtraPeekedTrack = [String: XtraTrack]()  // what the channel list shows, played first on tune
+📎    private var xtraPeeking = false
+📎    private let xtraFolder = FileManager.default.temporaryDirectory.appendingPathComponent("StarPlayrXtra")
+📎
+📎    private var base: String { "http://127.0.0.1:\(port)/api/v3" }
+📎
+📎    private init() {
+📎        setupRemoteCommands()
+📎        xtraObserver = xtraPlayer.publisher(for: \.currentItem)
+📎            .receive(on: DispatchQueue.main)
+📎            .sink { _ in Task { @MainActor in Radio.shared.xtraItemChanged() } }
+📎    }
+📎
+📎    // MARK: Server
+📎
+📎    private func startServerIfNeeded() async {
+📎        if serverStarted, await text("ping") == "pong" { return }
+📎        for p in port..<65000 where portIsOpen(UInt16(p)) {
+📎            port = UInt16(p)
+📎            break
+📎        }
+📎        startServer(port)
+📎        preflightConfig(location: localeIsCA ? "CA" : "US")
+📎        for _ in 0..<20 {
+📎            if await text("ping") == "pong" { break }
+📎            try? await Task.sleep(nanoseconds: 100_000_000)
+📎        }
+📎        serverStarted = true
+📎    }
+📎
+📎    // MARK: Login
+📎
+📎    func login(user: String, pass: String) async -> Bool {
+📎        isBusy = true
+📎        defer { isBusy = false }
+📎        status = "Starting…"
+📎        await startServerIfNeeded()
+📎        _ = await text(localeIsCA ? "ca" : "us")
+📎
+📎        status = "Signing in…"
+📎        let result = await post("login", ["user": user, "pass": pass])
+📎        // StarPlayrRadioKit caches the password in UserDefaults; the Mac app keeps it only in the Keychain.
+📎        UserDefaults.standard.removeObject(forKey: "pass")
+📎
+📎        guard let result, result["success"] as? Bool == true else {
+📎            status = (result?["message"] as? String) ?? "Login failed. Check your connection."
+📎            return false
+📎        }
+📎        Keychain.save(user: user, pass: pass)
+📎
+📎        status = "Loading channels…"
+📎        _ = await post("session", ["channelid": "siriushits1"])
+📎        guard let data = await post("channels", ["channeltype": ""])?["data"] as? [String: Any], !data.isEmpty else {
+📎            status = "Error reading channels."
+📎            return false
+📎        }
+📎
+📎        channels = data.compactMap { key, value in
+📎            guard let v = value as? [String: Any],
+📎                  let number = v["channelNumber"] as? String,
+📎                  var name = v["name"] as? String else { return nil }
+📎            for prefix in ["SiriusXM ", "Sirius XM ", "Sirius ", "SXM ", "SPX "] {
+📎                name = name.replacingOccurrences(of: prefix, with: "")
+📎            }
+📎            return Channel(id: number, name: name,
+📎                           category: v["category"] as? String ?? "",
+📎                           imageURL: v["mediumImage"] as? String ?? "")
+📎        }
+📎        .sorted { $0.id.localizedStandardCompare($1.id) == .orderedAscending }
+📎
+📎        isLoggedIn = true
+📎        status = "Signed in"
+📎        if let last = UserDefaults.standard.string(forKey: "lastChannel") {
+📎            current = channels.first { $0.id == last }
+📎        }
+📎        await updatePDT()
+📎        startPDTTimer()
+📎        Task { await loadXtraChannels(user: user, pass: pass) }
+📎        return true
+📎    }
+📎
+📎    /// Xtra channels come from SiriusXM's newer API; if that fails the live channels still work.
+📎    private func loadXtraChannels(user: String, pass: String) async {
+📎        defer { if isLoggedIn { channelsLoaded = true } }
+📎        do {
+📎            try await xtra.signIn(user: user, pass: pass)
+📎            let xtras = try await xtra.channels().map {
+📎                Channel(id: $0.number, name: $0.name, category: $0.genre, imageURL: $0.imageURL, xtraID: $0.id)
+📎            }
+📎            guard isLoggedIn else { return }
+📎            let live = Set(channels.map(\.id))
+📎            channels = (channels + xtras.filter { !live.contains($0.id) })
+📎                .sorted { $0.id.localizedStandardCompare($1.id) == .orderedAscending }
+📎            if current == nil, let last = UserDefaults.standard.string(forKey: "lastChannel") {
+📎                current = channels.first { $0.id == last }
+📎            }
+📎            await refreshXtraNowPlaying()
+📎        } catch {
+📎            print("Xtra channels unavailable: \(error.localizedDescription)")
+📎        }
+📎    }
+📎
+📎    func signOut() {
+📎        stop()
+📎        pdtTimer?.invalidate()
+📎        Keychain.delete()
+📎        Task { await xtra.signOut() }
+📎        isLoggedIn = false
+📎        channels
+✅Loaded = false
+✅        channels
+📎 = []
+📎        current = nil
+📎        status = "Not signed in"
+📎    }
+📎
+📎    func setRegion(ca: Bool) {
+📎        localeIsCA = ca
+📎        UserDefaults.standard.set(ca, forKey: "localeIsCA")
+📎        if serverStarted { Task { _ = await text(ca ? "ca" : "us") } }
+📎    }
+📎
+📎    // MARK: Playback
+📎
+📎    func play(_ channel: Channel) {
+📎        haltXtra()
+📎        current = channel
+📎        UserDefaults.standard.set(channel.id, forKey: "lastChannel")
+📎        if let xtraID = channel.xtraID {
+📎            player.pause()
+📎            player.replaceCurrentItem(with: nil)
+📎            playXtra(channel, id: xtraID)
+📎            return
+📎        }
+📎        Task {
+📎            await startServerIfNeeded()
+📎            guard let url = URL(string: "http://localhost:\(port)/api/v3/m3u/\(channel.id).m3u8") else { return }
+📎            player.replaceCurrentItem(with: AVPlayerItem(url: url))
+📎            player.play()
+📎            isPlaying = true
+📎            await updatePDT()
+📎        }
+📎    }
+📎
+📎    func togglePlayPause() {
+📎        if isPlaying { stop() } else if let current { play(current) }
+📎    }
+📎
+📎    func stop() {
+📎        player.pause()
+📎        player.replaceCurrentItem(with: nil)
+📎        haltXtra()
+📎        isPlaying = false
+📎        updateNowPlayingInfo()
+📎    }
+📎
+📎    // MARK: Xtra playback
+📎
+📎    private func playXtra(_ channel: Channel, id: String) {
+📎        isPlaying = true
+📎        // Tuning again returns a different track than the peek, so start with the peeked track
+📎        // the channel list is showing (from its beginning), then continue with the tuned queue.
+📎        let peeked = xtraPeekedTrack.removeValue(forKey: channel.id).map {
+📎            XtraTrack(id: $0.id, artist: $0.artist, title: $0.title, url: $0.url, keyID: $0.keyID,
+📎                      imageURL: $0.imageURL, startOffset: 0)
+📎        }
+📎        print("XTRA play \(channel.id) shown=\(nowPlaying[channel.id]?.song ?? "nil") peeked=\(peeked?.title ?? "nil")")
+📎        if peeked == nil {
+📎            xtraNowPlaying[channel.id] = nil
+📎            nowPlaying[channel.id] = nil
+📎        }
+📎        updateNowPlayingInfo()
+📎        xtraTask = Task {
+📎            var pending = [XtraTrack]()
+📎            var token: String?
+📎            var seen = Set<String>()
+📎            var first = true
+📎            if let peeked {
+📎                seen.insert(peeked.id)
+📎                do {
+📎                    let file = try await xtra.download(peeked, into: xtraFolder)
+📎                    if !Task.isCancelled {
+📎                        let item = AVPlayerItem(url: file)
+📎                        xtraTracks[item] = peeked
+📎                        xtraPlayer.insert(item, after: nil)
+📎                        first = false
+📎                        xtraPlayer.play()
+📎                        xtraItemChanged()
+📎                    }
+📎                } catch {
+📎                    print("XTRA peeked download failed \(channel.id) \(peeked.title): \(error.localizedDescription) url=\(peeked.url)")
+📎                }
+📎            }
+📎            do {
+📎                while !Task.isCancelled {
+📎                    // Keep one track playing and one ready behind it.
+📎                    if xtraPlayer.items().count > 1 {
+📎                        try await Task.sleep(nanoseconds: 2_000_000_000)
+📎                        continue
+📎                    }
+📎                    if pending.isEmpty {
+📎                        let batch = try await xtra.tune(channelID: id, sequenceToken: token)
+📎                        token = batch.token
+📎                        pending = batch.tracks.filter { seen.insert($0.id).inserted }
+📎                        if pending.isEmpty { try await Task.sleep(nanoseconds: 5_000_000_000); continue }
+📎                    }
+📎                    let track = pending.removeFirst()
+📎                    let file = try await xtra.download(track, into: xtraFolder)
+📎                    guard !Task.isCancelled else { break }
+📎                    let item = AVPlayerItem(url: file)
+📎                    xtraTracks[item] = track
+📎                    xtraPlayer.insert(item, after: nil)
+📎                    if first {
+📎                        first = false
+📎                        if track.startOffset > 0 {
+📎                            await xtraPlayer.seek(to: CMTime(seconds: track.startOffset, preferredTimescale: 1000))
+📎                        }
+📎                        xtraPlayer.play()
+📎                        xtraItemChanged()
+📎                    }
+📎                }
+📎            } catch is CancellationError {
+📎            } catch {
+📎                print("Xtra playback error: \(error.localizedDescription)")
+📎                if first, current == channel { stop() }
+📎            }
+📎        }
+📎    }
+📎
+📎    private func haltXtra() {
+📎        // The list keeps showing the song that was playing, so tuning back in should play that song.
+📎        if let item = xtraPlayer.currentItem, let track = xtraTracks[item], let current, current.xtraID != nil {
+📎            xtraPeekedTrack[current.id] = track
+📎        }
+📎        xtraTask?.cancel()
+📎        xtraTask = nil
+📎        xtraPlayer.pause()
+📎        xtraPlayer.removeAllItems()
+📎        xtraTracks = [:]
+📎        try? FileManager.default.removeItem(at: xtraFolder)
+📎    }
+📎
+📎    /// Shows the queued track that just started and deletes files of tracks that have finished.
+📎    fileprivate func xtraItemChanged() {
+📎        let queued = Set(xtraPlayer.items())
+📎        for (item, track) in xtraTracks where !queued.contains(item) {
+📎            xtraTracks[item] = nil
+📎            try? FileManager.default.removeItem(at: xtraFolder.appendingPathComponent("\(track.id).aac"))
+📎        }
+📎        guard let item = xtraPlayer.currentItem, let track = xtraTracks[item], let current, current.xtraID != nil else { return }
+📎        print("XTRA playing \(current.id) \(track.artist) – \(track.title)")
+📎        let np = NowPlaying(artist: track.artist, song: track.title, image: track.imageURL)
+📎        xtraNowPlaying[current.id] = np
+📎        nowPlaying[current.id] = np
+📎        updateNowPlayingInfo()
+📎    }
+📎
+📎    // MARK: Now playing (PDT)
+📎
+📎    private func startPDTTimer() {
+📎        pdtTimer?.invalidate()
+📎        pdtTimer = Timer.scheduledTimer(withTimeInterval: 15, repeats: true) { _ in
+📎            Task { @MainActor in await Radio.shared.updatePDT() }
+📎        }
+📎    }
+📎
+📎    func updatePDT() async {
+📎        guard let cache = await get("pdt")?["data"] as? [String: Any] else { return }
+📎        var np = [String: NowPlaying]()
+📎        for (key, value) in cache {
+📎            if let v = value as? [String: String] {
+📎                np[key] = NowPlaying(artist: v["artist"] ?? "", song: v["song"] ?? "", image: v["image"] ?? "")
+📎            }
+📎        }
+📎        nowPlaying = np.merging(xtraNowPlaying) { live, _ in live }
+📎        updateNowPlayingInfo()
+📎        Task { await refreshXtraNowPlaying() }
+📎    }
+📎
+📎    /// Xtra channels have no PDT feed, so ask each idle one what it would play if tuned now.
+📎    /// Channels never peeked are all filled at once; after that the stalest are refreshed
+📎    /// a batch at a time on every PDT tick. Each result is shown as soon as it arrives.
+📎    private func refreshXtraNowPlaying() async {
+📎        guard isLoggedIn, !xtraPeeking else { return }
+📎        xtraPeeking = true
+📎        defer { xtraPeeking = false }
+📎        let stale = Date().addingTimeInterval(-180)
+📎        let idle = channels.filter { $0.xtraID != nil && !isPlayingXtra($0.id) }
+📎        let unpeeked = idle.filter { xtraPeekedAt[$0.id] == nil }
+📎        let batch = !unpeeked.isEmpty ? unpeeked : Array(idle
+📎            .filter { xtraPeekedAt[$0.id]! < stale }
+📎            .sorted { xtraPeekedAt[$0.id]! < xtraPeekedAt[$1.id]! }
+📎            .prefix(30))
+📎        guard !batch.isEmpty else { return }
+📎        let client = xtra
+📎        await withTaskGroup(of: (String, XtraTrack?).self) { group in
+📎            for (i, ch) in batch.enumerated() {
+📎                if i >= 12, let r = await group.next() { applyXtraPeek(r.0, r.1) }
+📎                group.addTask { (ch.id, try? await client.peek(channelID: ch.xtraID!)) }
+📎            }
+📎            for await r in group { applyXtraPeek(r.0, r.1) }
+📎        }
+📎    }
+📎
+📎    /// Peek results arrive many per second; publishing each one redraws the whole channel
+📎    /// list and stalls scrolling, so they're batched and published at most every 2 seconds.
+📎    private func applyXtraPeek(_ id: String, _ track: XtraTrack?) {
+📎        guard isLoggedIn else { return }
+📎        xtraPeekedAt[id] = Date()
+📎        guard let track, !isPlayingXtra(id) else { return }
+📎        // The played track, xtraNowPlaying and the list text are committed together on flush,
+📎        // so tapping a channel always plays the song its row is showing.
+📎        pendingPeeks[id] = track
+📎        guard !peekFlushScheduled else { return }
+📎        peekFlushScheduled = true
+📎        Task {
+📎            try? await Task.sleep(for: .seconds(2))
+📎            peekFlushScheduled = false
+📎            let tracks = pendingPeeks.filter { !isPlayingXtra($0.key) }
+📎            pendingPeeks.removeAll()
+📎            guard isLoggedIn, !tracks.isEmpty else { return }
+📎            let batch = tracks.mapValues { NowPlaying(artist: $0.artist, song: $0.title, image: $0.imageURL) }
+📎            xtraPeekedTrack.merge(tracks) { _, new in new }
+📎            xtraNowPlaying.merge(batch) { _, new in new }
+📎            nowPlaying.merge(batch) { _, new in new }
+📎        }
+📎    }
+📎    private var pendingPeeks = [String: XtraTrack]()
+📎    private var peekFlushScheduled = false
+📎
+📎    /// What is actually coming out of the speakers: the Xtra track in the player, or the live channel's PDT.
+📎    var playingNow: NowPlaying? {
+📎        guard isPlaying, let current else { return nil }
+📎        guard current.xtraID != nil else { return nowPlaying[current.id] }
+📎        guard let item = xtraPlayer.currentItem, let track = xtraTracks[item] else { return nil }
+📎        return NowPlaying(artist: track.artist, song: track.title, image: track.imageURL)
+📎    }
+📎
+📎    private func isPlayingXtra(_ id: String) -> Bool {
+📎        isPlaying && current?.id == id && current?.xtraID != nil
+📎    }
+📎
+📎    private func updateNowPlayingInfo() {
+📎        let center = MPNowPlayingInfoCenter.default()
+📎        guard let current else { center.nowPlayingInfo = nil; return }
+📎        let np = nowPlaying[current.id]
+📎        center.nowPlayingInfo = [
+📎            MPMediaItemPropertyTitle: np?.song ?? current.name,
+📎            MPMediaItemPropertyArtist: np?.artist ?? "",
+📎            MPMediaItemPropertyAlbumTitle: current.name,
+📎            MPNowPlayingInfoPropertyIsLiveStream: true
+📎        ]
+📎        center.playbackState = isPlaying ? .playing : .paused
+📎    }
+📎
+📎    private func setupRemoteCommands() {
+📎        let cc = MPRemoteCommandCenter.shared()
+📎        cc.playCommand.addTarget { _ in
+📎            Task { @MainActor in if let c = Radio.shared.current { Radio.shared.play(c) } }
+📎            return .success
+📎        }
+📎        cc.pauseCommand.addTarget { _ in
+📎            Task { @MainActor in Radio.shared.stop() }
+📎            return .success
+📎        }
+📎        cc.togglePlayPauseCommand.addTarget { _ in
+📎            Task { @MainActor in Radio.shared.togglePlayPause() }
+📎            return .success
+📎        }
+📎    }
+📎
+📎    // MARK: Local server HTTP helpers
+📎
+📎    private func text(_ path: String) async -> String? {
+📎        guard let url = URL(string: "\(base)/\(path)") else { return nil }
+📎        var req = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalAndRemoteCacheData, timeoutInterval: 2)
+📎        req.httpMethod = "GET"
+📎        guard let (data, _) = try? await URLSession.shared.data(for: req) else { return nil }
+📎        return String(data: data, encoding: .utf8)
+📎    }
+📎
+📎    private func get(_ path: String) async -> [String: Any]? {
+📎        guard let url = URL(string: "\(base)/\(path)") else { return nil }
+📎        let req = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalAndRemoteCacheData, timeoutInterval: 60)
+📎        guard let (data, _) = try? await URLSession.shared.data(for: req) else { return nil }
+📎        return (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
+📎    }
+📎
+📎    private func post(_ path: String, _ body: [String: Any]) async -> [String: Any]? {
+📎        guard let url = URL(string: "\(base)/\(path)") else { return nil }
+📎        var req = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalAndRemoteCacheData, timeoutInterval: 60)
+📎        req.httpMethod = "POST"
+📎        req.httpBody = try? JSONSerialization.data(withJSONObject: body)
+📎        req.addValue("application/json", forHTTPHeaderField: "Content-Type")
+📎        guard let (data, _) = try? await URLSession.shared.data(for: req) else { return nil }
+📎        return (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
+📎    }
+📎
+📎    // MARK: Port finder
+📎
+📎    private func portIsOpen(_ port: in_port_t) -> Bool {
+📎        let fd = socket(AF_INET, SOCK_STREAM, 0)
+📎        guard fd != -1 else { return false }
+📎        defer { Darwin.shutdown(fd, SHUT_RDWR); close(fd) }
+📎
+📎        var addr = sockaddr_in()
+📎        addr.sin_len = __uint8_t(MemoryLayout<sockaddr_in>.size)
+📎        addr.sin_family = sa_family_t(AF_INET)
+📎        addr.sin_port = port.bigEndian
+📎        addr.sin_addr = in_addr(s_addr: inet_addr("127.0.0.1"))
+📎
+📎        let bound = withUnsafePointer(to: &addr) {
+📎            $0.withMemoryRebound(to: sockaddr.self, capacity: 1) {
+📎                Darwin.bind(fd, $0, socklen_t(MemoryLayout<sockaddr_in>.size))
+📎            }
+📎        }
+📎        return bound != -1 && listen(fd, SOMAXCONN) != -1
+📎    }
+📎} of 462 lines
+[4] edit_file: Replaced 1 occurrence in /Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrXMac/Sources/Radio.swift [verified: true]
+
+📎import Foundation
+📎import AVFoundation
+📎import MediaPlayer
+📎import Combine
+📎import StarPlayrRadioKit
+📎
+📎struct Channel: Identifiable, Hashable {
+📎    let id: String          // channel number
+📎    let name: String
+📎    let category: String
+📎    let imageURL: String
+📎    var xtraID: String? = nil   // set for Xtra channels (streamed track by track)
+📎}
+📎
+📎struct NowPlaying: Equatable {
+📎    var artist = ""
+📎    var song = ""
+📎    var image = ""
+📎}
+📎
+📎@MainActor
+📎final class Radio: ObservableObject {
+📎    static let shared = Radio()
+📎
+📎    @Published var status = "Not signed in"
+📎    @Published var isBusy = false
+📎    @Published var isLoggedIn = false
+📎    @Published var isPlaying = false
+📎    @Published var channels = [Channel]()
+📎    @Published var current: Channel?
+📎    @Published var nowPlaying = [String: NowPlaying]()
+📎    @Published var localeIsCA = UserDefaults.standard.bool(forKey: "localeIsCA")
+📎
+📎    private var port: UInt16 = 9999
+📎    private var serverStarted = false
+📎    private let player = AVPlayer()
+📎    private var pdtTimer: Timer?
+📎
+📎    // Xtra channels: tracks are downloaded, decrypted and queued one after another.
+📎    private let xtra = XtraClient()
+📎    private let xtraPlayer = AVQueuePlayer()
+📎    private var xtraTask: Task<Void, Never>?
+📎    private var xtraTracks = [AVPlayerItem: XtraTrack]()
+📎    private var xtraNowPlaying = [String: NowPlaying]()
+📎    private var xtraObserver: AnyCancellable?
+📎    private var xtraPeekedAt = [String: Date]()
+📎    private var xtraPeekedTrack = [String: XtraTrack]()  // what the channel list shows, played first on tune
+📎    private var xtraPeeking = false
+📎    private let xtraFolder = FileManager.default.temporaryDirectory.appendingPathComponent("StarPlayrXtra")
+📎
+📎    private var base: String { "http://127.0.0.1:\(port)/api/v3" }
+📎
+📎    private init() {
+📎        setupRemoteCommands()
+📎        xtraObserver = xtraPlayer.publisher(for: \.currentItem)
+📎            .receive(on: DispatchQueue.main)
+📎            .sink { _ in Task { @MainActor in Radio.shared.xtraItemChanged() } }
+📎    }
+📎
+📎    // MARK: Server
+📎
+📎    private func startServerIfNeeded() async {
+📎        if serverStarted, await text("ping") == "pong" { return }
+📎        for p in port..<65000 where portIsOpen(UInt16(p)) {
+📎            port = UInt16(p)
+📎            break
+📎        }
+📎        startServer(port)
+📎        preflightConfig(location: localeIsCA ? "CA" : "US")
+📎        for _ in 0..<20 {
+📎            if await text("ping") == "pong" { break }
+📎            try? await Task.sleep(nanoseconds: 100_000_000)
+📎        }
+📎        serverStarted = true
+📎    }
+📎
+📎    // MARK: Login
+📎
+📎    func login(user: String, pass: String) async -> Bool {
+📎        isBusy = true
+📎        
+✅channelsLoaded = false
+✅        
+📎defer { isBusy = false }
+📎        status = "Starting…"
+📎        await startServerIfNeeded()
+📎        _ = await text(localeIsCA ? "ca" : "us")
+📎
+📎        status = "Signing in…"
+📎        let result = await post("login", ["user": user, "pass": pass])
+📎        // StarPlayrRadioKit caches the password in UserDefaults; the Mac app keeps it only in the Keychain.
+📎        UserDefaults.standard.removeObject(forKey: "pass")
+📎
+📎        guard let result, result["success"] as? Bool == true else {
+📎            status = (result?["message"] as? String) ?? "Login failed. Check your connection."
+📎            return false
+📎        }
+📎        Keychain.save(user: user, pass: pass)
+📎
+📎        status = "Loading channels…"
+📎        _ = await post("session", ["channelid": "siriushits1"])
+📎        guard let data = await post("channels", ["channeltype": ""])?["data"] as? [String: Any], !data.isEmpty else {
+📎            status = "Error reading channels."
+📎            return false
+📎        }
+📎
+📎        channels = data.compactMap { key, value in
+📎            guard let v = value as? [String: Any],
+📎                  let number = v["channelNumber"] as? String,
+📎                  var name = v["name"] as? String else { return nil }
+📎            for prefix in ["SiriusXM ", "Sirius XM ", "Sirius ", "SXM ", "SPX "] {
+📎                name = name.replacingOccurrences(of: prefix, with: "")
+📎            }
+📎            return Channel(id: number, name: name,
+📎                           category: v["category"] as? String ?? "",
+📎                           imageURL: v["mediumImage"] as? String ?? "")
+📎        }
+📎        .sorted { $0.id.localizedStandardCompare($1.id) == .orderedAscending }
+📎
+📎        isLoggedIn = true
+📎        status = "Signed in"
+📎        if let last = UserDefaults.standard.string(forKey: "lastChannel") {
+📎            current = channels.first { $0.id == last }
+📎        }
+📎        await updatePDT()
+📎        startPDTTimer()
+📎        Task { await loadXtraChannels(user: user, pass: pass) }
+📎        return true
+📎    }
+📎
+📎    /// Xtra channels come from SiriusXM's newer API; if that fails the live channels still work.
+📎    private func loadXtraChannels(user: String, pass: String) async {
+📎        defer { if isLoggedIn { channelsLoaded = true } }
+📎        do {
+📎            try await xtra.signIn(user: user, pass: pass)
+📎            let xtras = try await xtra.channels().map {
+📎                Channel(id: $0.number, name: $0.name, category: $0.genre, imageURL: $0.imageURL, xtraID: $0.id)
+📎            }
+📎            guard isLoggedIn else { return }
+📎            let live = Set(channels.map(\.id))
+📎            channels = (channels + xtras.filter { !live.contains($0.id) })
+📎                .sorted { $0.id.localizedStandardCompare($1.id) == .orderedAscending }
+📎            if current == nil, let last = UserDefaults.standard.string(forKey: "lastChannel") {
+📎                current = channels.first { $0.id == last }
+📎            }
+📎            await refreshXtraNowPlaying()
+📎        } catch {
+📎            print("Xtra channels unavailable: \(error.localizedDescription)")
+📎        }
+📎    }
+📎
+📎    func signOut() {
+📎        stop()
+📎        pdtTimer?.invalidate()
+📎        Keychain.delete()
+📎        Task { await xtra.signOut() }
+📎        isLoggedIn = false
+📎        channelsLoaded = false
+📎        channels = []
+📎        current = nil
+📎        status = "Not signed in"
+📎    }
+📎
+📎    func setRegion(ca: Bool) {
+📎        localeIsCA = ca
+📎        UserDefaults.standard.set(ca, forKey: "localeIsCA")
+📎        if serverStarted { Task { _ = await text(ca ? "ca" : "us") } }
+📎    }
+📎
+📎    // MARK: Playback
+📎
+📎    func play(_ channel: Channel) {
+📎        haltXtra()
+📎        current = channel
+📎        UserDefaults.standard.set(channel.id, forKey: "lastChannel")
+📎        if let xtraID = channel.xtraID {
+📎            player.pause()
+📎            player.replaceCurrentItem(with: nil)
+📎            playXtra(channel, id: xtraID)
+📎            return
+📎        }
+📎        Task {
+📎            await startServerIfNeeded()
+📎            guard let url = URL(string: "http://localhost:\(port)/api/v3/m3u/\(channel.id).m3u8") else { return }
+📎            player.replaceCurrentItem(with: AVPlayerItem(url: url))
+📎            player.play()
+📎            isPlaying = true
+📎            await updatePDT()
+📎        }
+📎    }
+📎
+📎    func togglePlayPause() {
+📎        if isPlaying { stop() } else if let current { play(current) }
+📎    }
+📎
+📎    func stop() {
+📎        player.pause()
+📎        player.replaceCurrentItem(with: nil)
+📎        haltXtra()
+📎        isPlaying = false
+📎        updateNowPlayingInfo()
+📎    }
+📎
+📎    // MARK: Xtra playback
+📎
+📎    private func playXtra(_ channel: Channel, id: String) {
+📎        isPlaying = true
+📎        // Tuning again returns a different track than the peek, so start with the peeked track
+📎        // the channel list is showing (from its beginning), then continue with the tuned queue.
+📎        let peeked = xtraPeekedTrack.removeValue(forKey: channel.id).map {
+📎            XtraTrack(id: $0.id, artist: $0.artist, title: $0.title, url: $0.url, keyID: $0.keyID,
+📎                      imageURL: $0.imageURL, startOffset: 0)
+📎        }
+📎        print("XTRA play \(channel.id) shown=\(nowPlaying[channel.id]?.song ?? "nil") peeked=\(peeked?.title ?? "nil")")
+📎        if peeked == nil {
+📎            xtraNowPlaying[channel.id] = nil
+📎            nowPlaying[channel.id] = nil
+📎        }
+📎        updateNowPlayingInfo()
+📎        xtraTask = Task {
+📎            var pending = [XtraTrack]()
+📎            var token: String?
+📎            var seen = Set<String>()
+📎            var first = true
+📎            if let peeked {
+📎                seen.insert(peeked.id)
+📎                do {
+📎                    let file = try await xtra.download(peeked, into: xtraFolder)
+📎                    if !Task.isCancelled {
+📎                        let item = AVPlayerItem(url: file)
+📎                        xtraTracks[item] = peeked
+📎                        xtraPlayer.insert(item, after: nil)
+📎                        first = false
+📎                        xtraPlayer.play()
+📎                        xtraItemChanged()
+📎                    }
+📎                } catch {
+📎                    print("XTRA peeked download failed \(channel.id) \(peeked.title): \(error.localizedDescription) url=\(peeked.url)")
+📎                }
+📎            }
+📎            do {
+📎                while !Task.isCancelled {
+📎                    // Keep one track playing and one ready behind it.
+📎                    if xtraPlayer.items().count > 1 {
+📎                        try await Task.sleep(nanoseconds: 2_000_000_000)
+📎                        continue
+📎                    }
+📎                    if pending.isEmpty {
+📎                        let batch = try await xtra.tune(channelID: id, sequenceToken: token)
+📎                        token = batch.token
+📎                        pending = batch.tracks.filter { seen.insert($0.id).inserted }
+📎                        if pending.isEmpty { try await Task.sleep(nanoseconds: 5_000_000_000); continue }
+📎                    }
+📎                    let track = pending.removeFirst()
+📎                    let file = try await xtra.download(track, into: xtraFolder)
+📎                    guard !Task.isCancelled else { break }
+📎                    let item = AVPlayerItem(url: file)
+📎                    xtraTracks[item] = track
+📎                    xtraPlayer.insert(item, after: nil)
+📎                    if first {
+📎                        first = false
+📎                        if track.startOffset > 0 {
+📎                            await xtraPlayer.seek(to: CMTime(seconds: track.startOffset, preferredTimescale: 1000))
+📎                        }
+📎                        xtraPlayer.play()
+📎                        xtraItemChanged()
+📎                    }
+📎                }
+📎            } catch is CancellationError {
+📎            } catch {
+📎                print("Xtra playback error: \(error.localizedDescription)")
+📎                if first, current == channel { stop() }
+📎            }
+📎        }
+📎    }
+📎
+📎    private func haltXtra() {
+📎        // The list keeps showing the song that was playing, so tuning back in should play that song.
+📎        if let item = xtraPlayer.currentItem, let track = xtraTracks[item], let current, current.xtraID != nil {
+📎            xtraPeekedTrack[current.id] = track
+📎        }
+📎        xtraTask?.cancel()
+📎        xtraTask = nil
+📎        xtraPlayer.pause()
+📎        xtraPlayer.removeAllItems()
+📎        xtraTracks = [:]
+📎        try? FileManager.default.removeItem(at: xtraFolder)
+📎    }
+📎
+📎    /// Shows the queued track that just started and deletes files of tracks that have finished.
+📎    fileprivate func xtraItemChanged() {
+📎        let queued = Set(xtraPlayer.items())
+📎        for (item, track) in xtraTracks where !queued.contains(item) {
+📎            xtraTracks[item] = nil
+📎            try? FileManager.default.removeItem(at: xtraFolder.appendingPathComponent("\(track.id).aac"))
+📎        }
+📎        guard let item = xtraPlayer.currentItem, let track = xtraTracks[item], let current, current.xtraID != nil else { return }
+📎        print("XTRA playing \(current.id) \(track.artist) – \(track.title)")
+📎        let np = NowPlaying(artist: track.artist, song: track.title, image: track.imageURL)
+📎        xtraNowPlaying[current.id] = np
+📎        nowPlaying[current.id] = np
+📎        updateNowPlayingInfo()
+📎    }
+📎
+📎    // MARK: Now playing (PDT)
+📎
+📎    private func startPDTTimer() {
+📎        pdtTimer?.invalidate()
+📎        pdtTimer = Timer.scheduledTimer(withTimeInterval: 15, repeats: true) { _ in
+📎            Task { @MainActor in await Radio.shared.updatePDT() }
+📎        }
+📎    }
+📎
+📎    func updatePDT() async {
+📎        guard let cache = await get("pdt")?["data"] as? [String: Any] else { return }
+📎        var np = [String: NowPlaying]()
+📎        for (key, value) in cache {
+📎            if let v = value as? [String: String] {
+📎                np[key] = NowPlaying(artist: v["artist"] ?? "", song: v["song"] ?? "", image: v["image"] ?? "")
+📎            }
+📎        }
+📎        nowPlaying = np.merging(xtraNowPlaying) { live, _ in live }
+📎        updateNowPlayingInfo()
+📎        Task { await refreshXtraNowPlaying() }
+📎    }
+📎
+📎    /// Xtra channels have no PDT feed, so ask each idle one what it would play if tuned now.
+📎    /// Channels never peeked are all filled at once; after that the stalest are refreshed
+📎    /// a batch at a time on every PDT tick. Each result is shown as soon as it arrives.
+📎    private func refreshXtraNowPlaying() async {
+📎        guard isLoggedIn, !xtraPeeking else { return }
+📎        xtraPeeking = true
+📎        defer { xtraPeeking = false }
+📎        let stale = Date().addingTimeInterval(-180)
+📎        let idle = channels.filter { $0.xtraID != nil && !isPlayingXtra($0.id) }
+📎        let unpeeked = idle.filter { xtraPeekedAt[$0.id] == nil }
+📎        let batch = !unpeeked.isEmpty ? unpeeked : Array(idle
+📎            .filter { xtraPeekedAt[$0.id]! < stale }
+📎            .sorted { xtraPeekedAt[$0.id]! < xtraPeekedAt[$1.id]! }
+📎            .prefix(30))
+📎        guard !batch.isEmpty else { return }
+📎        let client = xtra
+📎        await withTaskGroup(of: (String, XtraTrack?).self) { group in
+📎            for (i, ch) in batch.enumerated() {
+📎                if i >= 12, let r = await group.next() { applyXtraPeek(r.0, r.1) }
+📎                group.addTask { (ch.id, try? await client.peek(channelID: ch.xtraID!)) }
+📎            }
+📎            for await r in group { applyXtraPeek(r.0, r.1) }
+📎        }
+📎    }
+📎
+📎    /// Peek results arrive many per second; publishing each one redraws the whole channel
+📎    /// list and stalls scrolling, so they're batched and published at most every 2 seconds.
+📎    private func applyXtraPeek(_ id: String, _ track: XtraTrack?) {
+📎        guard isLoggedIn else { return }
+📎        xtraPeekedAt[id] = Date()
+📎        guard let track, !isPlayingXtra(id) else { return }
+📎        // The played track, xtraNowPlaying and the list text are committed together on flush,
+📎        // so tapping a channel always plays the song its row is showing.
+📎        pendingPeeks[id] = track
+📎        guard !peekFlushScheduled else { return }
+📎        peekFlushScheduled = true
+📎        Task {
+📎            try? await Task.sleep(for: .seconds(2))
+📎            peekFlushScheduled = false
+📎            let tracks = pendingPeeks.filter { !isPlayingXtra($0.key) }
+📎            pendingPeeks.removeAll()
+📎            guard isLoggedIn, !tracks.isEmpty else { return }
+📎            let batch = tracks.mapValues { NowPlaying(artist: $0.artist, song: $0.title, image: $0.imageURL) }
+📎            xtraPeekedTrack.merge(tracks) { _, new in new }
+📎            xtraNowPlaying.merge(batch) { _, new in new }
+📎            nowPlaying.merge(batch) { _, new in new }
+📎        }
+📎    }
+📎    private var pendingPeeks = [String: XtraTrack]()
+📎    private var peekFlushScheduled = false
+📎
+📎    /// What is actually coming out of the speakers: the Xtra track in the player, or the live channel's PDT.
+📎    var playingNow: NowPlaying? {
+📎        guard isPlaying, let current else { return nil }
+📎        guard current.xtraID != nil else { return nowPlaying[current.id] }
+📎        guard let item = xtraPlayer.currentItem, let track = xtraTracks[item] else { return nil }
+📎        return NowPlaying(artist: track.artist, song: track.title, image: track.imageURL)
+📎    }
+📎
+📎    private func isPlayingXtra(_ id: String) -> Bool {
+📎        isPlaying && current?.id == id && current?.xtraID != nil
+📎    }
+📎
+📎    private func updateNowPlayingInfo() {
+📎        let center = MPNowPlayingInfoCenter.default()
+📎        guard let current else { center.nowPlayingInfo = nil; return }
+📎        let np = nowPlaying[current.id]
+📎        center.nowPlayingInfo = [
+📎            MPMediaItemPropertyTitle: np?.song ?? current.name,
+📎            MPMediaItemPropertyArtist: np?.artist ?? "",
+📎            MPMediaItemPropertyAlbumTitle: current.name,
+📎            MPNowPlayingInfoPropertyIsLiveStream: true
+📎        ]
+📎        center.playbackState = isPlaying ? .playing : .paused
+📎    }
+📎
+📎    private func setupRemoteCommands() {
+📎        let cc = MPRemoteCommandCenter.shared()
+📎        cc.playCommand.addTarget { _ in
+📎            Task { @MainActor in if let c = Radio.shared.current { Radio.shared.play(c) } }
+📎            return .success
+📎        }
+📎        cc.pauseCommand.addTarget { _ in
+📎            Task { @MainActor in Radio.shared.stop() }
+📎            return .success
+📎        }
+📎        cc.togglePlayPauseCommand.addTarget { _ in
+📎            Task { @MainActor in Radio.shared.togglePlayPause() }
+📎            return .success
+📎        }
+📎    }
+📎
+📎    // MARK: Local server HTTP helpers
+📎
+📎    private func text(_ path: String) async -> String? {
+📎        guard let url = URL(string: "\(base)/\(path)") else { return nil }
+📎        var req = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalAndRemoteCacheData, timeoutInterval: 2)
+📎        req.httpMethod = "GET"
+📎        guard let (data, _) = try? await URLSession.shared.data(for: req) else { return nil }
+📎        return String(data: data, encoding: .utf8)
+📎    }
+📎
+📎    private func get(_ path: String) async -> [String: Any]? {
+📎        guard let url = URL(string: "\(base)/\(path)") else { return nil }
+📎        let req = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalAndRemoteCacheData, timeoutInterval: 60)
+📎        guard let (data, _) = try? await URLSession.shared.data(for: req) else { return nil }
+📎        return (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
+📎    }
+📎
+📎    private func post(_ path: String, _ body: [String: Any]) async -> [String: Any]? {
+📎        guard let url = URL(string: "\(base)/\(path)") else { return nil }
+📎        var req = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalAndRemoteCacheData, timeoutInterval: 60)
+📎        req.httpMethod = "POST"
+📎        req.httpBody = try? JSONSerialization.data(withJSONObject: body)
+📎        req.addValue("application/json", forHTTPHeaderField: "Content-Type")
+📎        guard let (data, _) = try? await URLSession.shared.data(for: req) else { return nil }
+📎        return (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
+📎    }
+📎
+📎    // MARK: Port finder
+📎
+📎    private func portIsOpen(_ port: in_port_t) -> Bool {
+📎        let fd = socket(AF_INET, SOCK_STREAM, 0)
+📎        guard fd != -1 else { return false }
+📎        defer { Darwin.shutdown(fd, SHUT_RDWR); close(fd) }
+📎
+📎        var addr = sockaddr_in()
+📎        addr.sin_len = __uint8_t(MemoryLayout<sockaddr_in>.size)
+📎        addr.sin_family = sa_family_t(AF_INET)
+📎        addr.sin_port = port.bigEndian
+📎        addr.sin_addr = in_addr(s_addr: inet_addr("127.0.0.1"))
+📎
+📎        let bound = withUnsafePointer(to: &addr) {
+📎            $0.withMemoryRebound(to: sockaddr.self, capacity: 1) {
+📎                Darwin.bind(fd, $0, socklen_t(MemoryLayout<sockaddr_in>.size))
+📎            }
+📎        }
+📎        return bound != -1 && listen(fd, SOMAXCONN) != -1
+📎    }
+📎} of 463 lines
+[5] edit_file: Replaced 1 occurrence in /Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrXMac/Sources/Radio.swift [verified: true]
+
+📎import Foundation
+📎import AVFoundation
+📎import MediaPlayer
+📎import Combine
+📎import StarPlayrRadioKit
+📎
+📎struct Channel: Identifiable, Hashable {
+📎    let id: String          // channel number
+📎    let name: String
+📎    let category: String
+📎    let imageURL: String
+📎    var xtraID: String? = nil   // set for Xtra channels (streamed track by track)
+📎}
+📎
+📎struct NowPlaying: Equatable {
+📎    var artist = ""
+📎    var song = ""
+📎    var image = ""
+📎}
+📎
+📎@MainActor
+📎final class Radio: ObservableObject {
+📎    static let shared = Radio()
+📎
+📎    @Published var status = "Not signed in"
+📎    @Published var isBusy = false
+📎    @Published var isLoggedIn = false
+📎    @Published var isPlaying = false
+📎    @Published var channels = [Channel]()
+📎    @Published var current: Channel?
+📎    @Published var nowPlaying = [String: NowPlaying]()
+📎    @Published var localeIsCA = UserDefaults.standard.bool(forKey: "localeIsCA")
+📎
+📎    private var port: UInt16 = 9999
+📎    private var serverStarted = false
+📎    private let player = AVPlayer()
+📎    private var pdtTimer: Timer?
+📎
+📎    // Xtra channels: tracks are downloaded, decrypted and queued one after another.
+📎    private let xtra = XtraClient()
+📎    private let xtraPlayer = AVQueuePlayer()
+📎    private var xtraTask: Task<Void, Never>?
+📎    private var xtraTracks = [AVPlayerItem: XtraTrack]()
+📎    private var xtraNowPlaying = [String: NowPlaying]()
+📎    private var xtraObserver: AnyCancellable?
+📎    private var xtraPeekedAt = [String: Date]()
+📎    private var xtraPeekedTrack = [String: XtraTrack]()  // what the channel list shows, played first on tune
+📎    private var xtraPeeking = false
+📎    private let xtraFolder = FileManager.default.temporaryDirectory.appendingPathComponent("StarPlayrXtra")
+📎
+📎    private var base: String { "http://127.0.0.1:\(port)/api/v3" }
+📎
+📎    private init() {
+📎        setupRemoteCommands()
+📎        xtraObserver = xtraPlayer.publisher(for: \.currentItem)
+📎            .receive(on: DispatchQueue.main)
+📎            .sink { _ in Task { @MainActor in Radio.shared.xtraItemChanged() } }
+📎    }
+📎
+📎    // MARK: Server
+📎
+📎    private func startServerIfNeeded() async {
+📎        if serverStarted, await text("ping") == "pong" { return }
+📎        for p in port..<65000 where portIsOpen(UInt16(p)) {
+📎            port = UInt16(p)
+📎            break
+📎        }
+📎        startServer(port)
+📎        preflightConfig(location: localeIsCA ? "CA" : "US")
+📎        for _ in 0..<20 {
+📎            if await text("ping") == "pong" { break }
+📎            try? await Task.sleep(nanoseconds: 100_000_000)
+📎        }
+📎        serverStarted = true
+📎    }
+📎
+📎    // MARK: Login
+📎
+📎    func login(user: String, pass: String) async -> Bool {
+📎        isBusy = true
+📎        channelsLoaded = false
+📎        defer { isBusy = false }
+📎        status = "Starting…"
+📎        await startServerIfNeeded()
+📎        _ = await text(localeIsCA ? "ca" : "us")
+📎
+📎        status = "Signing in…"
+📎        let result = await post("login", ["user": user, "pass": pass])
+📎        // StarPlayrRadioKit caches the password in UserDefaults; the Mac app keeps it only in the Keychain.
+📎        UserDefaults.standard.removeObject(forKey: "pass")
+📎
+📎        guard let result, result["success"] as? Bool == true else {
+📎            status = (result?["message"] as? String) ?? "Login failed. Check your connection."
+📎            return false
+📎        }
+📎        Keychain.save(user: user, pass: pass)
+📎
+📎        status = "Loading channels…"
+📎        _ = await post("session", ["channelid": "siriushits1"])
+📎        guard let data = await post("channels", ["channeltype": ""])?["data"] as? [String: Any], !data.isEmpty else {
+📎            status = "Error reading channels."
+📎            return false
+📎        }
+📎
+📎        channels = data.compactMap { key, value in
+📎            guard let v = value as? [String: Any],
+📎                  let number = v["channelNumber"] as? String,
+📎                  var name = v["name"] as? String else { return nil }
+📎            for prefix in ["SiriusXM ", "Sirius XM ", "Sirius ", "SXM ", "SPX "] {
+📎                name = name.replacingOccurrences(of: prefix, with: "")
+📎            }
+📎            return Channel(id: number, name: name,
+📎                           category: v["category"] as? String ?? "",
+📎                           imageURL: v["mediumImage"] as? String ?? "")
+📎        }
+📎        .sorted { $0.id.localizedStandardCompare($1.id) == .orderedAscending }
+📎
+📎        isLoggedIn = true
+📎        status = "Signed in"
+📎        if let last = UserDefaults.standard.string(forKey: "lastChannel") {
+📎            current = channels.first { $0.id == last }
+📎        }
+📎        await updatePDT()
+📎        startPDTTimer()
+📎        Task { await loadXtraChannels(user: user, pass: pass) }
+📎        return true
+📎    }
+📎
+📎    /// Xtra channels come from SiriusXM's newer API; if that fails the live channels still work.
+📎    private func loadXtraChannels(user: String, pass: String) async {
+📎        defer { if isLoggedIn { channelsLoaded = true } }
+📎        do {
+📎            try await xtra.signIn(user: user, pass: pass)
+📎            let xtras = try await xtra.channels().map {
+📎                Channel(id: $0.number, name: $0.name, category: $0.genre, imageURL: $0.imageURL, xtraID: $0.id)
+📎            }
+📎            guard isLoggedIn else { return }
+📎            let live = Set(channels.map(\.id))
+📎            channels = (channels + xtras.filter { !live.contains($0.id) })
+📎                .sorted { $0.id.localizedStandardCompare($1.id) == .orderedAscending }
+📎            if current == nil, let last = UserDefaults.standard.string(forKey: "lastChannel") {
+📎                current = channels.first { $0.id == last }
+📎            }
+📎            await refreshXtraNowPlaying()
+📎        } catch {
+📎            print("Xtra channels unavailable: \(error.localizedDescription)")
+📎        }
+📎    }
+📎
+📎    func signOut() {
+📎        stop()
+📎        pdtTimer?.invalidate()
+📎        Keychain.delete()
+📎        Task { await xtra.signOut() }
+📎        isLoggedIn = false
+📎        channelsLoaded = false
+📎        channels = []
+📎        current = nil
+📎        status = "Not signed in"
+📎    }
+📎
+📎    func setRegion(ca: Bool) {
+📎        localeIsCA = ca
+📎        UserDefaults.standard.set(ca, forKey: "localeIsCA")
+📎        if serverStarted { Task { _ = await text(ca ? "ca" : "us") } }
+📎    }
+📎
+📎    // MARK: Playback
+📎
+📎    func play(_ channel: Channel) {
+📎        haltXtra()
+📎        current = channel
+📎        UserDefaults.standard.set(channel.id, forKey: "lastChannel")
+📎        if let xtraID = channel.xtraID {
+📎            player.pause()
+📎            player.replaceCurrentItem(with: nil)
+📎            playXtra(channel, id: xtraID)
+📎            return
+📎        }
+📎        Task {
+📎            await startServerIfNeeded()
+📎            guard let url = URL(string: "http://localhost:\(port)/api/v3/m3u/\(channel.id).m3u8") else { return }
+📎            player.replaceCurrentItem(with: AVPlayerItem(url: url))
+📎            player.play()
+📎            isPlaying = true
+📎            await updatePDT()
+📎        }
+📎    }
+📎
+📎    func togglePlayPause() {
+📎        if isPlaying { stop() } else if let current { play(current) }
+📎    }
+📎
+📎    func stop() {
+📎        player.pause()
+📎        player.replaceCurrentItem(with: nil)
+📎        haltXtra()
+📎        isPlaying = false
+📎        updateNowPlayingInfo()
+📎    }
+📎
+📎    // MARK: Xtra playback
+📎
+📎    private func playXtra(_ channel: Channel, id: String) {
+📎        isPlaying = true
+📎        // Tuning again returns a different track than the peek, so start with the peeked track
+📎        // the channel list is showing (from its beginning), then continue with the tuned queue.
+📎        let peeked = xtraPeekedTrack.removeValue(forKey: channel.id).map {
+📎            XtraTrack(id: $0.id, artist: $0.artist, title: $0.title, url: $0.url, keyID: $0.keyID,
+📎                      imageURL: $0.imageURL, startOffset: 0)
+📎        }
+📎        print("XTRA play \(channel.id) shown=\(nowPlaying[channel.id]?.song ?? "nil") peeked=\(peeked?.title ?? "nil")")
+📎        if peeked == nil {
+📎            xtraNowPlaying[channel.id] = nil
+📎            nowPlaying[channel.id] = nil
+📎        }
+📎        updateNowPlayingInfo()
+📎        xtraTask = Task {
+📎            var pending = [XtraTrack]()
+📎            var token: String?
+📎            var seen = Set<String>()
+📎            var first = true
+📎            if let peeked {
+📎                seen.insert(peeked.id)
+📎                do {
+📎                    let file = try await xtra.download(peeked, into: xtraFolder)
+📎                    if !Task.isCancelled {
+📎                        let item = AVPlayerItem(url: file)
+📎                        xtraTracks[item] = peeked
+📎                        xtraPlayer.insert(item, after: nil)
+📎                        first = false
+📎                        xtraPlayer.play()
+📎                        xtraItemChanged()
+📎                    }
+📎                } catch {
+📎                    print("XTRA peeked download failed \(channel.id) \(peeked.title): \(error.localizedDescription) url=\(peeked.url)")
+📎                }
+📎            }
+📎            do {
+📎                while !Task.isCancelled {
+📎                    // Keep one track playing and one ready behind it.
+📎                    if xtraPlayer.items().count > 1 {
+📎                        try await Task.sleep(nanoseconds: 2_000_000_000)
+📎                        continue
+📎                    }
+📎                    if pending.isEmpty {
+📎                        let batch = try await xtra.tune(channelID: id, sequenceToken: token)
+📎                        token = batch.token
+📎                        pending = batch.tracks.filter { seen.insert($0.id).inserted }
+📎                        if pending.isEmpty { try await Task.sleep(nanoseconds: 5_000_000_000); continue }
+📎                    }
+📎                    let track = pending.removeFirst()
+📎                    let file = try await xtra.download(track, into: xtraFolder)
+📎                    guard !Task.isCancelled else { break }
+📎                    let item = AVPlayerItem(url: file)
+📎                    xtraTracks[item] = track
+📎                    xtraPlayer.insert(item, after: nil)
+📎                    if first {
+📎                        first = false
+📎                        if track.startOffset > 0 {
+📎                            await xtraPlayer.seek(to: CMTime(seconds: track.startOffset, preferredTimescale: 1000))
+📎                        }
+📎                        xtraPlayer.play()
+📎                        xtraItemChanged()
+📎                    }
+📎                }
+📎            } catch is CancellationError {
+📎            } catch {
+📎                print("Xtra playback error: \(error.localizedDescription)")
+📎                if first, current == channel { stop() }
+📎            }
+📎        }
+📎    }
+📎
+📎    private func haltXtra() {
+📎        // The list keeps showing the song that was playing, so tuning back in should play that song.
+📎        if let item = xtraPlayer.currentItem, let track = xtraTracks[item], let current, current.xtraID != nil {
+📎            xtraPeekedTrack[current.id] = track
+📎        }
+📎        xtraTask?.cancel()
+📎        xtraTask = nil
+📎        xtraPlayer.pause()
+📎        xtraPlayer.removeAllItems()
+📎        xtraTracks = [:]
+📎        try? FileManager.default.removeItem(at: xtraFolder)
+📎    }
+📎
+📎    /// Shows the queued track that just started and deletes files of tracks that have finished.
+📎    fileprivate func xtraItemChanged() {
+📎        let queued = Set(xtraPlayer.items())
+📎        for (item, track) in xtraTracks where !queued.contains(item) {
+📎            xtraTracks[item] = nil
+📎            try? FileManager.default.removeItem(at: xtraFolder.appendingPathComponent("\(track.id).aac"))
+📎        }
+📎        guard let item = xtraPlayer.currentItem, let track = xtraTracks[item], let current, current.xtraID != nil else { return }
+📎        print("XTRA playing \(current.id) \(track.artist) – \(track.title)")
+📎        let np = NowPlaying(artist: track.artist, song: track.title, image: track.imageURL)
+📎        xtraNowPlaying[current.id] = np
+📎        nowPlaying[current.id] = np
+📎        updateNowPlayingInfo()
+📎    }
+📎
+📎    // MARK: Now playing (PDT)
+📎
+📎    private func startPDTTimer() {
+📎        pdtTimer?.invalidate()
+📎        pdtTimer = Timer.scheduledTimer(withTimeInterval: 15, repeats: true) { _ in
+📎            Task { @MainActor in await Radio.shared.updatePDT() }
+📎        }
+📎    }
+📎
+📎    func updatePDT() async {
+📎        guard let cache = await get("pdt")?["data"] as? [String: Any] else { return }
+📎        var np = [String: NowPlaying]()
+📎        for (key, value) in cache {
+📎            if let v = value as? [String: String] {
+📎                np[key] = NowPlaying(artist: v["artist"] ?? "", song: v["song"] ?? "", image: v["image"] ?? "")
+📎            }
+📎        }
+📎        nowPlaying = np.merging(xtraNowPlaying) { live, _ in live }
+📎        updateNowPlayingInfo()
+📎        Task { await refreshXtraNowPlaying() }
+📎    }
+📎
+📎    /// Xtra channels have no PDT feed, so ask each idle one what it would play if tuned now.
+📎    /// Channels never peeked are all filled at once; after that the stalest are refreshed
+📎    /// a batch at a time on every PDT tick. Each result is shown as soon as it arrives.
+📎    private func refreshXtraNowPlaying() async {
+📎        guard isLoggedIn, !xtraPeeking else { return }
+📎        xtraPeeking = true
+📎        defer { xtraPeeking = false }
+📎        let stale = Date().addingTimeInterval(-180)
+📎        let idle = channels.filter { $0.xtraID != nil && !isPlayingXtra($0.id) }
+📎        let unpeeked = idle.filter { xtraPeekedAt[$0.id] == nil }
+📎        let batch = !unpeeked.isEmpty ? unpeeked : Array(idle
+📎            .filter { xtraPeekedAt[$0.id]! < stale }
+📎            .sorted { xtraPeekedAt[$0.id]! < xtraPeekedAt[$1.id]! }
+📎            .prefix(30))
+📎        guard !batch.isEmpty else { return }
+📎        let client = xtra
+📎        await withTaskGroup(of: (String, XtraTrack?).self) { group in
+📎            for (i, ch) in batch.enumerated() {
+📎                if i >= 12, let r = await group.next() { applyXtraPeek(r.0, r.1) }
+📎                group.addTask { (ch.id, try? await client.peek(channelID: ch.xtraID!)) }
+📎            }
+📎            for await r in group { applyXtraPeek(r.0, r.1) }
+📎        }
+📎    }
+📎
+📎    /// Peek results arrive many per second; publishing each one redraws the whole channel
+📎    /// list and stalls scrolling, so they're batched and published at most every 2 seconds.
+📎    private func applyXtraPeek(_ id: String, _ track: XtraTrack?) {
+📎        guard isLoggedIn else { return }
+📎        xtraPeekedAt[id] = Date()
+📎        guard let track, !isPlayingXtra(id) else { return }
+📎        // The played track, xtraNowPlaying and the list text are committed together on flush,
+📎        // so tapping a channel always plays the song its row is showing.
+📎        pendingPeeks[id] = track
+📎        guard !peekFlushScheduled else { return }
+📎        peekFlushScheduled = true
+📎        Task {
+📎            try? await Task.sleep(for: .seconds(2))
+📎            peekFlushScheduled = false
+📎            let tracks = pendingPeeks.filter { !isPlayingXtra($0.key) }
+📎            pendingPeeks.removeAll()
+📎            guard isLoggedIn, !tracks.isEmpty else { return }
+📎            let batch = tracks.mapValues { NowPlaying(artist: $0.artist, song: $0.title, image: $0.imageURL) }
+📎            xtraPeekedTrack.merge(tracks) { _, new in new }
+📎            xtraNowPlaying.merge(batch) { _, new in new }
+📎            nowPlaying.merge(batch) { _, new in new }
+📎        }
+📎    }
+📎    private var pendingPeeks = [String: XtraTrack]()
+📎    private var peekFlushScheduled = false
+📎
+📎    /// What is actually coming out of the speakers: the Xtra track in the player, or the live channel's PDT.
+📎    var playingNow: NowPlaying? {
+📎        guard isPlaying, let current else { return nil }
+📎        guard current.xtraID != nil else { return nowPlaying[current.id] }
+📎        guard let item = xtraPlayer.currentItem, let track = xtraTracks[item] else { return nil }
+📎        return NowPlaying(artist: track.artist, song: track.title, image: track.imageURL)
+📎    }
+📎
+📎    
+✅/// Whether the player for the current channel is actually producing audio (not just buffering).
+✅    var audioStarted: Bool {
+✅        guard isPlaying, let current else { return false }
+✅        return (current.xtraID != nil ? xtraPlayer : player).timeControlStatus == .playing
+✅    }
+✅
+✅    
+📎private func isPlayingXtra(_ id: String) -> Bool {
+📎        isPlaying && current?.id == id && current?.xtraID != nil
+📎    }
+📎
+📎    private func updateNowPlayingInfo() {
+📎        let center = MPNowPlayingInfoCenter.default()
+📎        guard let current else { center.nowPlayingInfo = nil; return }
+📎        let np = nowPlaying[current.id]
+📎        center.nowPlayingInfo = [
+📎            MPMediaItemPropertyTitle: np?.song ?? current.name,
+📎            MPMediaItemPropertyArtist: np?.artist ?? "",
+📎            MPMediaItemPropertyAlbumTitle: current.name,
+📎            MPNowPlayingInfoPropertyIsLiveStream: true
+📎        ]
+📎        center.playbackState = isPlaying ? .playing : .paused
+📎    }
+📎
+📎    private func setupRemoteCommands() {
+📎        let cc = MPRemoteCommandCenter.shared()
+📎        cc.playCommand.addTarget { _ in
+📎            Task { @MainActor in if let c = Radio.shared.current { Radio.shared.play(c) } }
+📎            return .success
+📎        }
+📎        cc.pauseCommand.addTarget { _ in
+📎            Task { @MainActor in Radio.shared.stop() }
+📎            return .success
+📎        }
+📎        cc.togglePlayPauseCommand.addTarget { _ in
+📎            Task { @MainActor in Radio.shared.togglePlayPause() }
+📎            return .success
+📎        }
+📎    }
+📎
+📎    // MARK: Local server HTTP helpers
+📎
+📎    private func text(_ path: String) async -> String? {
+📎        guard let url = URL(string: "\(base)/\(path)") else { return nil }
+📎        var req = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalAndRemoteCacheData, timeoutInterval: 2)
+📎        req.httpMethod = "GET"
+📎        guard let (data, _) = try? await URLSession.shared.data(for: req) else { return nil }
+📎        return String(data: data, encoding: .utf8)
+📎    }
+📎
+📎    private func get(_ path: String) async -> [String: Any]? {
+📎        guard let url = URL(string: "\(base)/\(path)") else { return nil }
+📎        let req = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalAndRemoteCacheData, timeoutInterval: 60)
+📎        guard let (data, _) = try? await URLSession.shared.data(for: req) else { return nil }
+📎        return (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
+📎    }
+📎
+📎    private func post(_ path: String, _ body: [String: Any]) async -> [String: Any]? {
+📎        guard let url = URL(string: "\(base)/\(path)") else { return nil }
+📎        var req = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalAndRemoteCacheData, timeoutInterval: 60)
+📎        req.httpMethod = "POST"
+📎        req.httpBody = try? JSONSerialization.data(withJSONObject: body)
+📎        req.addValue("application/json", forHTTPHeaderField: "Content-Type")
+📎        guard let (data, _) = try? await URLSession.shared.data(for: req) else { return nil }
+📎        return (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
+📎    }
+📎
+📎    // MARK: Port finder
+📎
+📎    private func portIsOpen(_ port: in_port_t) -> Bool {
+📎        let fd = socket(AF_INET, SOCK_STREAM, 0)
+📎        guard fd != -1 else { return false }
+📎        defer { Darwin.shutdown(fd, SHUT_RDWR); close(fd) }
+📎
+📎        var addr = sockaddr_in()
+📎        addr.sin_len = __uint8_t(MemoryLayout<sockaddr_in>.size)
+📎        addr.sin_family = sa_family_t(AF_INET)
+📎        addr.sin_port = port.bigEndian
+📎        addr.sin_addr = in_addr(s_addr: inet_addr("127.0.0.1"))
+📎
+📎        let bound = withUnsafePointer(to: &addr) {
+📎            $0.withMemoryRebound(to: sockaddr.self, capacity: 1) {
+📎                Darwin.bind(fd, $0, socklen_t(MemoryLayout<sockaddr_in>.size))
+📎            }
+📎        }
+📎        return bound != -1 && listen(fd, SOMAXCONN) != -1
+📎    }
+📎} of 464 lines
+● 5/5 tasks completed
