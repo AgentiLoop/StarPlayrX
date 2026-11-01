@@ -188,10 +188,16 @@ private struct ChannelRow: View, Equatable {
                     if albumArt {
                         Image(nsImage: art).resizable().scaledToFill().scaleEffect(1.1)
                     } else {
-                        // Same as the header: square channel art is enlarged to fill the squircle.
-                        ChannelLogo(image: Image(nsImage: art), inset: 2)
+                        // Same as the header: square channel art is enlarged to fill the squircle,
+                        // on the same dark-tinted Liquid Glass tile (solid dark before macOS 26).
+                        let logo = ChannelLogo(image: Image(nsImage: art), inset: 2)
                             .frame(width: 32, height: 32)
-                            .background(Color(white: 0.12))
+                        if #available(macOS 26.0, *) {
+                            logo.glassEffect(.regular.tint(Color(white: 0.12).opacity(0.6)),
+                                             in: RoundedRectangle(cornerRadius: 7.25, style: .continuous))
+                        } else {
+                            logo.background(Color(white: 0.12))
+                        }
                     }
                 } else {
                     Image(nsImage: NSApp.applicationIconImage).resizable().scaledToFill()
