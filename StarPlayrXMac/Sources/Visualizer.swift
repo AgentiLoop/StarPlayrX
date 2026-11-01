@@ -217,24 +217,38 @@ struct SpectrumView: View {
 }
 
 
+/// The aggregate device shares its clock with the real output, so its IOProc must never miss a
+/// cycle: a late IOProc overloads the output device too and the app's own playback skips.
+/// The IOProc therefore runs on the HAL's real-time thread and only copies samples into a
+/// preallocated ring buffer; the FFT runs ~30 times a second on a separate timer queue.
 @available(macOS 14.2, *)
 private final class ProcessTap {
     private var tapID = AudioObjectID(kAudioObjectUnknown)
     private var deviceID = AudioObjectID(kAudioObjectUnknown)
     private var procID: AudioDeviceIOProcID?
-    private let queue = DispatchQueue(label: "StarPlayrX.tap", qos: .userInitiated)
+    private let queue = DispatchQueue(label: "StarPlayrX.tap", qos: .utility)
+    private var timer: DispatchSourceTimer?
 
     private let n = 1024
     private let fft = vDSP_create_fftsetup(10, FFTRadix(kFFTRadix2))!
     private var window: [Float]
-    private var pending = [Float]()
-    private var lastSent = DispatchTime.now()
+    private var block: [Float]
+    private let ringSize = 4096
+    private let ring: UnsafeMutablePointer<Float>
+    private var written = 0        // total samples written; guarded by lock
+    private var lastRead = 0
+    private let lock: UnsafeMutablePointer<os_unfair_lock>
     private let onLevels: ([Float]) -> Void
 
     init?(onLevels: @escaping ([Float]) -> Void) {
         self.onLevels = onLevels
         window = [Float](repeating: 0, count: n)
+        block = [Float](repeating: 0, count: n)
         vDSP_hann_window(&window, vDSP_Length(n), Int32(vDSP_HANN_NORM))
+        ring = .allocate(capacity: ringSize)
+        ring.initialize(repeating: 0, count: ringSize)
+        lock = .allocate(capacity: 1)
+        lock.initialize(to: os_unfair_lock())
 
         guard let process = Self.ownProcessObject(), let outputUID = Self.defaultOutputUID() else { return nil }
 
@@ -259,21 +273,31 @@ private final class ProcessTap {
             teardown()
             return nil
         }
-        let status = AudioDeviceCreateIOProcIDWithBlock(&procID, deviceID, queue) { [weak self] _, input, _, _, _ in
-            self?.receive(input)
+        // nil queue: the block runs directly on the HAL's real-time IO thread.
+        let status = AudioDeviceCreateIOProcIDWithBlock(&procID, deviceID, nil) { [unowned self] _, input, _, _, _ in
+            self.receive(input)
         }
         guard status == noErr, AudioDeviceStart(deviceID, procID) == noErr else {
             teardown()
             return nil
         }
+        let timer = DispatchSource.makeTimerSource(queue: queue)
+        timer.schedule(deadline: .now(), repeating: .milliseconds(33))
+        timer.setEventHandler { [weak self] in self?.analyze() }
+        timer.resume()
+        self.timer = timer
     }
 
     deinit {
         teardown()
         vDSP_destroy_fftsetup(fft)
+        ring.deallocate()
+        lock.deallocate()
     }
 
     private func teardown() {
+        timer?.cancel()
+        timer = nil
         if deviceID != kAudioObjectUnknown {
             AudioDeviceStop(deviceID, procID)
             if let procID { AudioDeviceDestroyIOProcID(deviceID, procID) }
@@ -286,29 +310,36 @@ private final class ProcessTap {
         }
     }
 
-    /// Tap audio is 32-bit float; mix whatever channels arrive down to mono.
+    /// Real-time thread: no allocation, no blocking. Mixes to mono into the ring buffer;
+    /// if the analyzer holds the lock this cycle's samples are simply dropped.
     /// The aggregate lists the output device's own input streams first (BlackHole has one,
     /// silent without mic access) and the tap's stream last, so read only the last buffer.
     private func receive(_ input: UnsafePointer<AudioBufferList>) {
-        if let buffer = UnsafeMutableAudioBufferListPointer(UnsafeMutablePointer(mutating: input)).last,
-           let data = buffer.mData {
-            let channels = max(1, Int(buffer.mNumberChannels))
-            let frames = Int(buffer.mDataByteSize) / MemoryLayout<Float>.size / channels
-            let samples = data.assumingMemoryBound(to: Float.self)
-            for f in 0..<frames {
-                var sum: Float = 0
-                for c in 0..<channels { sum += samples[f * channels + c] }
-                pending.append(sum / Float(channels))
-            }
+        guard let buffer = UnsafeMutableAudioBufferListPointer(UnsafeMutablePointer(mutating: input)).last,
+              let data = buffer.mData, os_unfair_lock_trylock(lock) else { return }
+        let channels = max(1, Int(buffer.mNumberChannels))
+        let frames = Int(buffer.mDataByteSize) / MemoryLayout<Float>.size / channels
+        let samples = data.assumingMemoryBound(to: Float.self)
+        for f in 0..<frames {
+            var sum: Float = 0
+            for c in 0..<channels { sum += samples[f * channels + c] }
+            ring[(written + f) % ringSize] = sum / Float(channels)
         }
-        while pending.count >= n {
-            let block = Array(pending.prefix(n))
-            pending.removeFirst(n)
-            // ~30 updates a second is plenty for the bars.
-            guard DispatchTime.now().uptimeNanoseconds - lastSent.uptimeNanoseconds > 33_000_000 else { continue }
-            lastSent = .now()
-            onLevels(bands(block))
+        written += frames
+        os_unfair_lock_unlock(lock)
+    }
+
+    /// Timer queue: FFT of the newest 1024 samples, only when new audio has arrived.
+    private func analyze() {
+        os_unfair_lock_lock(lock)
+        let end = written
+        if end != lastRead, end >= n {
+            for i in 0..<n { block[i] = ring[(end - n + i) % ringSize] }
         }
+        os_unfair_lock_unlock(lock)
+        guard end != lastRead, end >= n else { return }
+        lastRead = end
+        onLevels(bands(block))
     }
 
     private func bands(_ block: [Float]) -> [Float] {
