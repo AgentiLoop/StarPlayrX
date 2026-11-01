@@ -665,7 +665,9 @@ private struct CachedArt<Content: View>: View {
     var body: some View {
         let pixels = ArtCache.pixels(size)
         let wanted = !inChannelList || nearVisible
-        content(loaded?.url == url ? loaded?.image : ArtCache.shared.cached(url, pixels: pixels))
+        let image = loaded?.url == url ? loaded?.image : ArtCache.shared.cached(url, pixels: pixels)
+        // Header: until its own size arrives, show the row's already-loaded 32pt art instead of the logo.
+        content(image ?? (inChannelList ? nil : ArtCache.shared.cached(url, pixels: ArtCache.pixels(32))))
             .onGeometryChange(for: Bool.self) { proxy in
                 guard inChannelList else { return true }
                 let frame = proxy.frame(in: .named(CachedArt.channelList))
