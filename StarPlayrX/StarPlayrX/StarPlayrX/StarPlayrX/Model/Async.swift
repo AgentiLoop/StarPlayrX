@@ -91,7 +91,7 @@ internal class Async {
 
         var urlReq = URLRequest(url: url)
         urlReq.httpBody = try? JSONSerialization.data(withJSONObject: request, options: .prettyPrinted)
-        let userAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.3 Safari/605.1.15"
+        let userAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/27.0.1 Safari/605.1.15"
         urlReq.setValue(userAgent, forHTTPHeaderField: "User-Agent")
         urlReq.addValue("application/json", forHTTPHeaderField: "Content-Type")
         urlReq.httpMethod = "POST"

@@ -43,7 +43,7 @@ actor XtraClient {
     // "All channels" curated grouping, the same one the SiriusXM web player shows.
     private static let allChannelsEntity = "403ab6a5-d3c9-4c2a-a722-a94a6a5fd056"
     private static let allChannelsContainer = "3JoBfOCIwo6FmTpzM1S2H7"
-    private static let userAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.3 Safari/605.1.15"
+    private static let userAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/27.0.1 Safari/605.1.15"
 
     private let session = URLSession(configuration: .ephemeral)
     private var user = ""
@@ -67,7 +67,7 @@ actor XtraClient {
     private func authenticate() async throws {
         let device = try await json("POST", "/device/v1/devices", body: [
             "devicePlatform": "web-desktop",
-            "deviceAttributes": ["browser": ["browserVersion": "18.3", "browser": "Safari", "userAgent": Self.userAgent,
+            "deviceAttributes": ["browser": ["browserVersion": "27.0.1", "browser": "Safari", "userAgent": Self.userAgent,
                                              "sdk": "web", "app": "web", "sdkVersion": "18.3", "appVersion": "18.3"]]
         ], bearer: nil)
         guard let deviceGrant = device["grant"] as? String else { throw XtraError.badResponse("device grant") }

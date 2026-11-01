@@ -1,9 +1,12 @@
+# SiriusXM live metadata (2026-11-01)
+- Unauthenticated GET https://lookaround-cache-prod.streaming.siriusxm.com/playbackservices/v1/live/lookAround?delta= → {channels:{<entity id>:{cuts:[{name,artistName,validFrom,image{url}}],shows:[…]}}}, ~520 live channels, no Xtra. Art key → imgsrv base64 spec. Used by XtraClient.liveNowPlaying (commit 32c6c3e).
+- playback/play/v1/liveUpdate (POST channelId/start/endTimestamp, auth) = one channel's cut history.
 # StarPlayrXMac release recipe (mac-1.0, 2026-10-31)
 - xcodebuild Release, ARCHS="arm64 x86_64", CODE_SIGN_STYLE=Manual, "Developer ID Application" team 469UCUB275, ENABLE_HARDENED_RUNTIME=YES.
 - xcodebuild injects get-task-allow → notarization Invalid. Re-sign after build: `codesign --force --options runtime --timestamp --sign "Developer ID Application: Todd Bruss (469UCUB275)" StarPlayrX.app`.
 - Notary profile: `--keychain-profile "App Store Connect Profile"` (only one stored). Then stapler staple, ditto zip, gh release.
 - Version lives in StarPlayrXMac/Sources/Info.plist AND project.yml (no MARKETING_VERSION in pbxproj). mac-1.1 shipped 2026-10-31. mac-1.1.1 (build 4) shipped 2026-10-31. mac-1.1.2 (build 5) shipped 2026-10-31; refreshed in place as build 6 on 2026-11-01 (tag moved, assets clobbered).
-- mac-1.1.4 (build 9) shipped 2026-11-01 from branch mustang. Reusable script: /tmp/spx-rel/build.sh (build→resign→notarize app→zip→dmg→notarize dmg→spctl→shasum). Strip temporary DIAG code before releasing.
+- mac-1.1.4 (build 9) shipped 2026-11-01 from branch mustang. Reusable script: /tmp/spx-rel/build.sh (build→resign→notarize app→zip→dmg→notarize dmg→spctl→shasum). Strip temporary DIAG code before releasing. mac-1.1.5 (build 10) shipped 2026-11-01 (album art sticks); bump V= in build.sh each release.
 - Screenshots: AppleScript `show menu` / `park menu at upper right` / `toggle shade`, then `screencapture -x -l <CGWindowID>` (panel window is layer 3 of the app pid). Panel auto-hides when focus moves, so capture right after showing it.
 - Blog (../Agent.xcf.ai): write blog/src/YYYY-MM-DD-slug.md, run `python3 blog/tools/build.py`, commit, push (push auto-deploys). Pull first, because a workflow pushes read-count commits (conflicts only in blog/tools/views.json: keep upstream, then rebuild).
 - DMG: hdiutil UDZO of folder {app, /Applications symlink}, codesign dmg, notarize dmg, staple. Release assets also carry StarPlayrX-Mac-screenshot.png + -menu.png (copy from previous release).

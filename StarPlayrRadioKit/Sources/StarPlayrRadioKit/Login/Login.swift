@@ -11,7 +11,7 @@ public func LoginX(username: String, pass: String) -> (request: Dictionary<Strin
     // /rest/v2/experience/modules/modify/authentication
     let endpoint = http + root + "/modify/authentication"
     let method = "login"
-    let loginReq = ["moduleList": ["modules": [["moduleRequest": ["resultTemplate": "web", "deviceInfo": ["osVersion": "Mac", "platform": "Web", "sxmAppVersion": "3.1802.10011.0", "browser": "Safari", "browserVersion": "18.3", "appRegion": "US", "deviceModel": "K2WebClient", "clientDeviceId": "3c611482-9604-4872-8994-0074e0e18e84", "player": "html5", "clientDeviceType": "web"], "standardAuth": ["username": username, "password": pass]]]]]] as Dictionary
+    let loginReq = ["moduleList": ["modules": [["moduleRequest": ["resultTemplate": "web", "deviceInfo": ["osVersion": "Mac", "platform": "Web", "sxmAppVersion": "3.1802.10011.0", "browser": "Safari", "browserVersion": "27.0.1", "appRegion": "US", "deviceModel": "K2WebClient", "clientDeviceId": "3c611482-9604-4872-8994-0074e0e18e84", "player": "html5", "clientDeviceType": "web"], "standardAuth": ["username": username, "password": pass]]]]]] as Dictionary
 
 
     return (request: loginReq, endpoint: endpoint, method: method)

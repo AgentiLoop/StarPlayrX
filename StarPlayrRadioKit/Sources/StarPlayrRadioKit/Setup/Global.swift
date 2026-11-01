@@ -6,7 +6,7 @@ public let http: String = "https://"
 
 public var root: String = "player.siriusxm.com/rest/v2/experience/modules"
 public var playerDomain = "player.siriusxm.com"
-public var userAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.3 Safari/605.1.15"
+public var userAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/27.0.1 Safari/605.1.15"
 public var appRegion = "US"
 
 public var hls_sources = Dictionary<String, String>()
