@@ -105,8 +105,9 @@ struct MenuView: View {
                         .frame(width: 64, height: 64)
                     if #available(macOS 26.0, *) {
                         // Dark-tinted Liquid Glass tile behind the logo.
-                        logo.glassEffect(.regular.tint(Color(white: 0.12).opacity(0.6)),
-                                         in: RoundedRectangle(cornerRadius: 14.5, style: .continuous))
+                        // Glass only behind the logo, so the logo itself stays crisp (not lensed by the glass).
+                        logo.background(Color.clear.glassEffect(.regular.tint(Color(white: 0.12).opacity(0.6)),
+                                                                in: RoundedRectangle(cornerRadius: 14.5, style: .continuous)))
                     } else {
                         logo.background(Color(white: 0.12))   // dark tile so logos sit like album art
                     }
@@ -140,12 +141,12 @@ struct MenuView: View {
         }
     }
 
-    /// Non-lazy VStack: every row is built once when the menu opens, so scrolling never
-    /// has to create rows on the fly (List creates them on first scroll, which stutters).
+    /// LazyVStack: only rows near the visible part of the list exist, so the hundreds of channels
+    /// don't each keep a live view (and its art) in memory; rows that scroll away are freed.
     private var channelList: some View {
         ScrollViewReader { proxy in
             ScrollView {
-                VStack(spacing: 0) {
+                LazyVStack(spacing: 0) {
                     ForEach(filtered) { ch in
                         Button {
                             radio.play(ch)
@@ -160,7 +161,6 @@ struct MenuView: View {
                     }
                 }
             }
-            .coordinateSpace(name: CachedArt<EmptyView>.channelList)   // rows fetch art as they near the visible part
             .frame(height: CachedArt<EmptyView>.listHeight)
             .padding(.trailing, -12)   // scroll bar sits at the window's right edge
             .onAppear { if let id = radio.current?.id { proxy.scrollTo(id, anchor: .center) } }
@@ -206,8 +206,8 @@ private struct ChannelRow: View, Equatable {
                         let logo = ChannelLogo(image: Image(nsImage: art), inset: 2)
                             .frame(width: 32, height: 32)
                         if #available(macOS 26.0, *) {
-                            logo.glassEffect(.regular.tint(Color(white: 0.12).opacity(0.6)),
-                                             in: RoundedRectangle(cornerRadius: 7.25, style: .continuous))
+                            logo.background(Color.clear.glassEffect(.regular.tint(Color(white: 0.12).opacity(0.6)),
+                                                                    in: RoundedRectangle(cornerRadius: 7.25, style: .continuous)))
                         } else {
                             logo.background(Color(white: 0.12))
                         }
@@ -554,7 +554,7 @@ private struct ChannelLogo: View {
     @State private var isSquare = false
 
     var body: some View {
-        image.resizable().scaledToFit()
+        image.resizable().interpolation(.high).scaledToFit()
             .onGeometryChange(for: Bool.self) { abs($0.size.width - $0.size.height) < 2 } action: { isSquare = $0 }
             .scaleEffect(isSquare ? 1.12 : 1)
             .padding(isSquare ? 0 : inset)
@@ -570,9 +570,20 @@ final class ArtCache {
     static let shared = ArtCache()
     private let images: NSCache<NSString, NSImage> = {
         let cache = NSCache<NSString, NSImage>()
-        cache.countLimit = 400
-        cache.totalCostLimit = 400 * 144 * 144 * 4
+        cache.countLimit = 200
+        cache.totalCostLimit = 200 * 192 * 192 * 4
         return cache
+    }()
+    /// Its own on-disk URL cache (small in memory), so art evicted from `images` or from a
+    /// previous launch comes back from disk instead of the network.
+    nonisolated private static let session: URLSession = {
+        let config = URLSessionConfiguration.default
+        config.urlCache = URLCache(memoryCapacity: 2 * 1024 * 1024, diskCapacity: 100 * 1024 * 1024,
+                                   directory: FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first?
+                                       .appendingPathComponent(Bundle.main.bundleIdentifier ?? "StarPlayrX", isDirectory: true)
+                                       .appendingPathComponent("ArtCache", isDirectory: true))
+        config.requestCachePolicy = .returnCacheDataElseLoad   // art at a URL never changes
+        return URLSession(configuration: config)
     }()
     // Download and decode run off the main actor so arriving art never stalls scrolling;
     // the NSImage is made here on the main actor, since NSImage is only Sendable from macOS 14.
@@ -583,8 +594,10 @@ final class ArtCache {
     /// A decoded bitmap handed back from a background task.
     struct Thumbnail: @unchecked Sendable { let image: CGImage }
 
-    /// Pixels for art shown at `points`: 2x.
-    static func pixels(_ points: CGFloat) -> Int { Int((points * 2).rounded(.up)) }
+    /// Pixels for art shown at `points`: 3x, so square logos enlarged 1.12x to fill the squircle
+    /// are still downscaled on a 2x display instead of stretched (which made them blurry).
+    static let scale: CGFloat = 3
+    static func pixels(_ points: CGFloat) -> Int { Int((points * scale).rounded(.up)) }
 
     // Keyed by pixels too: hosts with one size give the 32pt row and the 64pt header the same URL,
     // and the header must not get the row's small bitmap.
@@ -598,7 +611,7 @@ final class ArtCache {
         if let image = images.object(forKey: key as NSString) { return image }
         guard !url.isEmpty, let address = URL(string: url) else { return nil }
         let task = loading[key] ?? Task.detached(priority: .utility) {
-            guard let data = try? await URLSession.shared.data(from: address).0,
+            guard let data = try? await ArtCache.session.data(from: address).0,
                   let thumb = ArtCache.thumbnail(data, pixels: pixels) else { return nil }
             return Thumbnail(image: thumb)
         }
@@ -607,7 +620,7 @@ final class ArtCache {
         loading[key] = nil
         if let image = images.object(forKey: key as NSString) { return image }   // another caller already made it
         guard let thumb else { return nil }
-        let image = NSImage(cgImage: thumb, size: NSSize(width: thumb.width / 2, height: thumb.height / 2))
+        let image = NSImage(cgImage: thumb, size: NSSize(width: CGFloat(thumb.width) / Self.scale, height: CGFloat(thumb.height) / Self.scale))
         images.setObject(image, forKey: key as NSString, cost: thumb.bytesPerRow * thumb.height)
         return image
     }
@@ -657,27 +670,18 @@ final class ArtCache {
 private struct CachedArt<Content: View>: View {
     let url: String
     let size: CGFloat
-    /// In the channel list: only fetch once the row scrolls near the visible part of the list
-    /// (the rows are a non-lazy VStack, so they all exist from the start).
+    /// In the channel list (a LazyVStack, so the row only exists, and fetches, near the visible part).
     var inChannelList = false
     @ViewBuilder let content: (NSImage?) -> Content
     @State private var loaded: (url: String, image: NSImage?)?
-    @State private var nearVisible = false
 
     var body: some View {
         let pixels = ArtCache.pixels(size)
-        let wanted = !inChannelList || nearVisible
         let image = loaded?.url == url ? loaded?.image : ArtCache.shared.cached(url, pixels: pixels)
         // Header: until the new art arrives at full size, keep showing the previous sharp art
         // (never the row's blurry 32pt copy, never the logo flash).
         content(image ?? (inChannelList ? nil : loaded?.image))
-            .onGeometryChange(for: Bool.self) { proxy in
-                guard inChannelList else { return true }
-                let frame = proxy.frame(in: .named(CachedArt.channelList))
-                return frame.maxY > -CachedArt.preload && frame.minY < CachedArt.listHeight + CachedArt.preload
-            } action: { if $0 { nearVisible = true } }
-            .task(id: wanted ? url : "") {
-                guard wanted else { return }
+            .task(id: url) {
                 let image = await ArtCache.shared.image(url, pixels: pixels)
                 if !Task.isCancelled { loaded = (url, image) }
             }
@@ -685,9 +689,7 @@ private struct CachedArt<Content: View>: View {
 }
 
 extension CachedArt {
-    nonisolated static var channelList: String { "channelList" }
     nonisolated static var listHeight: CGFloat { 360 }
-    nonisolated static var preload: CGFloat { 200 }
 }
 
 /// The channel search box. A plain AppKit search field with AutoFill, text completion and inline
