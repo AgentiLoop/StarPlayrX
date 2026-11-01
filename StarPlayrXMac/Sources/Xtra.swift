@@ -50,6 +50,8 @@ actor XtraClient {
     private var pass = ""
     private var token: String?
     private var expires = Date.distantPast
+    private var lookAroundChannels = [String: [String: Any]]()
+    private var lookAroundFetched = Date.distantPast
 
     // MARK: Sign in
 
@@ -208,14 +210,19 @@ actor XtraClient {
     /// What every live (non-Xtra) channel is playing right now, keyed by channel entity id, in one
     /// unauthenticated call: the "lookAround" feed the web player polls for its channel grid.
     /// Talk and sports channels fall back to the current show's art when the cut has none.
-    /// `now` is the moment to report: pass the stream's live-edge time (wall clock minus stream lag) so the
-    /// list shows what a tuned player hears, not what is on air ahead of the stream.
-    func liveNowPlaying(at now: Date = Date()) async throws -> [String: NowPlaying] {
-        let (data, resp) = try await session.data(from: URL(string: Self.lookAround)!)
-        if let code = (resp as? HTTPURLResponse)?.statusCode, code >= 400 { throw XtraError.http(code, "lookAround") }
-        let channels = ((try? JSONSerialization.jsonObject(with: data)) as? [String: Any])?["channels"] as? [String: [String: Any]] ?? [:]
+    /// Done the way the web player does it (its remote config: lookaround pollingMs 45000,
+    /// livePointIntervalMs 60000): the feed is refetched at most every 45 s, and a cut is only
+    /// shown once it has been on air for 60 s, so the list matches what a listener hears.
+    func liveNowPlaying() async throws -> [String: NowPlaying] {
+        if Date().timeIntervalSince(lookAroundFetched) > 45 {
+            let (data, resp) = try await session.data(from: URL(string: Self.lookAround)!)
+            if let code = (resp as? HTTPURLResponse)?.statusCode, code >= 400 { throw XtraError.http(code, "lookAround") }
+            lookAroundChannels = ((try? JSONSerialization.jsonObject(with: data)) as? [String: Any])?["channels"] as? [String: [String: Any]] ?? [:]
+            lookAroundFetched = Date()
+        }
+        let now = Date().addingTimeInterval(-60)
         var result = [String: NowPlaying]()
-        for (id, ch) in channels {
+        for (id, ch) in lookAroundChannels {
             func current(_ key: String) -> [String: Any]? {
                 (ch[key] as? [[String: Any]] ?? []).last { $0["isAd"] as? Bool != true && (Self.date($0["validFrom"] as? String) ?? now) <= now }
             }

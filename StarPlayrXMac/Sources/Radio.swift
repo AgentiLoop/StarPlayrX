@@ -372,8 +372,8 @@ final class Radio: ObservableObject {
         }
         // The lookAround feed has every live channel's current cut, mostly with album art, in one call;
         // it wins over PDT, which only has art for the tuned channel. PDT stays as the fallback.
-        // lookAround is on-air time, which runs ahead of the HLS stream; read it at the stream's time instead.
-        if !liveIDs.isEmpty, let live = try? await xtra.liveNowPlaying(at: Date().addingTimeInterval(-streamLag)) {
+        // lookAround is on-air time, which runs ahead of the stream; it is read 60 s behind, like the web player.
+        if !liveIDs.isEmpty, let live = try? await xtra.liveNowPlaying() {
             for (number, id) in liveIDs {
                 guard let la = live[id] else { continue }
                 lookAround[number] = Self.keepingArt(la, of: lookAround[number])
