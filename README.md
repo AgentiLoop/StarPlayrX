@@ -58,7 +58,7 @@ StarPlayrX was built for visually impaired listeners, a group of paying subscrib
 
 **Requirements:** macOS 13 Ventura or later, Apple Silicon or Intel, and an active SiriusXM subscription.
 
-**Download:** [StarPlayrX for Mac 1.1.2](https://github.com/AgentiLoop/StarPlayrX/releases/tag/mac-1.1.2) (signed and notarized). All builds are on the [Releases](https://github.com/AgentiLoop/StarPlayrX/releases) page.
+**Download:** [StarPlayrX for Mac 1.1.3](https://github.com/AgentiLoop/StarPlayrX/releases/tag/mac-1.1.3) (signed and notarized). All builds are on the [Releases](https://github.com/AgentiLoop/StarPlayrX/releases) page.
 
 ### 📜 AppleScript
 

@@ -244,7 +244,7 @@ final class SPXCommand: NSScriptCommand {
         radio.play(channel)
         let deadline = Date().addingTimeInterval(timeout)
         while !(radio.audioStarted && radio.playingNow != nil && radio.nowPlaying[channel.id] != nil) {
-            guard radio.current == channel else {
+            guard radio.current?.id == channel.id else {
                 throw ScriptFailure("Channel \(channel.id) was replaced by another channel before it started.")
             }
             guard Date() < deadline else {

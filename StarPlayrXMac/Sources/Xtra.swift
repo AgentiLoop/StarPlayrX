@@ -11,6 +11,7 @@ struct XtraChannel {
     let name: String
     let genre: String
     let imageURL: String
+    var isXtra = true       // false: a live channel, listed only for its square tile art
 }
 
 struct XtraTrack {
@@ -142,17 +143,17 @@ actor XtraClient {
 
     private static func channel(from item: [String: Any]) -> XtraChannel? {
         guard let entity = item["entity"] as? [String: Any],
-              entity["type"] as? String == "channel-xtra",
+              let type = entity["type"] as? String, type == "channel-xtra" || type == "channel-linear",
               let id = entity["id"] as? String,
               let name = ((entity["texts"] as? [String: Any])?["title"] as? [String: Any])?["default"] as? String
         else { return nil }
         let deco = item["decorations"] as? [String: Any] ?? [:]
-        if deco["unentitled"] as? Bool == true { return nil }
+        if type == "channel-xtra", deco["unentitled"] as? Bool == true { return nil }
         guard let number = deco["channelNumber"].map({ "\($0)" }) else { return nil }
         let tile = ((entity["images"] as? [String: Any])?["tile"] as? [String: Any])?["aspect_1x1"] as? [String: Any]
         let key = ((tile?["preferred"] ?? tile?["default"]) as? [String: Any])?["url"] as? String
         return XtraChannel(id: id, number: number, name: name, genre: deco["genre"] as? String ?? "",
-                           imageURL: key.map { imageURL(key: $0) } ?? "")
+                           imageURL: key.map { imageURL(key: $0) } ?? "", isXtra: type == "channel-xtra")
     }
 
     private static func imageURL(key: String) -> String {

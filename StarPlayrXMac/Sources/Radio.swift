@@ -133,15 +133,22 @@ final class Radio: ObservableObject {
         defer { if isLoggedIn { channelsLoaded = true } }
         do {
             try await xtra.signIn(user: user, pass: pass)
-            let xtras = try await xtra.channels().map {
+            let all = try await xtra.channels()
+            let xtras = all.filter(\.isXtra).map {
                 Channel(id: $0.number, name: $0.name, category: $0.genre, imageURL: $0.imageURL, xtraID: $0.id)
             }
+            // Live channels get the same full square tile art as Xtra channels when the newer API has it.
+            var tiles = [String: String]()
+            for ch in all where !ch.isXtra && !ch.imageURL.isEmpty { tiles[ch.number] = ch.imageURL }
             guard isLoggedIn else { return }
-            let live = Set(channels.map(\.id))
-            channels = (channels + xtras.filter { !live.contains($0.id) })
+            let withTiles = channels.map { ch in
+                tiles[ch.id].map { Channel(id: ch.id, name: ch.name, category: ch.category, imageURL: $0, xtraID: ch.xtraID) } ?? ch
+            }
+            let live = Set(withTiles.map(\.id))
+            channels = (withTiles + xtras.filter { !live.contains($0.id) })
                 .sorted { $0.id.localizedStandardCompare($1.id) == .orderedAscending }
-            if current == nil, let last = UserDefaults.standard.string(forKey: "lastChannel") {
-                current = channels.first { $0.id == last }
+            if let id = current?.id ?? UserDefaults.standard.string(forKey: "lastChannel") {
+                current = channels.first { $0.id == id }   // pick up the new art for the current channel too
             }
             await refreshXtraNowPlaying()
         } catch {
@@ -269,7 +276,7 @@ final class Radio: ObservableObject {
             } catch is CancellationError {
             } catch {
                 print("Xtra playback error: \(error.localizedDescription)")
-                if first, current == channel { stop() }
+                if first, current?.id == channel.id { stop() }
             }
         }
     }
