@@ -7,4 +7,5 @@
 - Blog (../Agent.xcf.ai): write blog/src/YYYY-MM-DD-slug.md, run `python3 blog/tools/build.py`, commit, push (push auto-deploys). Pull first, because a workflow pushes read-count commits (conflicts only in blog/tools/views.json: keep upstream, then rebuild).
 - DMG: hdiutil UDZO of folder {app, /Applications symlink}, codesign dmg, notarize dmg, staple. Release assets also carry StarPlayrX-Mac-screenshot.png + -menu.png (copy from previous release).
 - Website repo: ~/Documents/GitHub/starplayrx.com (public/index.html has download link + version; screenshot public/starplayrx-mac.png); deploy `npx -y wrangler@4 deploy`.
+- Demo video/GIF with visible cursor: agent_script MouseDemo (real CGEvent mouse + `screencapture -v -C -k`). The menu bar icon's x MOVES between runs, so use IX/IY/PX/PY tokens (read live via AX), never hardcoded coords.
 - Mac tags use `mac-X.Y` to keep them apart from the old Catalyst/iOS tags (1.3.1).
