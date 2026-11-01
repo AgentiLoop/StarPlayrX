@@ -97,8 +97,8 @@ struct MenuView: View {
             let isAlbumArt = np?.image.isEmpty == false
             CachedArt(url: (isAlbumArt ? np?.image : radio.current?.imageURL) ?? "", size: 64) { art in
                 if let art, isAlbumArt {
-                    // Fill and overscale slightly so the white frame baked into some album art is cropped away.
-                    Image(nsImage: art).resizable().scaledToFill().scaleEffect(1.1)
+                    // Fill only: square art fits exactly; non-square art is enlarged just enough to cover the tile.
+                    Image(nsImage: art).resizable().scaledToFill()
                 } else if let art {
                     // Channel logos must stay whole; square channel art is enlarged to fill the squircle.
                     let logo = ChannelLogo(image: Image(nsImage: art))
@@ -197,7 +197,7 @@ private struct ChannelRow: View, Equatable {
             CachedArt(url: (albumArt ? nowPlaying?.image : channel.imageURL) ?? "", size: 32) { art in
                 if let art {
                     if albumArt {
-                        Image(nsImage: art).resizable().scaledToFill().scaleEffect(1.1)
+                        Image(nsImage: art).resizable().scaledToFill()
                     } else {
                         // Same as the header: square channel art is enlarged to fill the squircle,
                         // on the same dark-tinted Liquid Glass tile (solid dark before macOS 26).
@@ -575,8 +575,8 @@ final class ArtCache {
     // NSImage is only Sendable from macOS 14 and the app supports macOS 13.
     private var loading: [String: Task<Data?, Never>] = [:]
 
-    /// Pixels for art shown at `points`: 2x, plus the 1.1 zoom that crops album art frames.
-    static func pixels(_ points: CGFloat) -> Int { Int((points * 2 * 1.1).rounded(.up)) }
+    /// Pixels for art shown at `points`: 2x.
+    static func pixels(_ points: CGFloat) -> Int { Int((points * 2).rounded(.up)) }
 
     func cached(_ url: String, pixels: Int) -> NSImage? {
         images.object(forKey: Self.sized(url, pixels: pixels) as NSString)
