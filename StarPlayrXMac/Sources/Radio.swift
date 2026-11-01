@@ -37,8 +37,6 @@ final class Radio: ObservableObject {
     private var serverStarted = false
     private let player = AVPlayer()
     private var pdtTimer: Timer?
-    /// How far the live stream runs behind on-air time, measured when a live channel starts.
-    private var streamLag = UserDefaults.standard.double(forKey: "streamLag")
 
     // Xtra channels: tracks are downloaded, decrypted and queued one after another.
     private let xtra = XtraClient()
@@ -229,11 +227,6 @@ final class Radio: ObservableObject {
             }
             guard player.currentItem === item else { return }
             player.play()
-            if let at = item.currentDate() {
-                streamLag = max(0, Date().timeIntervalSince(at))
-                UserDefaults.standard.set(streamLag, forKey: "streamLag")
-            }
-            print("LIVE lag \(Int(streamLag))s")
             liveTimeline = ("", .distantPast, [])
             await updatePDT()
         }
@@ -365,9 +358,9 @@ final class Radio: ObservableObject {
         var np = [String: NowPlaying]()
         if !liveIDs.isEmpty {
             // Like Xtra channels, live channels take artist, song and art only from the newer API
-            // (lookAround). No PDT mixing, so nothing flip-flops. It is read as far behind live as the
-            // player actually runs, so every row shows what would be heard on tuning, like the tuned one.
-            if let live = try? await xtra.liveNowPlaying(behind: streamLag > 0 ? streamLag : 60) {
+            // (lookAround). No PDT mixing, so nothing flip-flops. The player runs at live, so the cut
+            // on air now is what would be heard on tuning.
+            if let live = try? await xtra.liveNowPlaying() {
                 for (number, id) in liveIDs {
                     guard let la = live[id] else { continue }
                     lookAround[number] = Self.keepingArt(la, of: lookAround[number])
