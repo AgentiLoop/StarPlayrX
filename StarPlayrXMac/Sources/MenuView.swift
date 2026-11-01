@@ -92,6 +92,8 @@ struct MenuView: View {
                 } else {
                     // Channel logos must stay whole.
                     img.resizable().scaledToFit().padding(4)
+                        .frame(width: 64, height: 64)
+                        .background(Color(white: 0.12))   // dark tile so logos sit like album art
                 }
             } placeholder: {
                 Image(systemName: "radio").font(.largeTitle).foregroundStyle(.secondary)
