@@ -584,26 +584,29 @@ final class ArtCache {
     /// Pixels for art shown at `points`: 2x.
     static func pixels(_ points: CGFloat) -> Int { Int((points * 2).rounded(.up)) }
 
+    // Keyed by pixels too: hosts with one size give the 32pt row and the 64pt header the same URL,
+    // and the header must not get the row's small bitmap.
     func cached(_ url: String, pixels: Int) -> NSImage? {
-        images.object(forKey: sizedURL(url, pixels: pixels) as NSString)
+        images.object(forKey: "\(pixels) \(sizedURL(url, pixels: pixels))" as NSString)
     }
 
     func image(_ url: String, pixels: Int) async -> NSImage? {
         let url = sizedURL(url, pixels: pixels)
-        if let image = images.object(forKey: url as NSString) { return image }
+        let key = "\(pixels) \(url)"
+        if let image = images.object(forKey: key as NSString) { return image }
         guard !url.isEmpty, let address = URL(string: url) else { return nil }
-        let task = loading[url] ?? Task.detached(priority: .utility) {
+        let task = loading[key] ?? Task.detached(priority: .utility) {
             guard let data = try? await URLSession.shared.data(from: address).0,
                   let thumb = ArtCache.thumbnail(data, pixels: pixels) else { return nil }
             return Thumbnail(image: thumb)
         }
-        loading[url] = task
+        loading[key] = task
         let thumb = await task.value?.image
-        loading[url] = nil
-        if let image = images.object(forKey: url as NSString) { return image }   // another caller already made it
+        loading[key] = nil
+        if let image = images.object(forKey: key as NSString) { return image }   // another caller already made it
         guard let thumb else { return nil }
         let image = NSImage(cgImage: thumb, size: NSSize(width: thumb.width / 2, height: thumb.height / 2))
-        images.setObject(image, forKey: url as NSString, cost: thumb.bytesPerRow * thumb.height)
+        images.setObject(image, forKey: key as NSString, cost: thumb.bytesPerRow * thumb.height)
         return image
     }
 
