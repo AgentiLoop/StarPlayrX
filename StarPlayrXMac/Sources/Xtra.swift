@@ -212,15 +212,16 @@ actor XtraClient {
     /// Talk and sports channels fall back to the current show's art when the cut has none.
     /// Done the way the web player does it (its remote config: lookaround pollingMs 45000,
     /// livePointIntervalMs 60000): the feed is refetched at most every 45 s, and a cut is only
-    /// shown once it has been on air for 60 s, so the list matches what a listener hears.
-    func liveNowPlaying() async throws -> [String: NowPlaying] {
+    /// shown once it has been on air for `behind` seconds (60 s by default, or how far the player
+    /// actually runs behind live), so the list matches what a listener hears.
+    func liveNowPlaying(behind: TimeInterval = 60) async throws -> [String: NowPlaying] {
         if Date().timeIntervalSince(lookAroundFetched) > 45 {
             let (data, resp) = try await session.data(from: URL(string: Self.lookAround)!)
             if let code = (resp as? HTTPURLResponse)?.statusCode, code >= 400 { throw XtraError.http(code, "lookAround") }
             lookAroundChannels = ((try? JSONSerialization.jsonObject(with: data)) as? [String: Any])?["channels"] as? [String: [String: Any]] ?? [:]
             lookAroundFetched = Date()
         }
-        let now = Date().addingTimeInterval(-60)
+        let now = Date().addingTimeInterval(-behind)
         var result = [String: NowPlaying]()
         for (id, ch) in lookAroundChannels {
             func current(_ key: String) -> [String: Any]? {

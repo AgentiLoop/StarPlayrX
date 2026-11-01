@@ -365,8 +365,9 @@ final class Radio: ObservableObject {
         var np = [String: NowPlaying]()
         if !liveIDs.isEmpty {
             // Like Xtra channels, live channels take artist, song and art only from the newer API
-            // (lookAround, read 60 s behind like the web player). No PDT mixing, so nothing flip-flops.
-            if let live = try? await xtra.liveNowPlaying() {
+            // (lookAround). No PDT mixing, so nothing flip-flops. It is read as far behind live as the
+            // player actually runs, so every row shows what would be heard on tuning, like the tuned one.
+            if let live = try? await xtra.liveNowPlaying(behind: streamLag > 0 ? streamLag : 60) {
                 for (number, id) in liveIDs {
                     guard let la = live[id] else { continue }
                     lookAround[number] = Self.keepingArt(la, of: lookAround[number])
