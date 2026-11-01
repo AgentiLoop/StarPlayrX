@@ -216,12 +216,12 @@ final class Radio: ObservableObject {
                 tries += 1
             }
             guard player.currentItem === item else { return }
-            // Fallback: only jump if the start tag was ignored and we're well off the live target.
+            // Fallback: only jump if the start tag was ignored and we're more than 1 s off live.
             if let range = item.seekableTimeRanges.last?.timeRangeValue {
-                let edge = max(CMTimeSubtract(CMTimeRangeGetEnd(range), CMTime(seconds: 10, preferredTimescale: 1000)), range.start)
-                if abs(CMTimeGetSeconds(CMTimeSubtract(edge, item.currentTime()))) > 3 {
-                    // Land on any segment boundary at or before the target — no exact-frame fetch.
-                    await item.seek(to: edge, toleranceBefore: .positiveInfinity, toleranceAfter: .zero)
+                let edge = max(CMTimeSubtract(CMTimeRangeGetEnd(range), CMTime(seconds: 1, preferredTimescale: 1000)), range.start)
+                if abs(CMTimeGetSeconds(CMTimeSubtract(edge, item.currentTime()))) > 1 {
+                    // Exact seek so we land within 1 s of live, not on an earlier segment boundary.
+                    await item.seek(to: edge, toleranceBefore: .zero, toleranceAfter: .zero)
                 }
             }
             guard player.currentItem === item else { return }
