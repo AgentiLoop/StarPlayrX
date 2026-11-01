@@ -1,0 +1,1 @@
+{"tool":"user_shell","input":{"command":"cd \/Users\/toddbruss\/Documents\/GitHub\/StarPlayrX\/StarPlayrRadioKit\/Sources\/StarPlayrRadioKit && cat -n Routes\/playlistRoute.swift; grep -n -A40 \"func TextSync\\|func Text\" API\/Text.swift | head -80"},"spilled":1793567875.175993}

@@ -11,6 +11,7 @@
 		67113DB4036BE489BDC7FE53 /* Visualizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = B180FAFDD06BBA9CCCECBA5D /* Visualizer.swift */; };
 		6C400293FE0D8C7434417F04 /* ScriptedTour.applescript in Resources */ = {isa = PBXBuildFile; fileRef = F780CB7683BB43494DE45275 /* ScriptedTour.applescript */; };
 		78D07A43295425FB93CF8574 /* Scripting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E4311F836AD4A7A0120E737 /* Scripting.swift */; };
+		898FB65622A94556CBD2974B /* SpectrumTimeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = 086EB200A51E929484F0F0B7 /* SpectrumTimeline.swift */; };
 		8B1D211BFBA7662F1F5269C4 /* Xtra.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40AD17AD1A89E96BF1D207E3 /* Xtra.swift */; };
 		8B8D4221E3B5D9DA693BACAA /* StarPlayrXMacTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5AACB58C22D23FF75DF15D1A /* StarPlayrXMacTests.swift */; };
 		97E3C433757ED71D95CB2524 /* MenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9CF5EC7805BCA42169AF4ECE /* MenuView.swift */; };
@@ -32,6 +33,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		086EB200A51E929484F0F0B7 /* SpectrumTimeline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpectrumTimeline.swift; sourceTree = "<group>"; };
 		1DF942F978B6D6B616311D33 /* StarPlayrXMac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = StarPlayrXMac.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		2110CDF4A0912E48922BDC87 /* StarPlayrXMacTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = StarPlayrXMacTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		24B9C2880FFCDCA06B056FF3 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
@@ -80,6 +82,7 @@
 				9CF5EC7805BCA42169AF4ECE /* MenuView.swift */,
 				A828F86C0FE74B3D990CC160 /* Radio.swift */,
 				6E4311F836AD4A7A0120E737 /* Scripting.swift */,
+				086EB200A51E929484F0F0B7 /* SpectrumTimeline.swift */,
 				9AE9931B956CB2DA3D48715B /* StarPlayrX.sdef */,
 				47D0341DA36FCC82C2C684B6 /* StarPlayrXMacApp.swift */,
 				B180FAFDD06BBA9CCCECBA5D /* Visualizer.swift */,
@@ -227,6 +230,7 @@
 				97E3C433757ED71D95CB2524 /* MenuView.swift in Sources */,
 				F9A9498FC10093CAB657AD06 /* Radio.swift in Sources */,
 				78D07A43295425FB93CF8574 /* Scripting.swift in Sources */,
+				898FB65622A94556CBD2974B /* SpectrumTimeline.swift in Sources */,
 				C1BBBCF52CBE121D9E31AE22 /* StarPlayrXMacApp.swift in Sources */,
 				67113DB4036BE489BDC7FE53 /* Visualizer.swift in Sources */,
 				8B1D211BFBA7662F1F5269C4 /* Xtra.swift in Sources */,

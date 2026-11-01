@@ -1,0 +1,9 @@
+Sources/Info.plist:19:	<key>CFBundleShortVersionString</key>
+Sources/Info.plist-20-	<string>1.1.6</string>
+Sources/Info.plist:21:	<key>CFBundleVersion</key>
+Sources/Info.plist-22-	<string>11</string>
+--
+project.yml:27:        CFBundleShortVersionString: "1.1.6"
+project.yml:28:        CFBundleVersion: "11"
+project.yml-29-        LSUIElement: true
+V=1.1.6

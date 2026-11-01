@@ -1,0 +1,1 @@
+{"spilled":1793567875.1785369,"tool":"user_shell","input":{"command":"cd \/Users\/toddbruss\/Documents\/GitHub\/StarPlayrX\/StarPlayrRadioKit\/Sources\/StarPlayrRadioKit; cat -n Turf\/PDT.swift | head -120; cat -n Routes\/pdtRoute.swift; grep -n -i \"offset\\|delay\\|timeInterval\\|Date()\" Turf\/NowPlayingLive.swift | head -30"}}

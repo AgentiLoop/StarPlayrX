@@ -1,0 +1,12 @@
+Applied diff to /Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrRadioKit/Sources/StarPlayrRadioKit/Routes/playlistRoute.swift (lines 69-73) [verified: true] — file now has 96 lines. Re-read the file before making more edits. diff_id: 1DF2D490-81E6-48F6-A203-73561C7BEAC0
+
+✅                    // The Mac app needs true durations so the player's date matches the stream's PDT.
+✅                    if realSegmentDurations { return playlist }
+✅
+📎                    //MARK: fix duration
+📎                    playlist = playlist.replacingOccurrences(of: "#EXT-X-TARGETDURATION:10", with: "#EXT-X-TARGETDURATION:9")
+📎                    
+📎                    //MARK: this keeps the PDT in sync, go figure
+📎                    playlist = playlist.replacingOccurrences(of: "#EXTINF:10,", with: "#EXTINF:1,")
+
+⚠️ You've edited 3 times without building. Run xc(action:"build") now to catch errors early.

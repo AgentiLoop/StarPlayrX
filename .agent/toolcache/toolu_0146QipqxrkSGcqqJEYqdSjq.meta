@@ -1,0 +1,1 @@
+{"input":{"command":"cd \/Users\/toddbruss\/Documents\/GitHub\/StarPlayrX && sed -n 190,230p StarPlayrXMac\/Sources\/Radio.swift; grep -n -E \"seek|AVPlayerItem|m3u8|forwardBuffer|automaticallyWaits\" StarPlayrX\/StarPlayrX\/StarPlayrX\/StarPlayrX\/Model\/Player.swift; git log --oneline -5"},"tool":"user_shell","spilled":1793567875.1750488}

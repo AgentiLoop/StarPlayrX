@@ -1,0 +1,25 @@
+To https://github.com/AgentiLoop/StarPlayrX.git
+   ce58fd8..58f7f77  mustang -> mustang
+ * [new tag]         mac-1.1.6 -> mac-1.1.6
+https://github.com/AgentiLoop/StarPlayrX/releases/tag/mac-1.1.6
+Unknown JSON field: "isLatest"
+Available fields:
+  apiUrl
+  assets
+  author
+  body
+  createdAt
+  databaseId
+  id
+  isDraft
+  isImmutable
+  isPrerelease
+  name
+  publishedAt
+  tagName
+  tarballUrl
+  targetCommitish
+  uploadUrl
+  url
+  zipballUrl
+exit code: 1

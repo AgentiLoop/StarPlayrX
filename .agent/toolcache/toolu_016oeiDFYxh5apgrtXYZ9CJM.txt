@@ -1,0 +1,156 @@
+Error: edit_file refused — this file had not been read this task. It has now been read FOR YOU and is marked as read. Do NOT call file(action:"read") on it. Your very next call must be the same edit_file, with old_string/source/line numbers copied verbatim from the content below.
+
+/Users/toddbruss/Documents/GitHub/StarPlayrX/README.md:
+1  	# 📻 StarPlayrX
+2  	
+3  	**A lightweight, fully accessible SiriusXM player for Mac, built for people who use VoiceOver.**
+4  	
+5  	StarPlayrX was built for visually impaired listeners, a group of paying subscribers that SiriusXM has long ignored. It aims for 100% VoiceOver support, a small CPU and memory footprint, and low-latency streaming.
+6  	
+7  	🤖 Built by the makers of **[Agent!](https://github.com/AgentiLoop/Agent)**, an autonomous macOS agent.
+8  	
+9  	---
+10 	
+11 	## ✨ What's in this repo
+12 	
+13 	| Folder | What it is |
+14 	| --- | --- |
+15 	| [`StarPlayrXMac/`](StarPlayrXMac) | **New:** a native SwiftUI menu bar app for macOS |
+16 	| [`StarPlayrX/`](StarPlayrX) | The original Mac Catalyst / iOS / iPadOS app (UIKit, Swift with some Objective-C) |
+17 	| [`StarPlayrRadioKit/`](StarPlayrRadioKit) | Swift package with the SiriusXM API layer and the local HLS streaming server |
+18 	| [`SwifterLite/`](SwifterLite) | Small embedded HTTP server used by StarPlayrRadioKit |
+19 	| `SPX.xcworkspace` | Xcode workspace for the Catalyst app and its packages |
+20 	
+21 	## 🎛️ StarPlayrX for Mac (menu bar app)
+22 	
+23 	<p align="center">
+24 	  <img src="docs/starplayrx-mac-demo.gif" width="400" alt="StarPlayrX playing BPM: the panel is torn off the menu bar into its own window, then rolled up like a window shade to just what's playing and the equalizer">
+25 	</p>
+26 	
+27 	<table align="center">
+28 	  <tr>
+29 	    <td align="center" valign="top" width="33%">
+30 	      <img src="docs/screenshot-mac.png" width="260" alt="StarPlayrX menu bar panel with the color equalizer under the now-playing header and a searchable channel list showing what's playing on each channel"><br>
+31 	      <b>📻 Menu bar panel</b><br>
+32 	      Now playing, the lava-lamp equalizer and a searchable list of every channel with what's on it right now
+33 	    </td>
+34 	    <td align="center" valign="top" width="33%">
+35 	      <img src="docs/screenshot-mac-torn-off.png" width="260" alt="StarPlayrX panel torn off the menu bar and parked as its own floating window"><br>
+36 	      <b>✂️ Tear-off window</b><br>
+37 	      Drag the panel off the menu bar and it becomes its own floating window you can park anywhere
+38 	    </td>
+39 	    <td align="center" valign="top" width="33%">
+40 	      <img src="docs/screenshot-mac-shade.png" width="260" alt="StarPlayrX window rolled up like a window shade, showing only what's playing and the equalizer"><br>
+41 	      <b>🎬 Window shade</b><br>
+42 	      Double-click the header to roll the window up to just what's playing and the equalizer
+43 	    </td>
+44 	  </tr>
+45 	</table>
+46 	
+47 	- Lives in the menu bar (📻) with no Dock icon
+48 	- **Tear-off window:** drag the panel off the menu bar and it becomes a floating window you can park anywhere. Click the 📻 icon to show or hide it
+49 	- **Window shade:** double-click the header to roll the window up to just what's playing and the equalizer, and again to roll it back down. Moves between menu, tear-off and shade are animated
+50 	- **Lava-lamp color equalizer:** live bars driven by the app's own audio (Core Audio process tap + FFT), with drifting colors and a glow that pulses on the beat. Needs macOS 14.2 or later
+51 	- **Liquid Glass** look on macOS 26 and later
+52 	- **AppleScript support:** play, stop, and resume channels, read what's showing and what's actually playing, search, scroll, tear off, park, and shade the window. Open the StarPlayrX dictionary in Script Editor to see every command
+53 	- Search channels, artists and songs
+54 	- Shows what's playing on the current channel and every channel in the list, with album art that stays put for the whole song
+55 	- Xtra channels (1000+), searchable with "xtra" or "music"; tuning in plays the song the list shows
+56 	- Play/pause from the keyboard media keys and Control Center, with the album art or channel art showing there too
+57 	- Picks up where you left off: the last channel you played starts again when StarPlayrX opens
+58 	- US and Canada channel lineups
+59 	- Your password is stored only in the macOS Keychain
+60 	
+61 	**Requirements:** macOS 13 Ventura or later, Apple Silicon or Intel, and an active SiriusXM subscription.
+62 	
+63 	**Download:** [StarPlayrX for Mac 1.1.6](https://github.com/AgentiLoop/StarPlayrX/releases/tag/mac-1.1.6) (signed and notarized). All builds are on the [Releases](https://github.com/AgentiLoop/StarPlayrX/releases) page.
+64 	
+65 	### 📜 AppleScript
+66 	
+67 	```applescript
+68 	tell application "StarPlayrX"
+69 	    play channel "1009"
+70 	    get {shown artist, shown song}       -- what the list shows
+71 	    get {playing artist, playing song}   -- what's actually playing
+72 	    park menu at upper right
+73 	    toggle shade
+74 	end tell
+75 	```
+76 	
+77 	## 🛠️ Building
+78 	
+79 	You need Xcode 16 or later.
+80 	
+81 	### Mac menu bar app
+82 	
+83 	**In Xcode:**
+84 	1. Open `StarPlayrXMac/StarPlayrXMac.xcodeproj`
+85 	2. Wait for Swift Package Manager to resolve packages
+86 	3. Pick the `StarPlayrXMac` scheme and press **⌘R**
+87 	4. Look for 📻 in the menu bar
+88 	
+89 	To sign with your own account, change the team under **Signing & Capabilities**, or edit `DEVELOPMENT_TEAM` in `project.yml`.
+90 	
+91 	**From the command line:**
+92 	```sh
+93 	cd StarPlayrXMac
+94 	xcodebuild -project StarPlayrXMac.xcodeproj -scheme StarPlayrXMac \
+95 	  -configuration Release -derivedDataPath build \
+96 	  ARCHS="arm64 x86_64" ONLY_ACTIVE_ARCH=NO build
+97 	open build/Build/Products/Release/StarPlayrX.app
+98 	```
+99 	
+100	**Regenerating the project (optional):** the Xcode project is generated from `StarPlayrXMac/project.yml` with [XcodeGen](https://github.com/yonaskolb/XcodeGen).
+101	```sh
+102	brew install xcodegen
+103	cd StarPlayrXMac && xcodegen generate
+104	```
+105	
+106	### Catalyst / iOS / iPadOS app
+107	
+108	Open `SPX.xcworkspace`, choose the `StarPlayrX` scheme and a destination, then build. iOS and iPadOS builds have to be built and installed locally.
+109	
+110	### Release: Developer ID and notarization
+111	
+112	```sh
+113	APP=build/Build/Products/Release/StarPlayrX.app
+114	codesign --force --options runtime --timestamp \
+115	  --sign "Developer ID Application: <Your Name> (<TEAMID>)" "$APP"
+116	ditto -c -k --keepParent "$APP" StarPlayrX.zip
+117	xcrun notarytool submit StarPlayrX.zip --keychain-profile "<profile>" --wait
+118	xcrun stapler staple "$APP"
+119	ditto -c -k --keepParent "$APP" StarPlayrX-Mac.zip
+120	```
+121	
+122	Re-sign after `xcodebuild`. This turns on the hardened runtime and removes the `get-task-allow` entitlement, which notarization rejects.
+123	
+124	## 🩺 Troubleshooting
+125	
+126	**Static, hissing or popping on macOS 26:** while audio is playing, run this in Terminal:
+127	```sh
+128	sudo killall coreaudiod
+129	```
+130	More details: [How to fix popping sounds on macOS 26](https://medium.com/tech-blog-today/how-to-fix-popping-sounds-on-macos-26-c2846fc65ad0)
+131	
+132	**Nothing plays:** check that your SiriusXM subscription is active and that you're online. Streaming needs an internet connection.
+133	
+134	## 📜 License and trademarks
+135	
+136	- See [LICENSE](LICENSE).
+137	- The StarPlayr trademark is owned by NiceMac LLC and licensed exclusively to StarPlayrX.com.
+138	- All material is Copyright © 2025–2026 StarPlayrX.com.
+139	- NiceMac LLC is not affiliated with SiriusXM or its subsidiaries.
+140	
+141	## 🌐 More from us
+142	
+143	We're now focused on AgentiLoop projects:
+144	[agentiloop.ai](https://agentiloop.ai) · [superbox64.com](https://superbox64.com) · [inkpen.io](https://inkpen.io) · [starplayrx.com](https://starplayrx.com)
+145	
+146	*Don't be a slacker, be a Star Player.* ⭐
+147	
+148	---
+149	
+150	**AgentiLoop:** [agentiloop.ai](https://agentiloop.ai/)
+151	
+152	Copyright © 2026 AgentiLoop.ai, a Logos InkPen LLC company. All rights reserved.
+153	

@@ -87,6 +87,7 @@ func playlistRoute() -> httpReq {{ request in
                 }
 
                 playlist = processPlaylist(list)
+                livePlaylistObserver?(playlist)
             }
         }
         

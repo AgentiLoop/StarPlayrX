@@ -1,0 +1,25 @@
+Processing: /tmp/spx-rel/build/Build/Products/Release/StarPlayrX.app
+Processing: /tmp/spx-rel/build/Build/Products/Release/StarPlayrX.app
+The staple and validate action worked!
+created: /tmp/spx-rel/StarPlayrX-Mac-1.1.6.dmghdiutil: WARNING: 'hdiutil create -volname -format ...' is deprecated. Please use 'diskutil image create from/blank --volumeName --format ...' instead.
+
+Conducting pre-submission checks for StarPlayrX-Mac-1.1.6.dmg and initiating connection to the Apple notary service...
+Submission ID received
+Successfully uploaded file
+Waiting for processing to complete.
+Current status: In Progress...Current status: In Progress....Current status: Accepted.....Processing complete
+
+Processing: /tmp/spx-rel/StarPlayrX-Mac-1.1.6.dmg
+Processing: /tmp/spx-rel/StarPlayrX-Mac-1.1.6.dmg
+The staple and validate action worked!
+x86_64 arm64
+1.1.6
+/tmp/spx-rel/build/Build/Products/Release/StarPlayrX.app: accepted
+source=Notarized Developer ID
+origin=Developer ID Application: Todd Bruss (469UCUB275)
+/tmp/spx-rel/StarPlayrX-Mac-1.1.6.dmg: accepted
+source=Notarized Developer ID
+origin=Developer ID Application: Todd Bruss (469UCUB275)
+0a4582f89b896def5214bcf74c6019684a7faf48c7190a2a55f7e9272158a97f  /tmp/spx-rel/StarPlayrX-Mac-1.1.6.dmg
+3dcc3153e67283f9d6774a79dd0f9e38e4d7bb73fbd8c2fa94b33b0e1f5cbf5f  /tmp/spx-rel/StarPlayrX-Mac-1.1.6.zip
+ALLDONE

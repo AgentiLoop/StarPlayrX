@@ -1,0 +1,43 @@
+Replaced 1 occurrence in /tmp/spx-rel/notes.md [verified: true]
+
+📎# 📻 StarPlayrX for Mac 1.1.6
+📎
+📎<table>
+📎  <tr>
+📎    <td align="center" valign="top" width="33%"><img src="https://github.com/AgentiLoop/StarPlayrX/releases/download/mac-1.1.6/StarPlayrX-Mac-screenshot.png" width="260" alt="StarPlayrX pulled down from the menu bar"><br><b>📻 Menu bar</b></td>
+📎    <td align="center" valign="top" width="33%"><img src="https://github.com/AgentiLoop/StarPlayrX/releases/download/mac-1.1.6/StarPlayrX-Mac-tear-off.png" width="260" alt="StarPlayrX torn off into its own window"><br><b>✂️ Tear-off window</b></td>
+📎    <td align="center" valign="top" width="33%"><img src="https://github.com/AgentiLoop/StarPlayrX/releases/download/mac-1.1.6/StarPlayrX-Mac-shade.png" width="260" alt="StarPlayrX rolled up like a window shade"><br><b>🎬 Window shade</b></td>
+📎  </tr>
+📎</table>
+📎
+📎## 🎯 Now Playing matches what you hear
+📎- On a live channel, the song shown now follows the audio, the same way the SiriusXM web player does it. Every second StarPlayrX checks the stream's timestamp (`EXT-X-PROGRAM-DATE-TIME`) and shows the song that started most recently before that point in the channel's timeline
+📎- 
+❌Song changes show up within a second of the new song starting, not when the next update comes in
+✅The title changes when the song changes in the audio, instead of waiting for the next 15-second update
+📎
+📎- The local server now passes the stream's real segment lengths to the player, so the player's timestamp is the stream's true time. Before, shortened segment lengths pushed the timestamp off, so the song shown didn't match the audio
+📎- Tuning in now starts at the newest segment instead of 30 seconds behind, so you're as close to live as the stream allows
+📎
+📎## 📡 Live channel info from SiriusXM's live feed
+📎- Every live channel's current song, with album art for most, now comes from one call to SiriusXM's live feed. The old feed is still the fallback
+📎- Talk shows that have no artist now show the show's name in its place, like the web player
+📎
+📎## 📜 Long titles scroll
+📎- Song and artist names too long for the Now Playing header now scroll sideways in a loop instead of getting cut off
+📎
+📎## 🧭 Updated web identity
+📎- Sign-in and requests now identify as the latest Safari (27.0.1)
+📎
+📎## 💻 Requirements
+📎- macOS 13 Ventura or later (equalizer: macOS 14.2 or later)
+📎- Universal: Apple silicon and Intel
+📎- An active SiriusXM subscription
+📎
+📎## 🔏 Security
+📎- Signed with Developer ID and notarized by Apple (ticket stapled)
+📎
+📎## 📦 Install
+📎1. Download `StarPlayrX-Mac-1.1.6.dmg` (or the `.zip`)
+📎2. Move `StarPlayrX.app` to Applications and open it
+📎3. Click the 📻 icon in the menu bar of 38 lines

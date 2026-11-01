@@ -69,6 +69,7 @@ final class Radio: ObservableObject {
             break
         }
         realSegmentDurations = true
+        SpectrumTimeline.shared.observeServer()
         startServer(port)
         preflightConfig(location: localeIsCA ? "CA" : "US")
         for _ in 0..<20 {
@@ -264,6 +265,7 @@ final class Radio: ObservableObject {
                 do {
                     let file = try await xtra.download(peeked, into: xtraFolder)
                     if !Task.isCancelled {
+                        SpectrumTimeline.shared.analyze(track: file)
                         let item = AVPlayerItem(url: file)
                         xtraTracks[item] = peeked
                         xtraPlayer.insert(item, after: nil)
@@ -291,6 +293,7 @@ final class Radio: ObservableObject {
                     let track = pending.removeFirst()
                     let file = try await xtra.download(track, into: xtraFolder)
                     guard !Task.isCancelled else { break }
+                    SpectrumTimeline.shared.analyze(track: file, from: first ? track.startOffset : 0)
                     let item = AVPlayerItem(url: file)
                     xtraTracks[item] = track
                     xtraPlayer.insert(item, after: nil)
@@ -321,6 +324,7 @@ final class Radio: ObservableObject {
         xtraPlayer.pause()
         xtraPlayer.removeAllItems()
         xtraTracks = [:]
+        SpectrumTimeline.shared.forgetTracks()
         try? FileManager.default.removeItem(at: xtraFolder)
     }
 
@@ -329,7 +333,9 @@ final class Radio: ObservableObject {
         let queued = Set(xtraPlayer.items())
         for (item, track) in xtraTracks where !queued.contains(item) {
             xtraTracks[item] = nil
-            try? FileManager.default.removeItem(at: xtraFolder.appendingPathComponent("\(track.id).aac"))
+            let file = xtraFolder.appendingPathComponent("\(track.id).aac")
+            SpectrumTimeline.shared.forget(track: file)
+            try? FileManager.default.removeItem(at: file)
         }
         guard let item = xtraPlayer.currentItem, let track = xtraTracks[item], let current, current.xtraID != nil else { return }
         print("XTRA playing \(current.id) \(track.artist) – \(track.title)")
@@ -436,6 +442,19 @@ final class Radio: ObservableObject {
     var audioStarted: Bool {
         guard isPlaying, let current else { return false }
         return (current.xtraID != nil ? xtraPlayer : player).timeControlStatus == .playing
+    }
+
+    /// Bars for what is coming out of the speakers right now, read from the frames worked out
+    /// ahead of time at the player's exact position; nil when nothing is playing.
+    var spectrumNow: [Float]? {
+        guard isPlaying, let current else { return nil }
+        if current.xtraID != nil {
+            guard xtraPlayer.timeControlStatus == .playing, let item = xtraPlayer.currentItem,
+                  let file = (item.asset as? AVURLAsset)?.url else { return nil }
+            return SpectrumTimeline.shared.levels(track: file, at: item.currentTime().seconds)
+        }
+        guard player.timeControlStatus == .playing, let date = player.currentItem?.currentDate() else { return nil }
+        return SpectrumTimeline.shared.levels(at: date)
     }
 
     private func isPlayingXtra(_ id: String) -> Bool {

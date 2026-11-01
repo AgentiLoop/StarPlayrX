@@ -1,0 +1,1 @@
+{"input":{"command":"cd \/Users\/toddbruss\/Documents\/GitHub\/StarPlayrX; pgrep -lf StarPlayr; lsof -iTCP -sTCP:LISTEN -n -P | grep -i starplay; grep -n -B3 -A60 \"func liveTimeline\" StarPlayrXMac\/Sources\/Xtra.swift"},"tool":"user_shell","spilled":1793567875.178091}

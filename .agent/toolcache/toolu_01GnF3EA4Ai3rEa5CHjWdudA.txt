@@ -1,0 +1,45 @@
+StarPlayrX-Mac-1.1.5.dmg
+StarPlayrX-Mac-1.1.5.zip
+StarPlayrX-Mac-menu-panel.png
+StarPlayrX-Mac-screenshot.png
+StarPlayrX-Mac-shade.png
+StarPlayrX-Mac-tear-off.png
+build
+build.sh
+dmg
+log
+n.zip
+new
+notes.md
+ocr.swift
+wid.py
+wid.swift
+set -e
+cd /Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrXMac
+R=/tmp/spx-rel; V=1.1.5; ID="Developer ID Application: Todd Bruss (469UCUB275)"; P="App Store Connect Profile"
+rm -rf $R/build $R/dmg $R/*.zip $R/*.dmg
+xcodebuild -project StarPlayrXMac.xcodeproj -scheme StarPlayrXMac -configuration Release -derivedDataPath $R/build ARCHS="arm64 x86_64" ONLY_ACTIVE_ARCH=NO CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY="$ID" DEVELOPMENT_TEAM=469UCUB275 ENABLE_HARDENED_RUNTIME=YES build 2>&1 | grep -E "error:|BUILD" 
+APP=$R/build/Build/Products/Release/StarPlayrX.app
+codesign --force --options runtime --timestamp --sign "$ID" $APP
+ditto -c -k --keepParent $APP $R/n.zip
+xcrun notarytool submit $R/n.zip --keychain-profile "$P" --wait
+xcrun stapler staple $APP
+ditto -c -k --keepParent $APP $R/StarPlayrX-Mac-$V.zip
+mkdir $R/dmg && cp -R $APP $R/dmg/ && ln -s /Applications $R/dmg/Applications
+hdiutil create -volname StarPlayrX -srcfolder $R/dmg -format UDZO -ov $R/StarPlayrX-Mac-$V.dmg
+codesign --timestamp --sign "$ID" $R/StarPlayrX-Mac-$V.dmg
+xcrun notarytool submit $R/StarPlayrX-Mac-$V.dmg --keychain-profile "$P" --wait
+xcrun stapler staple $R/StarPlayrX-Mac-$V.dmg
+lipo -archs $APP/Contents/MacOS/StarPlayrX; defaults read $APP/Contents/Info.plist CFBundleShortVersionString
+spctl -a -vv $APP; spctl -a -t open --context context:primary-signature -vv $R/StarPlayrX-Mac-$V.dmg
+shasum -a 256 $R/StarPlayrX-Mac-$V.dmg $R/StarPlayrX-Mac-$V.zip
+echo ALLDONE
+ .../Sources/StarPlayrRadioKit/Login/Login.swift    |  2 +-
+ .../StarPlayrRadioKit/Routes/playlistRoute.swift   |  3 +
+ .../Sources/StarPlayrRadioKit/Setup/Global.swift   |  5 +-
+ StarPlayrXMac/Sources/MenuView.swift               | 56 +++++++++++++++++-
+ StarPlayrXMac/Sources/Radio.swift                  | 62 +++++++++++++++++++-
+ StarPlayrXMac/Sources/Xtra.swift                   | 66 ++++++++++++++++++++--
+ 6 files changed, 184 insertions(+), 10 deletions(-)
+27:        CFBundleShortVersionString: "1.1.5"
+28:        CFBundleVersion: "10"

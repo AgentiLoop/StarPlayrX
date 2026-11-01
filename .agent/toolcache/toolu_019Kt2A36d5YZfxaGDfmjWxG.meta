@@ -1,0 +1,1 @@
+{"spilled":1793567875.18608,"tool":"file","input":{"action":"edit","old_string":"- Song changes show up within a second of the new song starting, not when the next update comes in","new_string":"- The title changes when the song changes in the audio, instead of waiting for the next 15-second update","file_path":"\/tmp\/spx-rel\/notes.md"}}

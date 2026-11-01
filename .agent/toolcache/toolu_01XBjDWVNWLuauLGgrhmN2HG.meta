@@ -1,0 +1,1 @@
+{"input":{"command":"cd \/Users\/toddbruss\/Documents\/GitHub\/StarPlayrX && gh release view mac-1.1.6 --json assets -q '.assets[].name'; gh release list -L 2"},"spilled":1793567875.1877089,"tool":"user_shell"}

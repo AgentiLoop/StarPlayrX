@@ -1,0 +1,29 @@
+15:<meta property="og:image:alt" content="StarPlayrX for Mac 1.1.6: Small Radio. Big Waves.">
+43:        <a class="btn primary" href="https://github.com/AgentiLoop/StarPlayrX/releases/download/mac-1.1.6/StarPlayrX-Mac-1.1.6.dmg">Download for Mac</a>
+44:        <a class="btn ghost" href="https://github.com/AgentiLoop/StarPlayrX/releases/tag/mac-1.1.6">Release notes</a>
+46:      <p class="fine"><span class="nw">Version 1.1.6</span> · <span class="nw">macOS 13 Ventura or later</span> · <span class="nw">Apple silicon &amp; Intel</span> · <span class="nw">Signed &amp; notarized</span></p>
+50:      <img src="starplayrx-mac.png?v=1.1.6" width="350" height="616" alt="StarPlayrX for Mac menu bar window showing now playing, the color equalizer, channel search and the channel list">
+55:    <h2>New in 1.1.5. <span class="glow">Tear it off. Roll it up.</span></h2>
+59:      <figure><img src="starplayrx-mac-tear-off.png?v=1.1.6" width="386" height="621" alt="StarPlayrX torn off the menu bar as a floating window"><figcaption>Tear-off window</figcaption></figure>
+61:        <figure><img src="starplayrx-mac-shade.png?v=1.1.6" width="386" height="172" alt="StarPlayrX rolled up like a window shade, showing what's playing and the equalizer"><figcaption>Window shade: now playing + EQ</figcaption></figure>
+- Xtra channels (1000+), searchable with "xtra" or "music"; tuning in plays the song the list shows
+- Play/pause from the keyboard media keys and Control Center, with the album art or channel art showing there too
+- Picks up where you left off: the last channel you played starts again when StarPlayrX opens
+- US and Canada channel lineups
+- Your password is stored only in the macOS Keychain
+
+**Requirements:** macOS 13 Ventura or later, Apple Silicon or Intel, and an active SiriusXM subscription.
+
+**Download:** [StarPlayrX for Mac 1.1.6](https://github.com/AgentiLoop/StarPlayrX/releases/tag/mac-1.1.6) (signed and notarized). All builds are on the [Releases](https://github.com/AgentiLoop/StarPlayrX/releases) page.
+
+### 📜 AppleScript
+
+```applescript
+tell application "StarPlayrX"
+    play channel "1009"
+    get {shown artist, shown song}       -- what the list shows
+    get {playing artist, playing song}   -- what's actually playing
+    park menu at upper right
+    toggle shade
+end tell
+```

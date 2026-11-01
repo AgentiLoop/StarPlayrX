@@ -1,0 +1,96 @@
+Error: diff_and_apply refused — this file had not been read this task. It has now been read FOR YOU and is marked as read. Do NOT call file(action:"read") on it. Your very next call must be the same diff_and_apply, with old_string/source/line numbers copied verbatim from the content below.
+
+/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrRadioKit/Sources/StarPlayrRadioKit/Routes/playlistRoute.swift:
+1 	//
+2 	//  playlistRoute.swift
+3 	//  StarPlayrRadioApp
+4 	//
+5 	//  Created by Todd Bruss on 9/5/22.
+6 	//
+7 	
+8 	import Foundation
+9 	import SwifterLite
+10	
+11	var resetChTknId : String = ""
+12	var tokenExpires : Int    = 0
+13	
+14	func currentTimeInMiliseconds() -> Int {
+15	    let currentDate = Date()
+16	    let since1970 = currentDate.timeIntervalSince1970
+17	    return Int(since1970 * 1000)
+18	}
+19	
+20	func playlistRoute() -> httpReq {{ request in
+21	    autoreleasepool {
+22	        var playlist = String()
+23	        
+24	        guard
+25	            let channelid = request.params[":channelid"]
+26	        else {
+27	            return HttpResponse.notFound(.none)
+28	        }
+29	        
+30	        if let channel = String?(String(channelid.split(separator: ".")[0])),
+31	           let ch = userX.channels[channel] as? NSDictionary,
+32	           let channelid = ch["channelId"] as? String {
+33	            
+34	            userX.channel = channelid
+35	            
+36	            // Reset token if we have a new channel or we paused over 8 minutes
+37	            if resetChTknId != channelid {
+38	                Session(channelid: channelid, updateToken: true, updateUser: true)
+39	                resetChTknId = channelid
+40	                tokenExpires = currentTimeInMiliseconds()
+41	            }
+42	                          
+43	            // Refresh token every 480 seconds
+44	            if (currentTimeInMiliseconds() - tokenExpires) >= 480000 {
+45	                DispatchQueue.main.async {
+46	                    Session(channelid: channelid, updateToken: true, updateUser: false)
+47	                }
+48	                tokenExpires = currentTimeInMiliseconds()
+49	            }
+50	            
+51	            let source = Playlist(channelid: channelid)
+52	            
+53	            TextSync(endpoint: source) { (list) in
+54	                guard
+55	                    let list = list
+56	                else {
+57	                    return
+58	                }
+59	                
+60	                func processPlaylist(_ list: String) -> String {
+61	                    playlist = list
+62	                    
+63	                    //MARK: fix key path
+64	                    playlist = playlist.replacingOccurrences(of: "key/1", with: "/api/v3/key")
+65	                    
+66	                    //MARK: add audio prefix
+67	                    playlist = playlist.replacingOccurrences(of: channelid, with: "/api/v3/aac/" + channelid)
+68	                    
+69	                    //MARK: fix duration
+70	                    playlist = playlist.replacingOccurrences(of: "#EXT-X-TARGETDURATION:10", with: "#EXT-X-TARGETDURATION:9")
+71	                    
+72	                    //MARK: this keeps the PDT in sync, go figure
+73	                    playlist = playlist.replacingOccurrences(of: "#EXTINF:10,", with: "#EXTINF:1,")
+74	                    
+75	                    return playlist
+76	                }
+77	
+78	                playlist = processPlaylist(list)
+79	            }
+80	        }
+81	        
+82	        if !playlist.isEmpty {
+83	            // Use the new hlsPlaylist response type for better HLS streaming support
+84	            return HttpResponse.ok(.ping(playlist), [
+85	                "X-Channel-ID": userX.channel,
+86	                "X-Playlist-Version": "3"
+87	            ])
+88	        } else {
+89	            return HttpResponse.notFound(.none)
+90	        }
+91	    }
+92	}}
+93	

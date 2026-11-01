@@ -36,6 +36,8 @@ func audioRoute() -> httpReq {{ request in
             return HttpResponse.notFound(.none)
         }
         
+        liveSegmentObserver?(aac, audio, Data(base64Encoded: userX.key))
+        
         // Use the optimized audioStream response type for better streaming performance
         return HttpResponse.ok(.data(audio, contentType: audioFormat), [
             "X-Channel-ID": userX.channel,

@@ -1,0 +1,66 @@
+16996 /Users/toddbruss/Library/Developer/Xcode/DerivedData/StarPlayrXMac-cpwkvnhjcilnxwcazrzzsegmszyp/Build/Products/Debug/StarPlayrX.app/Contents/MacOS/StarPlayrX -NSDocumentRevisionsDebugMode YES
+StarPlayr 16996 toddbruss    3u  IPv4 0x1a22f79a85b26939      0t0  TCP *:9999 (LISTEN)
+234-    /// The audio itself carries no song metadata (each segment's ID3 tag is only a timestamp), but these
+235-    /// timestamps line up with the stream's EXT-X-PROGRAM-DATE-TIME, so the cut that started last before
+236-    /// the player's current date is the one actually being heard, even though playback runs behind live.
+237:    func liveTimeline(channelID: String) async throws -> [(start: Date, nowPlaying: NowPlaying)] {
+238-        let body: [String: Any] = ["id": channelID, "type": "channel-linear", "hlsVersion": "V3",
+239-                                   "manifestVariant": "FULL", "mtcVersion": "V2"]
+240-        let tune = try await json("POST", "/playback/play/v1/tuneSource", body: body, bearer: try await bearer())
+241-        let live = ((tune["streams"] as? [[String: Any]])?.first?["metadata"] as? [String: Any])?["live"] as? [String: Any] ?? [:]
+242-        let episodes = (live["episodes"] as? [[String: Any]] ?? []).compactMap { e in
+243-            Self.date(e["startTimestamp"] as? String).map { (start: $0, episode: e) }
+244-        }
+245-        return (live["items"] as? [[String: Any]] ?? []).compactMap { item -> (start: Date, nowPlaying: NowPlaying)? in
+246-            guard item["isInterstitial"] as? Bool != true, let start = Self.date(item["timestamp"] as? String) else { return nil }
+247-            let show = episodes.filter { $0.start <= start }.max { $0.start < $1.start }?.episode
+248-            let art = Self.tileKey(item["images"]) ?? Self.tileKey(show?["images"]) ?? Self.tileKey(show?["showImages"])
+249-            // Talk cuts have no artist; the web player shows the show's name in its place.
+250-            let artist = item["artistName"] as? String ?? ""
+251-            return (start, NowPlaying(artist: artist.isEmpty ? show?["showName"] as? String ?? "" : artist,
+252-                                      song: item["name"] as? String ?? "",
+253-                                      image: art.map { Self.imageURL(key: $0, size: 450) } ?? ""))
+254-        }
+255-        .sorted { $0.start < $1.start }
+256-    }
+257-
+258-    private static func tileKey(_ images: Any?) -> String? {
+259-        let tile = ((images as? [String: Any])?["tile"] as? [String: Any])?["aspect_1x1"] as? [String: Any]
+260-        return ((tile?["preferredImage"] ?? tile?["defaultImage"]) as? [String: Any])?["url"] as? String
+261-    }
+262-
+263-    // MARK: Download
+264-
+265-    /// Downloads and decrypts one track into a playable ADTS AAC file.
+266-    func download(_ track: XtraTrack, into folder: URL) async throws -> URL {
+267-        guard let masterURL = URL(string: track.url) else { throw XtraError.badResponse("track url") }
+268-        let master = try await text(masterURL)
+269-        let variants = master.split(whereSeparator: \.isNewline).map(String.init).filter { !$0.isEmpty && !$0.hasPrefix("#") }
+270-        guard let variant = variants.first(where: { $0.contains("_256k_") }) ?? variants.first,
+271-              let variantURL = URL(string: variant, relativeTo: masterURL)?.absoluteURL
+272-        else { throw XtraError.badResponse("no variant playlist") }
+273-
+274-        var sequence = 0
+275-        var iv: Data?
+276-        var segments = [URL]()
+277-        for line in try await text(variantURL).split(whereSeparator: \.isNewline).map(String.init) {
+278-            if line.hasPrefix("#EXT-X-MEDIA-SEQUENCE:") {
+279-                sequence = Int(line.dropFirst("#EXT-X-MEDIA-SEQUENCE:".count)) ?? 0
+280-            } else if line.hasPrefix("#EXT-X-KEY"), let r = line.range(of: "IV=0x") {
+281-                iv = Data(hex: String(line[r.upperBound...].prefix(32)))
+282-            } else if !line.isEmpty, !line.hasPrefix("#"), let u = URL(string: line, relativeTo: variantURL)?.absoluteURL {
+283-                segments.append(u)
+284-            }
+285-        }
+286-        guard !segments.isEmpty else { throw XtraError.badResponse("empty playlist") }
+287-
+288-        let keyJSON = try await json("GET", "/playback/key/v1/\(track.keyID)", body: nil, bearer: try await bearer())
+289-        guard let keyB64 = keyJSON["key"] as? String, let key = Data(base64Encoded: keyB64), key.count == 16
+290-        else { throw XtraError.badResponse("key") }
+291-
+292-        let parts = try await withThrowingTaskGroup(of: (Int, Data).self) { group in
+293-            for (i, url) in segments.enumerated() {
+294-                group.addTask {
+295-                    let (data, resp) = try await self.session.data(from: url)
+296-                    if let code = (resp as? HTTPURLResponse)?.statusCode, code >= 400 { throw XtraError.http(code, "segment") }
+297-                    // Without an explicit IV, HLS uses the segment's media sequence number.
