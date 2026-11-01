@@ -188,7 +188,10 @@ private struct ChannelRow: View, Equatable {
                     if albumArt {
                         Image(nsImage: art).resizable().scaledToFill().scaleEffect(1.1)
                     } else {
-                        Image(nsImage: art).resizable().scaledToFit().padding(2).background(Color(white: 0.12))
+                        // Same as the header: square channel art is enlarged to fill the squircle.
+                        ChannelLogo(image: Image(nsImage: art), inset: 2)
+                            .frame(width: 32, height: 32)
+                            .background(Color(white: 0.12))
                     }
                 } else {
                     Image(nsImage: NSApp.applicationIconImage).resizable().scaledToFill()
@@ -527,13 +530,14 @@ private struct MenuMaterial: NSViewRepresentable {
 /// and show its own baked-in corners) it's enlarged to fill the squircle instead.
 private struct ChannelLogo: View {
     let image: Image
+    var inset: CGFloat = 4
     @State private var isSquare = false
 
     var body: some View {
         image.resizable().scaledToFit()
             .onGeometryChange(for: Bool.self) { abs($0.size.width - $0.size.height) < 2 } action: { isSquare = $0 }
             .scaleEffect(isSquare ? 1.12 : 1)
-            .padding(isSquare ? 0 : 4)
+            .padding(isSquare ? 0 : inset)
     }
 }
 
