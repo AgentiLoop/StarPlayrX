@@ -218,7 +218,8 @@ final class Radio: ObservableObject {
             if let range = item.seekableTimeRanges.last?.timeRangeValue {
                 let edge = max(CMTimeSubtract(CMTimeRangeGetEnd(range), CMTime(seconds: 10, preferredTimescale: 1000)), range.start)
                 if abs(CMTimeGetSeconds(CMTimeSubtract(edge, item.currentTime()))) > 3 {
-                    await item.seek(to: edge)
+                    // Land on any segment boundary at or before the target — no exact-frame fetch.
+                    await item.seek(to: edge, toleranceBefore: .positiveInfinity, toleranceAfter: .zero)
                 }
             }
             print("LIVE lag \(item.currentDate().map { Int(Date().timeIntervalSince($0)) } ?? -1)s")
