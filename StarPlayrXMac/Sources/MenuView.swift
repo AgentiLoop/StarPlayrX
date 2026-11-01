@@ -26,31 +26,41 @@ struct MenuView: View {
     private var shaded: Bool { menu.shaded }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            if radio.isLoggedIn {
-                // Tear-off / drag area: artwork, titles and the spectrum.
-                VStack(alignment: .leading, spacing: 10) {
-                    nowPlaying
-                    if radio.isPlaying { SpectrumView() }
+        VStack(alignment: .leading, spacing: 0) {
+            VStack(alignment: .leading, spacing: 10) {
+                if radio.isLoggedIn {
+                    // Tear-off / drag area: artwork, titles and the spectrum.
+                    VStack(alignment: .leading, spacing: 10) {
+                        nowPlaying
+                        if radio.isPlaying { SpectrumView() }
+                    }
+                    .contentShape(Rectangle())
+                    .gesture(tearOff)
+                    .simultaneousGesture(TapGesture(count: 2).onEnded { menu.shaded.toggle() })
+                } else {
+                    Text(radio.status).foregroundStyle(.secondary)
+                    Button(radio.isBusy ? "Signing in…" : "Sign In…") {
+                        Task { await CredentialPrompt.signIn() }
+                    }
+                    .disabled(radio.isBusy)
                 }
-                .contentShape(Rectangle())
-                .gesture(tearOff)
-                .simultaneousGesture(TapGesture(count: 2).onEnded { menu.shaded.toggle() })
-                if !shaded {
+            }
+            // Shading collapses this part instead of removing it: rebuilding the whole channel
+            // list on unshade blocked the main thread and froze the equalizer.
+            VStack(alignment: .leading, spacing: 10) {
+                if radio.isLoggedIn {
                     SearchField(text: $menu.search, placeholder: "Search channels, artists, songs")
                     channelList
                 }
-            } else {
-                Text(radio.status).foregroundStyle(.secondary)
-                Button(radio.isBusy ? "Signing in…" : "Sign In…") {
-                    Task { await CredentialPrompt.signIn() }
-                }
-                .disabled(radio.isBusy)
-            }
-            if !shaded {
                 Divider()
                 footer
             }
+            .padding(.top, 10)
+            .frame(height: shaded ? 0 : nil, alignment: .top)
+            .clipped()
+            .opacity(shaded ? 0 : 1)
+            .allowsHitTesting(!shaded)
+            .accessibilityHidden(shaded)
         }
         .padding(12)
         .frame(width: 340)
