@@ -39,6 +39,7 @@ actor XtraClient {
     private static let api = "https://api.edge-gateway.siriusxm.com"
     private static let imageService = "https://imgsrv-sxm-prod-device.streaming.siriusxm.com/"
     private static let trackArt = "https://siriusxm-priprodart.akamaized.net/"
+    private static let lookAround = "https://lookaround-cache-prod.streaming.siriusxm.com/playbackservices/v1/live/lookAround?delta="
     // "All channels" curated grouping, the same one the SiriusXM web player shows.
     private static let allChannelsEntity = "403ab6a5-d3c9-4c2a-a722-a94a6a5fd056"
     private static let allChannelsContainer = "3JoBfOCIwo6FmTpzM1S2H7"
@@ -162,8 +163,8 @@ actor XtraClient {
                            imageURL: key.map { imageURL(key: $0) } ?? "", isXtra: type == "channel-xtra")
     }
 
-    private static func imageURL(key: String) -> String {
-        let spec: [String: Any] = ["key": key, "edits": [["resize": ["width": 128, "height": 128]]]]
+    private static func imageURL(key: String, size: Int = 128) -> String {
+        let spec: [String: Any] = ["key": key, "edits": [["resize": ["width": size, "height": size]]]]
         guard let data = try? JSONSerialization.data(withJSONObject: spec, options: .withoutEscapingSlashes) else { return "" }
         return imageService + data.base64EncodedString()
     }
@@ -200,6 +201,29 @@ actor XtraClient {
     /// The track an Xtra channel would start with if tuned now, without downloading anything.
     func peek(channelID: String) async throws -> XtraTrack? {
         try await tune(channelID: channelID).tracks.first
+    }
+
+    // MARK: Live now playing
+
+    /// What every live (non-Xtra) channel is playing right now, keyed by channel entity id, in one
+    /// unauthenticated call: the "lookAround" feed the web player polls for its channel grid.
+    /// Talk and sports channels fall back to the current show's art when the cut has none.
+    func liveNowPlaying() async throws -> [String: NowPlaying] {
+        let (data, resp) = try await session.data(from: URL(string: Self.lookAround)!)
+        if let code = (resp as? HTTPURLResponse)?.statusCode, code >= 400 { throw XtraError.http(code, "lookAround") }
+        let channels = ((try? JSONSerialization.jsonObject(with: data)) as? [String: Any])?["channels"] as? [String: [String: Any]] ?? [:]
+        let now = Date()
+        var result = [String: NowPlaying]()
+        for (id, ch) in channels {
+            func current(_ key: String) -> [String: Any]? {
+                (ch[key] as? [[String: Any]] ?? []).last { $0["isAd"] as? Bool != true && (Self.date($0["validFrom"] as? String) ?? now) <= now }
+            }
+            guard let cut = current("cuts") else { continue }
+            let art = ((cut["image"] ?? current("shows")?["image"]) as? [String: Any])?["url"] as? String
+            result[id] = NowPlaying(artist: cut["artistName"] as? String ?? "", song: cut["name"] as? String ?? "",
+                                    image: art.map { Self.imageURL(key: $0, size: 450) } ?? "")
+        }
+        return result
     }
 
     // MARK: Download

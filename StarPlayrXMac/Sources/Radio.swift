@@ -44,6 +44,7 @@ final class Radio: ObservableObject {
     private var xtraTask: Task<Void, Never>?
     private var xtraTracks = [AVPlayerItem: XtraTrack]()
     private var xtraNowPlaying = [String: NowPlaying]()
+    private var liveIDs = [String: String]()   // live channel number -> entity id, for the lookAround feed
     private var xtraObserver: AnyCancellable?
     private var xtraPeekedAt = [String: Date]()
     private var xtraPeekedTrack = [String: XtraTrack]()  // what the channel list shows, played first on tune
@@ -143,6 +144,7 @@ final class Radio: ObservableObject {
             var tiles = [String: String]()
             for ch in all where !ch.isXtra && !ch.imageURL.isEmpty { tiles[ch.number] = ch.imageURL }
             guard isLoggedIn else { return }
+            liveIDs = Dictionary(all.filter { !$0.isXtra }.map { ($0.number, $0.id) }) { first, _ in first }
             let withTiles = channels.map { ch in
                 tiles[ch.id].map { Channel(id: ch.id, name: ch.name, category: ch.category, imageURL: $0, xtraID: ch.xtraID) } ?? ch
             }
@@ -330,6 +332,14 @@ final class Radio: ObservableObject {
             if let v = value as? [String: String] {
                 np[key] = Self.keepingArt(NowPlaying(artist: v["artist"] ?? "", song: v["song"] ?? "", image: v["image"] ?? ""),
                                           of: nowPlaying[key])
+            }
+        }
+        // The lookAround feed has every live channel's current cut, mostly with album art, in one call;
+        // it wins over PDT, which only has art for the tuned channel. PDT stays as the fallback.
+        if !liveIDs.isEmpty, let live = try? await xtra.liveNowPlaying() {
+            for (number, id) in liveIDs {
+                guard let la = live[id] else { continue }
+                np[number] = Self.keepingArt(Self.keepingArt(la, of: np[number]), of: nowPlaying[number])
             }
         }
         nowPlaying = np.merging(xtraNowPlaying) { live, _ in live }
