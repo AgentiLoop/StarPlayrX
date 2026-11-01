@@ -37,6 +37,8 @@ final class Radio: ObservableObject {
     private var serverStarted = false
     private let player = AVPlayer()
     private var pdtTimer: Timer?
+    /// How far the live stream runs behind on-air time, measured when a live channel starts.
+    private var streamLag = UserDefaults.standard.double(forKey: "streamLag")
 
     // Xtra channels: tracks are downloaded, decrypted and queued one after another.
     private let xtra = XtraClient()
@@ -226,7 +228,11 @@ final class Radio: ObservableObject {
             }
             guard player.currentItem === item else { return }
             player.play()
-            print("LIVE lag \(item.currentDate().map { Int(Date().timeIntervalSince($0)) } ?? -1)s")
+            if let at = item.currentDate() {
+                streamLag = max(0, Date().timeIntervalSince(at))
+                UserDefaults.standard.set(streamLag, forKey: "streamLag")
+            }
+            print("LIVE lag \(Int(streamLag))s")
             liveTimeline = ("", .distantPast, [])
             await updatePDT()
         }
@@ -365,7 +371,8 @@ final class Radio: ObservableObject {
         }
         // The lookAround feed has every live channel's current cut, mostly with album art, in one call;
         // it wins over PDT, which only has art for the tuned channel. PDT stays as the fallback.
-        if !liveIDs.isEmpty, let live = try? await xtra.liveNowPlaying() {
+        // lookAround is on-air time, which runs ahead of the HLS stream; read it at the stream's time instead.
+        if !liveIDs.isEmpty, let live = try? await xtra.liveNowPlaying(at: Date().addingTimeInterval(-streamLag)) {
             for (number, id) in liveIDs {
                 guard let la = live[id] else { continue }
                 np[number] = Self.keepingArt(Self.keepingArt(la, of: np[number]), of: nowPlaying[number])

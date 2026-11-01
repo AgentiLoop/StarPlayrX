@@ -208,11 +208,12 @@ actor XtraClient {
     /// What every live (non-Xtra) channel is playing right now, keyed by channel entity id, in one
     /// unauthenticated call: the "lookAround" feed the web player polls for its channel grid.
     /// Talk and sports channels fall back to the current show's art when the cut has none.
-    func liveNowPlaying() async throws -> [String: NowPlaying] {
+    /// `now` is the moment to report: pass the stream's live-edge time (wall clock minus stream lag) so the
+    /// list shows what a tuned player hears, not what is on air ahead of the stream.
+    func liveNowPlaying(at now: Date = Date()) async throws -> [String: NowPlaying] {
         let (data, resp) = try await session.data(from: URL(string: Self.lookAround)!)
         if let code = (resp as? HTTPURLResponse)?.statusCode, code >= 400 { throw XtraError.http(code, "lookAround") }
         let channels = ((try? JSONSerialization.jsonObject(with: data)) as? [String: Any])?["channels"] as? [String: [String: Any]] ?? [:]
-        let now = Date()
         var result = [String: NowPlaying]()
         for (id, ch) in channels {
             func current(_ key: String) -> [String: Any]? {
