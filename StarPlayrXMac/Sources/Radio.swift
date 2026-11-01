@@ -205,10 +205,10 @@ final class Radio: ObservableObject {
             let item = AVPlayerItem(url: url)
             // Start as soon as a little audio is buffered instead of waiting to fill a large buffer.
             item.preferredForwardBufferDuration = 3
+            // Stay paused until the start position is settled so the old position never plays
+            // (that was the half-second stutter before the jump).
+            player.pause()
             player.replaceCurrentItem(with: item)
-            // The playlist carries EXT-X-START (10 s behind live), so AVPlayer starts at the right
-            // spot by itself and can play immediately.
-            player.play()
             isPlaying = true
             var tries = 0
             while (item.status != .readyToPlay || item.seekableTimeRanges.isEmpty), tries < 100 {
@@ -224,6 +224,8 @@ final class Radio: ObservableObject {
                     await item.seek(to: edge, toleranceBefore: .positiveInfinity, toleranceAfter: .zero)
                 }
             }
+            guard player.currentItem === item else { return }
+            player.play()
             print("LIVE lag \(item.currentDate().map { Int(Date().timeIntervalSince($0)) } ?? -1)s")
             liveTimeline = ("", .distantPast, [])
             await updatePDT()
