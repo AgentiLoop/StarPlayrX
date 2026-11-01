@@ -179,6 +179,7 @@ final class Radio: ObservableObject {
         isLoggedIn = false
         channelsLoaded = false
         channels = []
+        lookAround = [:]
         current = nil
         status = "Not signed in"
     }
@@ -355,7 +356,7 @@ final class Radio: ObservableObject {
 
     private func startPDTTimer() {
         pdtTimer?.invalidate()
-        pdtTimer = Timer.scheduledTimer(withTimeInterval: 15, repeats: true) { _ in
+        pdtTimer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { _ in
             Task { @MainActor in await Radio.shared.updatePDT() }
         }
     }
@@ -375,8 +376,13 @@ final class Radio: ObservableObject {
         if !liveIDs.isEmpty, let live = try? await xtra.liveNowPlaying(at: Date().addingTimeInterval(-streamLag)) {
             for (number, id) in liveIDs {
                 guard let la = live[id] else { continue }
-                np[number] = Self.keepingArt(Self.keepingArt(la, of: np[number]), of: nowPlaying[number])
+                lookAround[number] = Self.keepingArt(la, of: lookAround[number])
             }
+        }
+        // Once a channel has lookAround data, never flip it back to PDT (a different source and clock)
+        // when a fetch fails or skips it; that flip-flopping was the list jumping back and forth.
+        for (number, la) in lookAround {
+            np[number] = Self.keepingArt(Self.keepingArt(la, of: np[number]), of: nowPlaying[number])
         }
         // lookAround says what is on air now, but the player runs behind live. For the tuned live channel,
         // show the cut at the player's position in the stream instead, from the channel's own timeline.
@@ -398,6 +404,7 @@ final class Radio: ObservableObject {
         updateNowPlayingInfo()
         Task { await refreshXtraNowPlaying() }
     }
+    private var lookAround = [String: NowPlaying]()   // last lookAround cut per live channel number
     private var liveTimeline = (channel: "", fetched: Date.distantPast, cuts: [(start: Date, nowPlaying: NowPlaying)]())
 
     /// Shows the cut being heard on the tuned live channel: the last one starting at or before the
