@@ -196,9 +196,23 @@ final class Radio: ObservableObject {
         Task {
             await startServerIfNeeded()
             guard let url = URL(string: "http://localhost:\(port)/api/v3/m3u/\(channel.id).m3u8") else { return }
-            player.replaceCurrentItem(with: AVPlayerItem(url: url))
+            let item = AVPlayerItem(url: url)
+            player.replaceCurrentItem(with: item)
             player.play()
             isPlaying = true
+            // AVPlayer starts several segments behind live, so the audio would lag the on-air song
+            // the channel list shows. Jump to the live edge so tuning in plays what the list says.
+            var tries = 0
+            while (item.status != .readyToPlay || item.seekableTimeRanges.isEmpty), tries < 100 {
+                try? await Task.sleep(nanoseconds: 100_000_000)
+                tries += 1
+            }
+            guard player.currentItem === item else { return }
+            if let range = item.seekableTimeRanges.last?.timeRangeValue {
+                let edge = CMTimeSubtract(CMTimeRangeGetEnd(range), CMTime(seconds: 2, preferredTimescale: 1000))
+                await item.seek(to: max(edge, range.start))
+            }
+            print("LIVE lag \(item.currentDate().map { Int(Date().timeIntervalSince($0)) } ?? -1)s")
             await updatePDT()
         }
     }
