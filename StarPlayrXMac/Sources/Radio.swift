@@ -205,7 +205,6 @@ final class Radio: ObservableObject {
             let item = AVPlayerItem(url: url)
             // Start as soon as a little audio is buffered instead of waiting to fill a large buffer.
             item.preferredForwardBufferDuration = 3
-            player.automaticallyWaitsToMinimizeStalling = false
             player.replaceCurrentItem(with: item)
             // The playlist carries EXT-X-START (10 s behind live), so AVPlayer starts at the right
             // spot by itself and can play immediately.
