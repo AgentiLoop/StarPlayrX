@@ -213,7 +213,8 @@ private struct ChannelRow: View, Equatable {
                         }
                     }
                 } else {
-                    Image(nsImage: NSApp.applicationIconImage).resizable().scaledToFill()
+                    // Same as the header: enlarged past the icon's transparent margin so it fills like art.
+                    Image(nsImage: NSApp.applicationIconImage).resizable().scaledToFill().scaleEffect(1024 / 824)
                 }
             }
             .frame(width: 32, height: 32)
