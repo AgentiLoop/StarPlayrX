@@ -54,6 +54,7 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.starplayrx.mac.tests
+        MACOSX_DEPLOYMENT_TARGET: "14.0"   # XCTest itself requires macOS 14
         SWIFT_VERSION: "5.0"
         GENERATE_INFOPLIST_FILE: YES
         CODE_SIGN_STYLE: Automatic

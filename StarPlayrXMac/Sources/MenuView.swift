@@ -181,6 +181,21 @@ private struct ChannelRow: View, Equatable {
     var body: some View {
         HStack {
             Text(channel.id).monospacedDigit().foregroundStyle(.secondary).frame(width: 34, alignment: .trailing)
+            // Album art when the channel has it, else the channel logo, else the StarPlayrX logo.
+            let albumArt = nowPlaying?.image.isEmpty == false
+            CachedArt(url: (albumArt ? nowPlaying?.image : channel.imageURL) ?? "") { art in
+                if let art {
+                    if albumArt {
+                        Image(nsImage: art).resizable().scaledToFill().scaleEffect(1.1)
+                    } else {
+                        Image(nsImage: art).resizable().scaledToFit().padding(2).background(Color(white: 0.12))
+                    }
+                } else {
+                    Image(nsImage: NSApp.applicationIconImage).resizable().scaledToFill()
+                }
+            }
+            .frame(width: 32, height: 32)
+            .clipShape(RoundedRectangle(cornerRadius: 7.25, style: .continuous))
             VStack(alignment: .leading) {
                 Text(channel.name).fontWeight(isCurrent ? .bold : .regular).lineLimit(1)
                 Text(nowPlaying.map { "\($0.artist) – \($0.song)" } ?? " ")
@@ -528,22 +543,24 @@ private struct ChannelLogo: View {
 final class ArtCache {
     static let shared = ArtCache()
     private let images = NSCache<NSString, NSImage>()
-    private var loading: [String: Task<NSImage?, Never>] = [:]
+    // Downloads hand back Data (Sendable); the NSImage is made here on the main actor, since
+    // NSImage is only Sendable from macOS 14 and the app supports macOS 13.
+    private var loading: [String: Task<Data?, Never>] = [:]
 
     func cached(_ url: String) -> NSImage? { images.object(forKey: url as NSString) }
 
     func image(_ url: String) async -> NSImage? {
         if let image = cached(url) { return image }
-        if let task = loading[url] { return await task.value }
         guard !url.isEmpty, let address = URL(string: url) else { return nil }
-        let task = Task<NSImage?, Never> {
-            guard let (data, _) = try? await URLSession.shared.data(from: address) else { return nil }
-            return NSImage(data: data)
+        let task = loading[url] ?? Task<Data?, Never> {
+            try? await URLSession.shared.data(from: address).0
         }
         loading[url] = task
-        let image = await task.value
+        let data = await task.value
         loading[url] = nil
-        if let image { images.setObject(image, forKey: url as NSString) }
+        if let image = cached(url) { return image }   // another caller already decoded it
+        guard let data, let image = NSImage(data: data) else { return nil }
+        images.setObject(image, forKey: url as NSString)
         return image
     }
 }

@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		37C5EF8724535B8840F96FA2 /* StarPlayrRadioKit in Frameworks */ = {isa = PBXBuildFile; productRef = AEC40F5BDDF2C049FE7182D5 /* StarPlayrRadioKit */; };
 		67113DB4036BE489BDC7FE53 /* Visualizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = B180FAFDD06BBA9CCCECBA5D /* Visualizer.swift */; };
+		6C400293FE0D8C7434417F04 /* ScriptedTour.applescript in Resources */ = {isa = PBXBuildFile; fileRef = F780CB7683BB43494DE45275 /* ScriptedTour.applescript */; };
 		78D07A43295425FB93CF8574 /* Scripting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E4311F836AD4A7A0120E737 /* Scripting.swift */; };
 		8B1D211BFBA7662F1F5269C4 /* Xtra.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40AD17AD1A89E96BF1D207E3 /* Xtra.swift */; };
 		8B8D4221E3B5D9DA693BACAA /* StarPlayrXMacTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5AACB58C22D23FF75DF15D1A /* StarPlayrXMacTests.swift */; };
@@ -45,6 +46,7 @@
 		B180FAFDD06BBA9CCCECBA5D /* Visualizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Visualizer.swift; sourceTree = "<group>"; };
 		B2CA3E577EDD3F8E2AC46C50 /* StarPlayrRadioKit */ = {isa = PBXFileReference; lastKnownFileType = folder; name = StarPlayrRadioKit; path = ../StarPlayrRadioKit; sourceTree = SOURCE_ROOT; };
 		B4362792013A115602196217 /* Keychain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Keychain.swift; sourceTree = "<group>"; };
+		F780CB7683BB43494DE45275 /* ScriptedTour.applescript */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.applescript; path = ScriptedTour.applescript; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -97,6 +99,7 @@
 		62EC089FFE9B3C52C3F3580B /* Tests */ = {
 			isa = PBXGroup;
 			children = (
+				F780CB7683BB43494DE45275 /* ScriptedTour.applescript */,
 				5AACB58C22D23FF75DF15D1A /* StarPlayrXMacTests.swift */,
 			);
 			path = Tests;
@@ -139,6 +142,7 @@
 			buildConfigurationList = A6BA002B93E8D024DD385F87 /* Build configuration list for PBXNativeTarget "StarPlayrXMacTests" */;
 			buildPhases = (
 				2D226AB8E2AE6464C3D191F7 /* Sources */,
+				8B32333CAAA4F7F85EAE0713 /* Resources */,
 			);
 			buildRules = (
 			);
@@ -201,6 +205,14 @@
 			files = (
 				B92350C46BD992AC2AA8DDCA /* Assets.xcassets in Resources */,
 				AAF02C1F2D58A6F4F585EDF7 /* StarPlayrX.sdef in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		8B32333CAAA4F7F85EAE0713 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				6C400293FE0D8C7434417F04 /* ScriptedTour.applescript in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -331,6 +343,7 @@
 					"@executable_path/../Frameworks",
 					"@loader_path/../Frameworks",
 				);
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.starplayrx.mac.tests;
 				SDKROOT = macosx;
 				SWIFT_VERSION = 5.0;
@@ -351,6 +364,7 @@
 					"@executable_path/../Frameworks",
 					"@loader_path/../Frameworks",
 				);
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.starplayrx.mac.tests;
 				SDKROOT = macosx;
 				SWIFT_VERSION = 5.0;
