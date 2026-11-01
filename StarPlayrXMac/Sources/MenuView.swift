@@ -159,7 +159,8 @@ struct MenuView: View {
                     }
                 }
             }
-            .frame(height: 360)
+            .coordinateSpace(name: CachedArt<EmptyView>.channelList)   // rows fetch art as they near the visible part
+            .frame(height: CachedArt<EmptyView>.listHeight)
             .padding(.trailing, -12)   // scroll bar sits at the window's right edge
             .onAppear { if let id = radio.current?.id { proxy.scrollTo(id, anchor: .center) } }
         }
@@ -194,7 +195,7 @@ private struct ChannelRow: View, Equatable {
             Text(channel.id).monospacedDigit().foregroundStyle(.secondary).frame(width: 34, alignment: .trailing)
             // Album art when the channel has it, else the channel logo, else the StarPlayrX logo.
             let albumArt = nowPlaying?.image.isEmpty == false
-            CachedArt(url: (albumArt ? nowPlaying?.image : channel.imageURL) ?? "", size: 32) { art in
+            CachedArt(url: (albumArt ? nowPlaying?.image : channel.imageURL) ?? "", size: 32, inChannelList: true) { art in
                 if let art {
                     if albumArt {
                         Image(nsImage: art).resizable().scaledToFill()
@@ -571,32 +572,47 @@ final class ArtCache {
         cache.totalCostLimit = 400 * 144 * 144 * 4
         return cache
     }()
-    // Downloads hand back Data (Sendable); the NSImage is made here on the main actor, since
-    // NSImage is only Sendable from macOS 14 and the app supports macOS 13.
-    private var loading: [String: Task<Data?, Never>] = [:]
+    // Download and decode run off the main actor so arriving art never stalls scrolling;
+    // the NSImage is made here on the main actor, since NSImage is only Sendable from macOS 14.
+    private var loading: [String: Task<Thumbnail?, Never>] = [:]
+    /// `sized(_:pixels:)` results: it base64-decodes JSON, too slow to redo in every row's body.
+    private var sizedURLs: [String: String] = [:]
+
+    /// A decoded bitmap handed back from a background task.
+    struct Thumbnail: @unchecked Sendable { let image: CGImage }
 
     /// Pixels for art shown at `points`: 2x.
     static func pixels(_ points: CGFloat) -> Int { Int((points * 2).rounded(.up)) }
 
     func cached(_ url: String, pixels: Int) -> NSImage? {
-        images.object(forKey: Self.sized(url, pixels: pixels) as NSString)
+        images.object(forKey: sizedURL(url, pixels: pixels) as NSString)
     }
 
     func image(_ url: String, pixels: Int) async -> NSImage? {
-        let url = Self.sized(url, pixels: pixels)
+        let url = sizedURL(url, pixels: pixels)
         if let image = images.object(forKey: url as NSString) { return image }
         guard !url.isEmpty, let address = URL(string: url) else { return nil }
-        let task = loading[url] ?? Task<Data?, Never> {
-            try? await URLSession.shared.data(from: address).0
+        let task = loading[url] ?? Task.detached(priority: .utility) {
+            guard let data = try? await URLSession.shared.data(from: address).0,
+                  let thumb = ArtCache.thumbnail(data, pixels: pixels) else { return nil }
+            return Thumbnail(image: thumb)
         }
         loading[url] = task
-        let data = await task.value
+        let thumb = await task.value?.image
         loading[url] = nil
-        if let image = images.object(forKey: url as NSString) { return image }   // another caller already decoded it
-        guard let data, let thumb = Self.thumbnail(data, pixels: pixels) else { return nil }
+        if let image = images.object(forKey: url as NSString) { return image }   // another caller already made it
+        guard let thumb else { return nil }
         let image = NSImage(cgImage: thumb, size: NSSize(width: thumb.width / 2, height: thumb.height / 2))
         images.setObject(image, forKey: url as NSString, cost: thumb.bytesPerRow * thumb.height)
         return image
+    }
+
+    private func sizedURL(_ url: String, pixels: Int) -> String {
+        let key = "\(pixels) \(url)"
+        if let sized = sizedURLs[key] { return sized }
+        let sized = Self.sized(url, pixels: pixels)
+        sizedURLs[key] = sized
+        return sized
     }
 
     /// The same art at the smallest size the server offers that still covers `pixels`.
@@ -621,7 +637,7 @@ final class ArtCache {
     }
 
     /// Decodes straight to a small bitmap, so neither the downloaded Data nor a full-size image is kept.
-    private static func thumbnail(_ data: Data, pixels: Int) -> CGImage? {
+    nonisolated private static func thumbnail(_ data: Data, pixels: Int) -> CGImage? {
         guard let source = CGImageSourceCreateWithData(data as CFData, nil) else { return nil }
         let options: [CFString: Any] = [kCGImageSourceCreateThumbnailFromImageAlways: true,
                                         kCGImageSourceCreateThumbnailWithTransform: true,
@@ -636,17 +652,34 @@ final class ArtCache {
 private struct CachedArt<Content: View>: View {
     let url: String
     let size: CGFloat
+    /// In the channel list: only fetch once the row scrolls near the visible part of the list
+    /// (the rows are a non-lazy VStack, so they all exist from the start).
+    var inChannelList = false
     @ViewBuilder let content: (NSImage?) -> Content
     @State private var loaded: (url: String, image: NSImage?)?
+    @State private var nearVisible = false
 
     var body: some View {
         let pixels = ArtCache.pixels(size)
+        let wanted = !inChannelList || nearVisible
         content(loaded?.url == url ? loaded?.image : ArtCache.shared.cached(url, pixels: pixels))
-            .task(id: url) {
+            .onGeometryChange(for: Bool.self) { proxy in
+                guard inChannelList else { return true }
+                let frame = proxy.frame(in: .named(CachedArt.channelList))
+                return frame.maxY > -CachedArt.preload && frame.minY < CachedArt.listHeight + CachedArt.preload
+            } action: { if $0 { nearVisible = true } }
+            .task(id: wanted ? url : "") {
+                guard wanted else { return }
                 let image = await ArtCache.shared.image(url, pixels: pixels)
                 if !Task.isCancelled { loaded = (url, image) }
             }
     }
+}
+
+extension CachedArt {
+    nonisolated static var channelList: String { "channelList" }
+    nonisolated static var listHeight: CGFloat { 360 }
+    nonisolated static var preload: CGFloat { 200 }
 }
 
 /// The channel search box. A plain AppKit search field with AutoFill, text completion and inline
