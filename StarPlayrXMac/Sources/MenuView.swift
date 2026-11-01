@@ -111,8 +111,9 @@ struct MenuView: View {
                         logo.background(Color(white: 0.12))   // dark tile so logos sit like album art
                     }
                 } else {
-                    // No channel art or logo (or not loaded yet): the StarPlayrX logo.
-                    Image(nsImage: NSApp.applicationIconImage).resizable().scaledToFill()
+                    // No channel art or logo (or not loaded yet): the StarPlayrX logo, enlarged past the
+                    // icon's transparent margin (824pt body on a 1024pt canvas) so it fills the tile like art.
+                    Image(nsImage: NSApp.applicationIconImage).resizable().scaledToFill().scaleEffect(1024 / 824)
                 }
             }
             .frame(width: 64, height: 64)
