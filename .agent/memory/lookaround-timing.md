@@ -1,0 +1,1 @@
+SiriusXM web player (sxm-player-web, index-*.js remote config "lookaround"): pollingMs 45000, localRefreshIntervalMs 5000, livePointIntervalMs 60000. Grid shows the latest cut with now >= validFrom + 60s (content-*.js fn gn). Cut validFrom == liveUpdate/tuneSource item timestamp (same clock). XtraClient.liveNowPlaying mirrors this (cached 45s, 60s offset).

@@ -362,27 +362,25 @@ final class Radio: ObservableObject {
     }
 
     func updatePDT() async {
-        guard let cache = await get("pdt")?["data"] as? [String: Any] else { return }
         var np = [String: NowPlaying]()
-        for (key, value) in cache {
-            if let v = value as? [String: String] {
-                np[key] = Self.keepingArt(NowPlaying(artist: v["artist"] ?? "", song: v["song"] ?? "", image: v["image"] ?? ""),
-                                          of: nowPlaying[key])
+        if !liveIDs.isEmpty {
+            // Like Xtra channels, live channels take artist, song and art only from the newer API
+            // (lookAround, read 60 s behind like the web player). No PDT mixing, so nothing flip-flops.
+            if let live = try? await xtra.liveNowPlaying() {
+                for (number, id) in liveIDs {
+                    guard let la = live[id] else { continue }
+                    lookAround[number] = Self.keepingArt(la, of: lookAround[number])
+                }
             }
-        }
-        // The lookAround feed has every live channel's current cut, mostly with album art, in one call;
-        // it wins over PDT, which only has art for the tuned channel. PDT stays as the fallback.
-        // lookAround is on-air time, which runs ahead of the stream; it is read 60 s behind, like the web player.
-        if !liveIDs.isEmpty, let live = try? await xtra.liveNowPlaying() {
-            for (number, id) in liveIDs {
-                guard let la = live[id] else { continue }
-                lookAround[number] = Self.keepingArt(la, of: lookAround[number])
+            np = lookAround
+        } else if let cache = await get("pdt")?["data"] as? [String: Any] {
+            // PDT only until the newer API has loaded (or if it is unavailable).
+            for (key, value) in cache {
+                if let v = value as? [String: String] {
+                    np[key] = Self.keepingArt(NowPlaying(artist: v["artist"] ?? "", song: v["song"] ?? "", image: v["image"] ?? ""),
+                                              of: nowPlaying[key])
+                }
             }
-        }
-        // Once a channel has lookAround data, never flip it back to PDT (a different source and clock)
-        // when a fetch fails or skips it; that flip-flopping was the list jumping back and forth.
-        for (number, la) in lookAround {
-            np[number] = Self.keepingArt(Self.keepingArt(la, of: np[number]), of: nowPlaying[number])
         }
         // lookAround says what is on air now, but the player runs behind live. For the tuned live channel,
         // show the cut at the player's position in the stream instead, from the channel's own timeline.
