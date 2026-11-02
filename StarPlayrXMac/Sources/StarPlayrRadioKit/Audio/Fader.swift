@@ -4,6 +4,7 @@
 //  AVPlayerFade
 //
 //  Created by Evandro Harrison Hoffmann on 21/05/2020.
+//  Modified by Todd Bruss on 11/2/26.
 //  Copyright © 2020 It's Day Off. All rights reserved.
 //
 
