@@ -325,13 +325,17 @@ actor XtraClient {
         return (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] ?? [:]
     }
 
-    private static func date(_ s: String?) -> Date? {
-        guard let s else { return nil }
+    // Made once: date(_:) runs for every cut and show of every channel on each 5 s tick.
+    private static let fractionalFormatter: ISO8601DateFormatter = {
         let f = ISO8601DateFormatter()
         f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        if let d = f.date(from: s) { return d }
-        f.formatOptions = [.withInternetDateTime]
-        return f.date(from: s)
+        return f
+    }()
+    private static let plainFormatter = ISO8601DateFormatter()
+
+    private static func date(_ s: String?) -> Date? {
+        guard let s else { return nil }
+        return fractionalFormatter.date(from: s) ?? plainFormatter.date(from: s)
     }
 }
 
