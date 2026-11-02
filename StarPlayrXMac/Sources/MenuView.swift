@@ -69,9 +69,11 @@ struct MenuView: View {
                         // "All Stars" (as on iOS): the list shows only the starred channels.
                         Button { menu.starsOnly.toggle() } label: {
                             Image(menu.starsOnly ? "star_on" : "star_off")
+                                .renderingMode(menu.starsOnly ? .original : .template)
                                 .resizable()
                                 .scaledToFit()
-                                .frame(width: 14, height: 14)
+                                .frame(width: 16, height: 16)
+                                .foregroundStyle(Color.secondary)
                         }
                         .buttonStyle(.plain)
                         // Same size and trailing edge as the row stars: a row's star ends 10pt from the
@@ -181,9 +183,11 @@ struct MenuView: View {
                 let starred = radio.presets.contains(ch.id)
                 Button { radio.togglePreset(ch.id) } label: {
                     Image(starred ? "star_on" : "star_off")
+                        .renderingMode(starred ? .original : .template)
                         .resizable()
                         .scaledToFit()
-                        .frame(width: 14, height: 14)
+                        .frame(width: 16, height: 16)
+                        .foregroundStyle(Color.secondary)
                 }
                 .buttonStyle(.plain)
                 .padding(.trailing, 10)
@@ -324,9 +328,11 @@ private struct ChannelRow: View, Equatable {
             // Click the star to put the channel in the presets or take it out (the row itself plays it).
             Button { Radio.shared.togglePreset(channel.id) } label: {
                 Image(isStarred ? "star_on" : "star_off")
+                    .renderingMode(isStarred ? .original : .template)
                     .resizable()
                     .scaledToFit()
-                    .frame(width: 14, height: 14)
+                    .frame(width: 16, height: 16)
+                    .foregroundStyle(Color.secondary)
             }
             .buttonStyle(.plain)
             .help(isStarred ? "Remove from stars" : "Add to stars")
