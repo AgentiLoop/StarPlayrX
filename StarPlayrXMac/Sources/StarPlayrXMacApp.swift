@@ -39,7 +39,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 @MainActor
 enum CredentialPrompt {
     static func signIn() async {
-        var message = "Enter your SiriusXM username and password.\nThey are stored only in your Mac's Keychain."
+        var message = "Sign in with your SiriusXM account.\n\nYour username and password are kept only in your Mac's Keychain."
         while true {
             let alert = NSAlert()
             alert.messageText = "Sign in to StarPlayrX"
@@ -47,18 +47,18 @@ enum CredentialPrompt {
             alert.addButton(withTitle: "Sign In")
             alert.addButton(withTitle: "Cancel")
 
-            let user = NSTextField(frame: NSRect(x: 0, y: 58, width: 260, height: 24))
+            let user = NSTextField(frame: NSRect(x: 0, y: 72, width: 280, height: 24))
             user.placeholderString = "Username or email"
             user.stringValue = Keychain.load()?.user ?? UserDefaults.standard.string(forKey: "user") ?? ""
-            let pass = NSSecureTextField(frame: NSRect(x: 0, y: 28, width: 260, height: 24))
+            let pass = NSSecureTextField(frame: NSRect(x: 0, y: 38, width: 280, height: 24))
             pass.placeholderString = "Password"
             let canada = NSButton(checkboxWithTitle: "Canada", target: nil, action: nil)
-            canada.frame = NSRect(x: 0, y: 0, width: 260, height: 20)
+            canada.frame = NSRect(x: 0, y: 0, width: 100, height: 20)
             canada.state = Radio.shared.localeIsCA ? .on : .off
             let modern = NSButton(checkboxWithTitle: "Modern API sign-in", target: nil, action: nil)
-            modern.frame = NSRect(x: 110, y: 0, width: 150, height: 20)
+            modern.frame = NSRect(x: 120, y: 0, width: 160, height: 20)
             modern.state = Radio.shared.modernLogin ? .on : .off
-            let stack = NSView(frame: NSRect(x: 0, y: 0, width: 260, height: 82))
+            let stack = NSView(frame: NSRect(x: 0, y: 0, width: 280, height: 104))
             stack.addSubview(user)
             stack.addSubview(pass)
             stack.addSubview(canada)
