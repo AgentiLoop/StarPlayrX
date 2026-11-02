@@ -291,7 +291,7 @@ final class SpectrumRenderer: NSObject, MTKViewDelegate {
             let top = ContrastColor.components(hue: Self.hue(h + 0.06 + 0.1 * level), saturation: 0.75, against: fixed, minRatio: 4.5)
             return Bar(base: ContrastColor.components(hue: h, saturation: 0.9, against: fixed),
                        top: top,
-                       glow: light ? ContrastColor.components(hue: Self.hue(h + 0.06 + 0.1 * level), saturation: 0.9, against: max(bg, 0.84), minRatio: 14) : top,
+                       glow: light ? ContrastColor.components(hue: Self.hue(h + 0.06 + 0.1 * level), saturation: 0.9, against: max(bg, 0.84), minRatio: 14) : ContrastColor.hsb(Self.hue(h + 0.06 + 0.1 * level), 0.9, 0.08),
                        shade: ContrastColor.hsb(h, 0.9, 1),   // the bar's pure colour, not contrast-darkened
                        misc: [Float(level), Float(viz.rise[i]), 0, 0])
         }
@@ -304,7 +304,7 @@ final class SpectrumRenderer: NSObject, MTKViewDelegate {
             bubble: light ? [0, 0, 0, 0.7] : [1, 1, 1, 1],   // dark bubbles at 70% strength, so they stay soft
             blob: blob,
             blobShape: [Float(80 * viz.blobX), Float(0.6 + 0.3 * sin(viz.phase * 2 * .pi * 2)), Float(0.6 + 0.5 * pulse), 0],
-            glowStyle: [Float(light ? 0.75 + 0.25 * pulse : 0.4 + 0.6 * pulse), Float(1 + 4 * pulse), 0, 0])
+            glowStyle: [Float(light ? 0.75 + 0.25 * pulse : 0.7 + 0.3 * pulse), Float(1 + 4 * pulse), 0, 0])
         encoder.setRenderPipelineState(pipeline)
         encoder.setFragmentBytes(&globals, length: MemoryLayout<Globals>.stride, index: 0)
         encoder.setFragmentBytes(&bars, length: MemoryLayout<Bar>.stride * bars.count, index: 1)
