@@ -191,7 +191,8 @@ struct SpectrumView: View {
     /// Names the new stage in a little chat bubble over the bars for a moment after each click.
     @State private var stageLabel: String?
     @State private var labelID = 0
-    @State private var labelX: CGFloat = 0   // where the user clicked, so the bubble pops up there
+    @State private var labelX: CGFloat = 0   // where the user clicked: the bubble's pointer tip goes there
+    @State private var labelY: CGFloat = 0
 
     private func hue(_ x: Double) -> Double { (x.truncatingRemainder(dividingBy: 1) + 1).truncatingRemainder(dividingBy: 1) }
 
@@ -241,12 +242,14 @@ struct SpectrumView: View {
         .overlay {
             GeometryReader { geo in
                 if let stageLabel {
-                    // Centred on the click, nudged in at the ends so it's never cut off.
+                    // The pointer's tip sits on the click (centred on it, nudged in at the ends so
+                    // it's never cut off); the bubble grows up from there.
                     let half = ChatBubble.width(stageLabel) / 2
                     let x = min(max(labelX, half), max(half, geo.size.width - half))
                     ChatBubble(text: stageLabel)
                         .fixedSize()
-                        .position(x: x, y: geo.size.height / 2)
+                        .frame(width: 0, height: 0, alignment: .bottom)
+                        .position(x: x, y: labelY)
                         .transition(.opacity.combined(with: .scale(scale: 0.85)))
                 }
             }
@@ -254,6 +257,7 @@ struct SpectrumView: View {
         .contentShape(Rectangle())
         .onTapGesture(coordinateSpace: .local) { location in
             labelX = location.x
+            labelY = location.y
             bubbleStage = (bubbleStage + 1) % 3
             labelID += 1
             let id = labelID
