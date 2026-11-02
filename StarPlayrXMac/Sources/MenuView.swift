@@ -323,21 +323,30 @@ private struct ChannelRow: View, Equatable {
             .accessibilityLabel(isStarred ? "Preset On, Channel \(channel.name)" : "Preset Off, Channel \(channel.name)")
         }
         .padding(.vertical, 4)
-        .padding(.horizontal, 6)
-        // The playing channel's row sits on a Liquid Glass squircle (translucent tint before macOS 26).
+        .padding(.horizontal, 4)
+        // The playing channel's row sits on a Liquid Glass squircle (translucent tint before macOS 26):
+        // white-based in dark mode, light gray in light mode.
         .background {
             if isPlaying {
                 let shape = RoundedRectangle(cornerRadius: 10, style: .continuous)
                 if #available(macOS 26.0, *) {
-                    Color.clear.glassEffect(.regular.tint(Color.accentColor.opacity(0.25)), in: shape)
+                    Color.clear.glassEffect(.regular.tint(Self.highlight), in: shape)
                 } else {
-                    shape.fill(Color.accentColor.opacity(0.2))
+                    shape.fill(Self.highlight)
                 }
             }
         }
-        .padding(.trailing, 6)
+        // Inset from the scroll view's edges so the squircle's corners are never clipped.
+        .padding(.leading, 4)
+        .padding(.trailing, 8)
         .contentShape(Rectangle())
     }
+
+    private static let highlight = Color(nsColor: NSColor(name: nil) { appearance in
+        appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+            ? NSColor(white: 1, alpha: 0.22)
+            : NSColor(white: 0.75, alpha: 0.5)
+    })
 }
 
 /// Owns the menu bar item and the one panel used both under the menu bar and torn off.
