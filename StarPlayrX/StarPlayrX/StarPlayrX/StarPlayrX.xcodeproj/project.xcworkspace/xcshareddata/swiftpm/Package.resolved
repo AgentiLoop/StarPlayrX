@@ -7,13 +7,13 @@
       "location" : "https://github.com/AgentiLoop/StarPlayrRadioKit",
       "state" : {
         "branch" : "mustang",
-        "revision" : "dd534907bfe637423c956c387f53dfa00e1a9335"
+        "revision" : "8f3075026096dbba33d86e3f62249d696625254f"
       }
     },
     {
       "identity" : "swifterlite",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/StarPlayrX/SwifterLite",
+      "location" : "https://github.com/AgentiLoop/SwifterLite",
       "state" : {
         "branch" : "mustang",
         "revision" : "f32f90001fd51177cb04c1ceba83c7c517842da3"
