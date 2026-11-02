@@ -1,7 +1,6 @@
 import Foundation
 import AVFoundation
 import Accelerate
-import StarPlayrRadioKit
 
 /// Bar heights worked out ahead of time, while the audio is decoded before it plays: live segments
 /// as the local server hands them to the player, Xtra tracks as soon as they are downloaded.

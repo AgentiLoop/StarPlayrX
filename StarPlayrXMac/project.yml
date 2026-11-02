@@ -3,22 +3,12 @@ options:
   bundleIdPrefix: com.starplayrx
   deploymentTarget:
     macOS: "13.0"
-packages:
-  StarPlayrRadioKit:
-    url: https://github.com/AgentiLoop/StarPlayrRadioKit
-    branch: mustang
-  SwifterLite:
-    url: https://github.com/AgentiLoop/SwifterLite
-    branch: mustang
 targets:
   StarPlayrXMac:
     type: application
     platform: macOS
     sources:
       - Sources
-    dependencies:
-      - package: StarPlayrRadioKit
-      - package: SwifterLite
     scheme:
       testTargets:
         - StarPlayrXMacTests

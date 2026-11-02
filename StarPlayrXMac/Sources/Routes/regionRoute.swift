@@ -6,8 +6,6 @@
 //
 
 import Foundation
-import SwifterLite
-import StarPlayrRadioKit
 
 func regionRoute(region: String) -> httpReq {{ request in
     playerDomain = region == "ca" ? "player.siriusxm.ca" : "player.siriusxm.com"

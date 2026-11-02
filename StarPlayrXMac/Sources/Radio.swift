@@ -2,7 +2,6 @@ import Foundation
 import AVFoundation
 import MediaPlayer
 import Combine
-import StarPlayrRadioKit
 
 struct Channel: Identifiable, Hashable {
     let id: String          // channel number
