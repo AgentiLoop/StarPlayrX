@@ -245,7 +245,9 @@ actor XtraClient {
             }
             guard let cut = current("cuts") else { continue }
             let show = current("shows")
-            let art = ((cut["image"] ?? show?["image"]) as? [String: Any])?["url"] as? String
+            // Song art only. Show art is mostly a text title card ("Aux Cord Hero with Diplo"); with no
+            // song art the empty image makes the app show the channel's logo instead.
+            let art = (cut["image"] as? [String: Any])?["url"] as? String
             // Talk cuts have no artist; the web player shows the show's name in its place.
             let artist = cut["artistName"] as? String ?? ""
             result[id] = NowPlaying(artist: artist.isEmpty ? show?["name"] as? String ?? "" : artist,
