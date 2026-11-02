@@ -371,10 +371,13 @@ final class SpectrumRenderer: NSObject, MTKViewDelegate {
         if viz.generation != builtGeneration || style != builtStyle {
             builtGeneration = viz.generation
             builtStyle = style
+            // Light panel: a gentler contrast target and full saturation, so darkening stops while the
+            // colours are still juicy instead of sinking to olive and navy.
+            let (topRatio, baseRatio, topSat, baseSat) = light ? (2.2, 1.9, 0.95, 1.0) : (4.5, 3.5, 0.75, 0.9)
             bars = viz.levels.indices.map { i -> Bar in
                 let level = Double(viz.levels[i]), h = viz.hues[i]
-                let top = ContrastColor.components(hue: Self.hue(h + 0.06 + 0.1 * level), saturation: 0.75, against: fixed, minRatio: 4.5)
-                return Bar(base: ContrastColor.components(hue: h, saturation: 0.9, against: fixed),
+                let top = ContrastColor.components(hue: Self.hue(h + 0.06 + 0.1 * level), saturation: topSat, against: fixed, minRatio: topRatio)
+                return Bar(base: ContrastColor.components(hue: h, saturation: baseSat, against: fixed, minRatio: baseRatio),
                            top: top,
                            glow: ContrastColor.hsb(Self.hue(h + 0.1 + 0.35 * level), 1, 0.55 + 0.45 * bg),   // lighter background, lighter glow; fully saturated
                            shade: ContrastColor.hsb(h, 0.9, 1),   // the bar's pure colour, not contrast-darkened
