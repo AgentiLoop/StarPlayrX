@@ -17,6 +17,11 @@ final class SpectrumTimeline: @unchecked Sendable {
     private let queue = DispatchQueue(label: "StarPlayrX.spectrum", qos: .utility)
     private var segmentDates = [String: Date]()   // live segment file name -> EXT-X-PROGRAM-DATE-TIME
     private var liveChannel = ""
+    /// The player dates the stream from the first playlist it loads, counting every segment as its
+    /// tagged 10 s, but segments really hold ~9.75 s, so its date drifts ~8 s ahead of the real PDT by
+    /// the live edge. Segments are placed on that same 10 s grid so the bars match the player exactly.
+    private var anchor: (sequence: Int, date: Date)?
+    private static let nominal = 10.0
     private var live = [Chunk]()
     private var tracks = [URL: Track]()
 
@@ -44,7 +49,17 @@ final class SpectrumTimeline: @unchecked Sendable {
         }
         guard let channel = dates.keys.first.map(Self.channel) else { return }
         lock.lock()
-        segmentDates = dates
+        if channel != liveChannel { anchor = nil }
+        if anchor == nil, let first = dates.min(by: { $0.value < $1.value }), let seq = Self.sequence(first.key) {
+            anchor = (seq, first.value)
+        }
+        if let anchor {
+            segmentDates = [:]
+            for name in dates.keys {
+                guard let seq = Self.sequence(name) else { continue }
+                segmentDates[name] = anchor.date.addingTimeInterval(Double(seq - anchor.sequence) * Self.nominal)
+            }
+        }
         liveChannel = channel
         live.removeAll { $0.channel != channel }
         lock.unlock()
@@ -52,17 +67,16 @@ final class SpectrumTimeline: @unchecked Sendable {
 
     /// Server thread hands each segment over before the player gets it; decrypt, decode and analyze here.
     private func segment(_ name: String, _ data: Data, _ key: Data?) {
+        if data.isEmpty { return }
         lock.lock()
         let start = segmentDates[name]
+        let done = live.contains { $0.start == start }
         lock.unlock()
+        guard !done else { return }
         // Live segments have no explicit IV: HLS uses the media sequence number, the second-last field of the name.
         let parts = name.split(separator: "_")
         guard let start, let key, parts.count > 2, let sequence = Int(parts[parts.count - 2]),
-              let plain = aes128Decrypt(data, key: key, iv: Data(sequenceIV: sequence)) else {
-            spectrumLog("SPECTRUM drop %@ date=%@ key=%d", name, "\(String(describing: start))", key?.count ?? -1)
-            return
-        }
-        spectrumLog("SPECTRUM seg %@ start=%@", name, "\(start)")
+              let plain = aes128Decrypt(data, key: key, iv: Data(sequenceIV: sequence)) else { return }
         let file = FileManager.default.temporaryDirectory.appendingPathComponent("StarPlayrX-\(name)")
         guard (try? stripID3(plain).write(to: file)) != nil else { return }
         defer { try? FileManager.default.removeItem(at: file) }
@@ -83,15 +97,24 @@ final class SpectrumTimeline: @unchecked Sendable {
         defer { lock.unlock() }
         for c in live where c.channel == liveChannel {
             let t = date.timeIntervalSince(c.start)
-            guard t >= 0 else { continue }
-            let k = Int(t / c.hop)
-            if k < c.frames.count { spectrumLog("SPECTRUM hit"); return c.frames[k] }
+            guard t >= 0, t < Self.nominal else { continue }
+            let k = Int(t / Self.nominal * Double(c.frames.count))
+            if k < c.frames.count { return c.frames[k] }
         }
-        let mine = live.filter { $0.channel == liveChannel }
-        spectrumLog("SPECTRUM miss date=%@ chunks=%d first=%@ lastEnd=%@", "\(date)", mine.count,
-              "\(mine.map(\.start).min().map { "\($0)" } ?? "-")",
-              "\(mine.map { $0.start.addingTimeInterval($0.hop * Double($0.frames.count)) }.max().map { "\($0)" } ?? "-")")
         return nil
+    }
+
+    /// The player starts a new item: it dates the stream afresh from the playlist it loads next.
+    func resetLive() {
+        lock.lock()
+        anchor = nil
+        live.removeAll()
+        lock.unlock()
+    }
+
+    private static func sequence(_ name: String) -> Int? {
+        let parts = name.split(separator: "_")
+        return parts.count > 2 ? Int(parts[parts.count - 2]) : nil
     }
 
     private static func channel(_ name: String) -> String { String(name.split(separator: "_").first ?? "") }
@@ -192,11 +215,13 @@ final class SpectrumTimeline: @unchecked Sendable {
                     vDSP_zvabs(&split, 1, &mags, 1, vDSP_Length(half))
                 }
             }
-            // Log-spaced bands from bin 2 (~90 Hz) up to Nyquist.
+            // Log-spaced bands from bin 2 (~90 Hz) up to ~16 kHz (bin 372 at 44.1 kHz). The AAC
+            // encoder cuts off most content above that, so a band reaching Nyquist never moved.
             let count = Visualizer.bandCount
+            let top: Float = 372
             return (0..<count).map { b in
-                let lo = Int(2 * pow(Float(half / 2), Float(b) / Float(count)))
-                let hi = max(lo + 1, min(half, Int(2 * pow(Float(half / 2), Float(b + 1) / Float(count)))))
+                let lo = Int(2 * pow(top / 2, Float(b) / Float(count)))
+                let hi = max(lo + 1, min(half, Int(2 * pow(top / 2, Float(b + 1) / Float(count)))))
                 let peak = mags[lo..<hi].max() ?? 0
                 let db = 20 * log10(peak / Float(n) + 1e-9)
                 return max(0, min(1, (db + 50) / 50))
@@ -205,8 +230,3 @@ final class SpectrumTimeline: @unchecked Sendable {
     }
 }
 
-func spectrumLog(_ format: String, _ args: CVarArg...) {
-    let line = "\(Date()) " + String(format: format, arguments: args) + "\n"
-    if let h = FileHandle(forWritingAtPath: "/tmp/spectrum.log") { h.seekToEndOfFile(); h.write(Data(line.utf8)); h.closeFile() }
-    else { try? line.write(toFile: "/tmp/spectrum.log", atomically: false, encoding: .utf8) }
-}

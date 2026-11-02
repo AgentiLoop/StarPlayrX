@@ -32,7 +32,15 @@ func audioRoute() -> httpReq {{ request in
             }
         }
         
+        // One quick retry: a single failed download used to leave a 10 s hole in the audio.
         if audio.isEmpty {
+            dataSync(endpoint: endpoint, method: audioFormat) { data in
+                if let data { audio = data }
+            }
+        }
+        
+        if audio.isEmpty {
+            liveSegmentObserver?(aac, Data(), nil)
             return HttpResponse.notFound(.none)
         }
         

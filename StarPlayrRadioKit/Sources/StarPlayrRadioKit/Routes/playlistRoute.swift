@@ -74,21 +74,6 @@ func playlistRoute() -> httpReq {{ request in
                         if !playlist.contains("#EXT-X-START"), let header = playlist.range(of: "#EXTM3U") {
                             playlist.insert(contentsOf: "\n#EXT-X-START:TIME-OFFSET=-1", at: header.upperBound)
                         }
-                        // Segments are tagged 10 s but hold ~9.75 s (their PDTs are that far apart), so the
-                        // player's date ran up to 8 s ahead of the real stream. Use the true spacing.
-                        let f = ISO8601DateFormatter()
-                        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-                        let dates = playlist.split(whereSeparator: \.isNewline)
-                            .filter { $0.hasPrefix("#EXT-X-PROGRAM-DATE-TIME:") }
-                            .prefix(2).compactMap { f.date(from: String($0.dropFirst(25))) }
-                        if dates.count == 2 {
-                            let seconds = dates[1].timeIntervalSince(dates[0])
-                            if seconds > 5, seconds < 15 {
-                                playlist = playlist
-                                    .replacingOccurrences(of: "#EXTINF:10,", with: String(format: "#EXTINF:%.6f,", seconds))
-                                    .replacingOccurrences(of: "#EXT-X-VERSION:1", with: "#EXT-X-VERSION:3")
-                            }
-                        }
                         return playlist
                     }
 

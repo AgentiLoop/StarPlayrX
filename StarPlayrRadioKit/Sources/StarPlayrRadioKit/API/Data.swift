@@ -17,21 +17,23 @@ internal func dataSync(endpoint: String, method: String, DataHandler: @escaping 
     urlReq.httpMethod = "GET"
     urlReq.setValue(userAgent, forHTTPHeaderField: "User-Agent")
     urlReq.addValue("application/json", forHTTPHeaderField: "Content-Type")
-    urlReq.timeoutInterval = TimeInterval(60)
+    // A segment that takes longer than this is useless to the player anyway; fail fast so it can retry.
+    urlReq.timeoutInterval = TimeInterval(15)
     urlReq.cachePolicy = .reloadIgnoringLocalAndRemoteCacheData
     
-    let task = URLSession.shared.dataTask(with: urlReq ) { ( data, _, _ ) in
+    let task = URLSession.shared.dataTask(with: urlReq ) { ( data, response, _ ) in
+        // Always release the waiting server thread, or a failed download hangs that request forever.
+        defer { semaphore.signal() }
         
         guard
-            let d = data
+            let d = data,
+            (response as? HTTPURLResponse)?.statusCode ?? 200 < 400
         else { DataHandler(.none); return
         }
         
         DataHandler(d)
-        
-        semaphore.signal()
     }
     
     task.resume()
-    _ = semaphore.wait(timeout: .distantFuture)
+    _ = semaphore.wait(timeout: .now() + 20)
 }

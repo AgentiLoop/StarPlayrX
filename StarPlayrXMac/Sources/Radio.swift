@@ -205,6 +205,7 @@ final class Radio: ObservableObject {
             // Stay paused until the start position is settled so the old position never plays
             // (that was the half-second stutter before the jump).
             player.pause()
+            SpectrumTimeline.shared.resetLive()
             player.replaceCurrentItem(with: item)
             isPlaying = true
             var tries = 0
@@ -453,10 +454,7 @@ final class Radio: ObservableObject {
                   let file = (item.asset as? AVURLAsset)?.url else { return nil }
             return SpectrumTimeline.shared.levels(track: file, at: item.currentTime().seconds)
         }
-        guard player.timeControlStatus == .playing, let date = player.currentItem?.currentDate() else {
-            spectrumLog("SPECTRUM nolive status=%d date=%@", player.timeControlStatus.rawValue, "\(String(describing: player.currentItem?.currentDate()))")
-            return nil
-        }
+        guard player.timeControlStatus == .playing, let date = player.currentItem?.currentDate() else { return nil }
         return SpectrumTimeline.shared.levels(at: date)
     }
 
