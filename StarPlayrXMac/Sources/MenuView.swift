@@ -186,10 +186,19 @@ struct MenuView: View {
         }
     }
 
+    /// "v1.1.8" from the bundle; Debug builds add "-dev".
+    private static let version: String = {
+        let v = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "?"
+        #if DEBUG
+        return "v\(v)-dev"
+        #else
+        return "v\(v)"
+        #endif
+    }()
+
     private var footer: some View {
         HStack {
-            Toggle("Canada", isOn: Binding(get: { radio.localeIsCA }, set: { radio.setRegion(ca: $0) }))
-                .toggleStyle(.checkbox)
+            Text(Self.version).font(.caption).foregroundStyle(.tertiary)
             Spacer()
             if radio.isLoggedIn {
                 Button("Sign Out") { radio.signOut() }

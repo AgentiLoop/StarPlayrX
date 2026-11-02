@@ -38,20 +38,25 @@ enum CredentialPrompt {
             alert.addButton(withTitle: "Sign In")
             alert.addButton(withTitle: "Cancel")
 
-            let user = NSTextField(frame: NSRect(x: 0, y: 30, width: 260, height: 24))
+            let user = NSTextField(frame: NSRect(x: 0, y: 58, width: 260, height: 24))
             user.placeholderString = "Username or email"
             user.stringValue = Keychain.load()?.user ?? UserDefaults.standard.string(forKey: "user") ?? ""
-            let pass = NSSecureTextField(frame: NSRect(x: 0, y: 0, width: 260, height: 24))
+            let pass = NSSecureTextField(frame: NSRect(x: 0, y: 28, width: 260, height: 24))
             pass.placeholderString = "Password"
-            let stack = NSView(frame: NSRect(x: 0, y: 0, width: 260, height: 54))
+            let canada = NSButton(checkboxWithTitle: "Canada", target: nil, action: nil)
+            canada.frame = NSRect(x: 0, y: 0, width: 260, height: 20)
+            canada.state = Radio.shared.localeIsCA ? .on : .off
+            let stack = NSView(frame: NSRect(x: 0, y: 0, width: 260, height: 82))
             stack.addSubview(user)
             stack.addSubview(pass)
+            stack.addSubview(canada)
             alert.accessoryView = stack
             alert.window.initialFirstResponder = user.stringValue.isEmpty ? user : pass
 
             NSApp.activate(ignoringOtherApps: true)
             guard await present(alert) else { return }
 
+            Radio.shared.setRegion(ca: canada.state == .on)
             let u = user.stringValue.trimmingCharacters(in: .whitespaces)
             let p = pass.stringValue
             if u.isEmpty || p.isEmpty { message = "Username and password are required."; continue }
