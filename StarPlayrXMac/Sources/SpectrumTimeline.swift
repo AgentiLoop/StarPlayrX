@@ -37,7 +37,7 @@ final class SpectrumTimeline: @unchecked Sendable {
 
     /// The same feed for live channels tuned through the modern API (LiveLoader), which skip the local server.
     func livePlaylist(_ text: String) { playlist(text) }
-    func liveSegment(_ name: String, _ data: Data, _ key: Data?) { queue.async { self.segment(name, data, key) } }
+    func liveSegment(_ name: String, _ data: Data, _ key: Data?, iv: Data? = nil) { queue.async { self.segment(name, data, key, iv: iv) } }
 
     // MARK: Live
 
@@ -59,6 +59,9 @@ final class SpectrumTimeline: @unchecked Sendable {
                 date = nil
             }
         }
+        // Modern-API masters also list a side playlist ("0152_209.aac") that isn't the audio the player
+        // plays; it has no media sequence in its names and reset the anchor on every refresh (EQ died).
+        dates = dates.filter { Self.sequence($0.key) != nil }
         guard let channel = dates.keys.first.map(Self.channel) else { return }
         lock.lock()
         if channel != liveChannel { anchor = nil; startSlot = nil; cursor = nil }
@@ -80,7 +83,7 @@ final class SpectrumTimeline: @unchecked Sendable {
     }
 
     /// Server thread hands each segment over before the player gets it; decrypt, decode and analyze here.
-    private func segment(_ name: String, _ data: Data, _ key: Data?) {
+    private func segment(_ name: String, _ data: Data, _ key: Data?, iv: Data? = nil) {
         if data.isEmpty { return }
         lock.lock()
         let start = segmentDates[name]
@@ -90,7 +93,7 @@ final class SpectrumTimeline: @unchecked Sendable {
         // Live segments have no explicit IV: HLS uses the media sequence number, the second-last field of the name.
         let parts = name.split(separator: "_")
         guard let start, let key, parts.count > 2, let sequence = Int(parts[parts.count - 2]),
-              let plain = aes128Decrypt(data, key: key, iv: Data(sequenceIV: sequence)) else { return }
+              let plain = aes128Decrypt(data, key: key, iv: iv ?? Data(sequenceIV: sequence)) else { return }
         let file = FileManager.default.temporaryDirectory.appendingPathComponent("StarPlayrX-\(name)")
         guard (try? stripID3(plain).write(to: file)) != nil else { return }
         defer { try? FileManager.default.removeItem(at: file) }

@@ -472,31 +472,44 @@ final class LiveLoader: NSObject, AVAssetResourceLoaderDelegate {
     }
 
     /// Hands the media playlist and its newest segments (where the player starts and keeps playing) to the EQ.
+    /// Segment names differ per channel ("siriushits1_256k_1_…_00017301_v3.aac", "0917_332.aac"), so the EQ
+    /// gets them renamed "<tag>_<media sequence>_v.aac": unique to this tune, with the sequence the IV needs.
+    private lazy var tag = "L\(UInt32(truncatingIfNeeded: ObjectIdentifier(self).hashValue))"
+    /// Hands the media playlist and its newest segments (where the player starts and keeps playing) to the EQ.
     private func feedSpectrum(_ body: String, base: URL) {
         guard isActive else { return }
-        SpectrumTimeline.shared.livePlaylist(body)
         var keyID: String?
-        var segments = [URL]()
+        var iv: Data?
+        var sequence = 0
+        var lines = [String]()
+        var segments = [(url: URL, name: String)]()
         for raw in body.split(whereSeparator: \.isNewline) {
             let line = raw.trimmingCharacters(in: .whitespaces)
-            if line.hasPrefix("#EXT-X-KEY"), let r = line.range(of: "URI=\"") {
+            if line.hasPrefix("#EXT-X-MEDIA-SEQUENCE:") {
+                sequence = Int(line.dropFirst("#EXT-X-MEDIA-SEQUENCE:".count)) ?? 0
+            } else if line.hasPrefix("#EXT-X-KEY"), let r = line.range(of: "URI=\"") {
                 keyID = line[r.upperBound...].split(separator: "\"").first.flatMap { $0.split(separator: "/").last }.map(String.init)
+                iv = line.range(of: "IV=0x").flatMap { Data(hex: String(line[$0.upperBound...].prefix(32))) }
+            } else if line.hasPrefix("#EXTINF") || line.hasPrefix("#EXT-X-PROGRAM-DATE-TIME") {
+                lines.append(line)
             } else if !line.isEmpty, !line.hasPrefix("#"), let u = URL(string: line, relativeTo: base)?.absoluteURL {
-                segments.append(u)
+                let name = "\(tag)_\(sequence + segments.count)_v.aac"
+                segments.append((u, name))
+                lines.append(name)
             }
         }
-        guard let keyID else { return }
+        guard let keyID, !segments.isEmpty else { return }
+        SpectrumTimeline.shared.livePlaylist(lines.joined(separator: "\n"))
         lock.lock()
-        let fresh = segments.suffix(4).filter { analyzed.insert($0.lastPathComponent).inserted }
+        let fresh = segments.suffix(4).filter { analyzed.insert($0.name).inserted }
         lock.unlock()
-        for url in fresh {
+        for seg in fresh {
             Task {
-                guard let data = try? await client.fetchData(url), let key = try? await key(id: keyID), isActive else { return }
-                SpectrumTimeline.shared.liveSegment(url.lastPathComponent, data, key)
+                guard let data = try? await client.fetchData(seg.url), let key = try? await key(id: keyID), isActive else { return }
+                SpectrumTimeline.shared.liveSegment(seg.name, data, key, iv: iv)
             }
         }
     }
-
     func resourceLoader(_ resourceLoader: AVAssetResourceLoader,
                         shouldWaitForLoadingOfRequestedResource req: AVAssetResourceLoadingRequest) -> Bool {
         guard let url = req.request.url, let scheme = url.scheme else { return false }
@@ -513,7 +526,8 @@ final class LiveLoader: NSObject, AVAssetResourceLoaderDelegate {
                     c.scheme = "https"
                     let real = c.url!
                     let body = try await client.fetchText(real)
-                    let out = body.split(separator: "\n", omittingEmptySubsequences: false).map { raw -> String in
+                    // Split on any line break: some playlists use \r\n, which Swift sees as a single Character.
+                    let out = body.split(omittingEmptySubsequences: false, whereSeparator: \.isNewline).map { raw -> String in
                         let line = String(raw).trimmingCharacters(in: .whitespacesAndNewlines)
                         if line.hasPrefix("#EXT-X-KEY"), let r = line.range(of: "https://") {
                             return line.replacingCharacters(in: r, with: "sxmkey://")
@@ -527,7 +541,6 @@ final class LiveLoader: NSObject, AVAssetResourceLoaderDelegate {
                         }
                         return abs.absoluteString
                     }.joined(separator: "\n")
-                    if body.contains("#EXTINF") { feedSpectrum(body, base: real) }
                     req.contentInformationRequest?.contentType = "public.m3u-playlist"
                     req.contentInformationRequest?.contentLength = Int64(out.utf8.count)
                     req.contentInformationRequest?.isByteRangeAccessSupported = false
