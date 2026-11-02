@@ -541,6 +541,7 @@ final class LiveLoader: NSObject, AVAssetResourceLoaderDelegate {
                         }
                         return abs.absoluteString
                     }.joined(separator: "\n")
+                    if body.contains("#EXTINF") { feedSpectrum(body, base: real) }
                     req.contentInformationRequest?.contentType = "public.m3u-playlist"
                     req.contentInformationRequest?.contentLength = Int64(out.utf8.count)
                     req.contentInformationRequest?.isByteRangeAccessSupported = false
