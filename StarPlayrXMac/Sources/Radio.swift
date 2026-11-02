@@ -226,7 +226,6 @@ final class Radio: ObservableObject {
             // `defaults write com.starplayrx.mac modernLive -bool NO` turns it off.
             if UserDefaults.standard.object(forKey: "modernLive") as? Bool ?? true, let liveID = liveIDs[channel.id],
                let live = try? await xtra.liveStream(channelID: liveID) {
-                dbg("MODERN \(channel.id) tuned \(live.url.lastPathComponent)")
                 // Playlists and the AES key go through LiveLoader; the signed segment URLs load directly.
                 let (asset, loader) = LiveLoader.asset(for: live.url, client: xtra)
                 liveLoader = loader
@@ -249,7 +248,6 @@ final class Radio: ObservableObject {
                 try? await Task.sleep(nanoseconds: 100_000_000)
                 tries += 1
             }
-            dbg("\(channel.id) ready=\(item.status.rawValue) tries=\(tries) ranges=\(item.seekableTimeRanges.count) err=\(item.error?.localizedDescription ?? "-") log=\(item.errorLog()?.events.map { "\($0.errorStatusCode) \($0.errorComment ?? "")" }.joined(separator: "; ") ?? "-")")
             guard player.currentItem === item else { return }
             // Fallback: only jump if the start tag was ignored and we're more than 1 s off live.
             if let range = item.seekableTimeRanges.last?.timeRangeValue {
@@ -261,10 +259,6 @@ final class Radio: ObservableObject {
             }
             guard player.currentItem === item else { return }
             player.play()
-            // EXPERIMENT diagnostics
-            let t0 = CMTimeGetSeconds(item.currentTime())
-            try? await Task.sleep(nanoseconds: 4_000_000_000)
-            dbg("\(channel.id) \((item.asset as? AVURLAsset)?.url.host ?? "") status=\(item.status.rawValue) err=\(item.error?.localizedDescription ?? "-") log=\(item.errorLog()?.events.last?.errorComment ?? "-") advanced=\(CMTimeGetSeconds(item.currentTime()) - t0)")
             await updatePDT()
         }
     }
