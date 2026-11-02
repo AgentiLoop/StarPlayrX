@@ -47,12 +47,22 @@ StarPlayrX was built for visually impaired listeners, a group of paying subscrib
 - Lives in the menu bar (📻) with no Dock icon
 - **Tear-off window:** drag the panel off the menu bar and it becomes a floating window you can park anywhere. Click the 📻 icon to show or hide it
 - **Window shade:** double-click the header to roll the window up to just what's playing and the equalizer, and again to roll it back down. Moves between menu, tear-off and shade are animated
-- **Lava-lamp color equalizer:** live bars driven by the app's own audio (Core Audio process tap + FFT), with drifting colors and a glow that pulses on the beat. Needs macOS 14.2 or later
+- **Lava-lamp color equalizer:** 60 fps bars worked out from the audio as it's decoded, before it plays, so they stay in step with the music and need no "record system audio" permission. Drifting colors, a glow that pulses on the beat, and a darker glow on light backgrounds
+- **Lava-lamp bubbles:** soft bubbles rise inside the bars, faster when the music is louder, swelling and shrinking like wax in a lava lamp. **Single-click the bars to switch modes:** Bubbles → Soft Bubbles → No Bubbles → back to Bubbles. A little speech bubble pops up where you clicked to name the mode, and your choice is remembered (Soft Bubbles is the default). Double-clicking the bars still rolls the window up
+
+<table align="center">
+  <tr>
+    <td align="center" valign="top" width="33%"><img src="docs/screenshot-mac-shade-bubbles.png" width="260" alt="Rolled-up StarPlayrX with Bubbles in the equalizer bars"><br><b>🫧 Bubbles</b></td>
+    <td align="center" valign="top" width="33%"><img src="docs/screenshot-mac-shade-soft-bubbles.png" width="260" alt="Rolled-up StarPlayrX with Soft Bubbles in the equalizer bars"><br><b>☁️ Soft Bubbles</b></td>
+    <td align="center" valign="top" width="33%"><img src="docs/screenshot-mac-shade-no-bubbles.png" width="260" alt="Rolled-up StarPlayrX with no bubbles in the equalizer bars"><br><b>▮ No Bubbles</b></td>
+  </tr>
+</table>
+
 - **Liquid Glass** look on macOS 26 and later
 - **AppleScript support:** play, stop, and resume channels, read what's showing and what's actually playing, search, scroll, tear off, park, and shade the window. Open the StarPlayrX dictionary in Script Editor to see every command
 - Search channels, artists and songs
 - Shows what's playing on the current channel and every channel in the list, with album art that stays put for the whole song
-- **Now Playing matches what you hear:** on live channels the song shown follows the audio's own timestamp, like the SiriusXM web player, and changes when the song in the audio changes. Long titles scroll instead of getting cut off
+- **Now Playing matches what you hear:** on live channels the song shown is held back by how far the audio runs behind the live feed, so it changes when the song you hear changes. The channel list's song info refreshes 3 times a minute. Long titles scroll instead of getting cut off
 - Xtra channels (1000+), searchable with "xtra" or "music"; tuning in plays the song the list shows
 - Play/pause from the keyboard media keys and Control Center, with the album art or channel art showing there too
 - Picks up where you left off: the last channel you played starts again when StarPlayrX opens
@@ -61,7 +71,7 @@ StarPlayrX was built for visually impaired listeners, a group of paying subscrib
 
 **Requirements:** macOS 13 Ventura or later, Apple Silicon or Intel, and an active SiriusXM subscription.
 
-**Download:** [StarPlayrX for Mac 1.1.7](https://github.com/AgentiLoop/StarPlayrX/releases/tag/mac-1.1.7) (signed and notarized). All builds are on the [Releases](https://github.com/AgentiLoop/StarPlayrX/releases) page.
+**Download:** [StarPlayrX for Mac 1.1.8](https://github.com/AgentiLoop/StarPlayrX/releases/tag/mac-1.1.8) (signed and notarized). All builds are on the [Releases](https://github.com/AgentiLoop/StarPlayrX/releases) page.
 
 ### 📜 AppleScript
 
