@@ -333,18 +333,6 @@ private struct ChannelRow: View, Equatable {
                     .scaledToFit()
                     .frame(width: 16, height: 16)
                     .foregroundStyle(Color.secondary)
-                    // On the selected row a solid star gets a crisp, pointy 50% gray outline: the same
-                    // star shape drawn 2pt larger behind it (no shadow, so no blur/glow).
-                    .background {
-                        if isCurrent && isStarred {
-                            Image("star_on")
-                                .renderingMode(.template)
-                                .resizable()
-                                .scaledToFit()
-                                .frame(width: 18, height: 18)
-                                .foregroundStyle(Color.gray.opacity(0.5))
-                        }
-                    }
             }
             .buttonStyle(.plain)
             .help(isStarred ? "Remove from stars" : "Add to stars")
