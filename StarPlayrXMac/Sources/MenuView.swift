@@ -95,7 +95,7 @@ struct MenuView: View {
 
     private var nowPlaying: some View {
         HStack(spacing: 10) {
-            let np = radio.current.flatMap { radio.nowPlaying[$0.id] }
+            let np = radio.current.flatMap { radio.displayed($0.id) }
             let isAlbumArt = np?.image.isEmpty == false
             CachedArt(url: (isAlbumArt ? np?.image : radio.current?.imageURL) ?? "", size: 64, isAlbumArt: isAlbumArt) { art, isAlbumArt in
                 if let art, isAlbumArt {
@@ -121,7 +121,12 @@ struct MenuView: View {
             }
             .frame(width: 64, height: 64)
             .clipShape(RoundedRectangle(cornerRadius: 14.5, style: .continuous))   // squircle, app-icon ratio
-            .simultaneousGesture(TapGesture().onEnded { revealCurrent() })
+            .simultaneousGesture(TapGesture().onEnded {
+                // Click the artwork: channel logo ⇄ show art, remembered per channel. When there's nothing
+                // to switch (song art, or no show art) it scrolls the list to the channel as before.
+                if let id = radio.current?.id, radio.toggleShowArt(id) { return }
+                revealCurrent()
+            })
 
             VStack(alignment: .leading, spacing: 2) {
                 if let ch = radio.current {
@@ -162,7 +167,7 @@ struct MenuView: View {
                         Button {
                             radio.play(ch)
                         } label: {
-                            ChannelRow(channel: ch, nowPlaying: radio.nowPlaying[ch.id],
+                            ChannelRow(channel: ch, nowPlaying: radio.displayed(ch.id),
                                        isCurrent: ch == radio.current,
                                        isPlaying: ch == radio.current && radio.isPlaying)
                                 .equatable()
@@ -183,7 +188,7 @@ struct MenuView: View {
     /// so it's usually already in `ArtCache` by the time those rows scroll into view.
     private func prefetchArt(around index: Int, in list: [Channel]) {
         for ch in list[max(0, index - 10)..<min(list.count, index + 11)] {
-            let np = radio.nowPlaying[ch.id]
+            let np = radio.displayed(ch.id)
             ArtCache.shared.prefetch((np?.image).flatMap { $0.isEmpty ? nil : $0 } ?? ch.imageURL, pixels: ArtCache.pixels(32))
         }
     }
