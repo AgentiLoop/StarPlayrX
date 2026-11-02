@@ -3,7 +3,7 @@ import AppKit
 import ImageIO
 
 /// Spectrum of what is playing. The bars are worked out ahead of time from the decoded audio
-/// (`SpectrumTimeline`); this reads the frame at the player's position ~30 times a second
+/// (`SpectrumTimeline`); this reads the frame at the player's position 60 times a second
 /// and adds the colour, glow and blob motion.
 @MainActor
 final class Visualizer: ObservableObject {
@@ -32,7 +32,7 @@ final class Visualizer: ObservableObject {
     func start() {
         viewers += 1
         guard timer == nil else { return }
-        let timer = Timer(timeInterval: 1.0 / 30, repeats: true) { _ in
+        let timer = Timer(timeInterval: 1.0 / 60, repeats: true) { _ in
             Task { @MainActor in
                 let v = Visualizer.shared
                 v.update(Radio.shared.spectrumNow ?? [Float](repeating: 0, count: Self.bandCount))
@@ -55,23 +55,23 @@ final class Visualizer: ObservableObject {
         guard timer != nil else { return }
         let previous = levels
         // Rise instantly, fall slowly.
-        levels = zip(levels, new).map { old, new in max(new, old * 0.8) }
-        // ~30 updates a second: quiet ≈ one colour cycle per 30 s, loud ≈ one per 3 s.
+        levels = zip(levels, new).map { old, new in max(new, old * 0.894) }   // √0.8: same fall speed as 0.8 at 30 fps
+        // 60 updates a second (every step below is half its 30 fps size): quiet ≈ one colour cycle per 30 s, loud ≈ one per 3 s.
         let energy = Double(new.reduce(0, +) / Float(new.count))
-        phase = (phase + 0.001 + energy * 0.02).truncatingRemainder(dividingBy: 1)
+        phase = (phase + 0.0005 + energy * 0.01).truncatingRemainder(dividingBy: 1)
         let bass = new.prefix(4).reduce(0, +) / 4
         let kick = bass - bassAverage
-        bassAverage = bassAverage * 0.95 + bass * 0.05
-        pulse = max(Double(max(0, kick) * 4).clamped, pulse * 0.85)
+        bassAverage = bassAverage * 0.975 + bass * 0.025
+        pulse = max(Double(max(0, kick) * 4).clamped, pulse * 0.922)
 
         // Bar colours blend the old rolling wave (global phase plus a slow wave across the bars)
         // halfway toward a random palette. A strong kick (at most every ~3 s) or a rare random
         // moment throws a new palette; each bar glides there at a pace set by its own band,
         // onsets nudge it, and each bar is softened toward its neighbours so colours flow sideways.
         paletteCooldown -= 1
-        if (kick > 0.25 && paletteCooldown <= 0) || Int.random(in: 0..<450) == 0 {
+        if (kick > 0.25 && paletteCooldown <= 0) || Int.random(in: 0..<900) == 0 {
             newPalette()
-            paletteCooldown = 90
+            paletteCooldown = 180
         }
         let t = phase * 2 * .pi
         let glided = hues.indices.map { i in
@@ -80,11 +80,11 @@ final class Visualizer: ObservableObject {
             let target = wave + 0.5 * Self.shortest(hueTargets[i] - wave)
             let level = Double(new[i])
             let onset = Double(max(0, new[i] - previous[i]))
-            return hues[i] + Self.shortest(target - hues[i]) * (0.01 + 0.08 * level) + onset * 0.04
+            return hues[i] + Self.shortest(target - hues[i]) * (0.005 + 0.04 * level) + onset * 0.02
         }
         hues = glided.indices.map { i in
             let left = glided[max(0, i - 1)], right = glided[min(glided.count - 1, i + 1)]
-            let h = glided[i] + 0.25 * (Self.shortest(left - glided[i]) + Self.shortest(right - glided[i]))
+            let h = glided[i] + 0.125 * (Self.shortest(left - glided[i]) + Self.shortest(right - glided[i]))
             return (h.truncatingRemainder(dividingBy: 1) + 1).truncatingRemainder(dividingBy: 1)
         }
 
@@ -93,10 +93,10 @@ final class Visualizer: ObservableObject {
         let weighted = new.enumerated().reduce(Float(0)) { $0 + Float($1.offset) * $1.element }
         let centroid = total > 0.01 ? Double(weighted / total) / Double(new.count - 1) : 0.5
         // New random spot on a strong kick, or now and then on its own.
-        if kick > 0.15 || Int.random(in: 0..<90) == 0 { wanderTarget = .random(in: -1...1) }
-        wander += (wanderTarget - wander) * 0.04
+        if kick > 0.15 || Int.random(in: 0..<180) == 0 { wanderTarget = .random(in: -1...1) }
+        wander += (wanderTarget - wander) * 0.02
         let target = Swift.min(1, Swift.max(-1, (centroid * 2 - 1) * 1.5 + wander * 0.6))
-        blobX += (target - blobX) * 0.08
+        blobX += (target - blobX) * 0.04
     }
 
     /// Hue difference taken the shortest way round the colour wheel, -0.5...0.5.
@@ -217,7 +217,7 @@ struct SpectrumView: View {
                 .blur(radius: 14)
                 .opacity(0.075 + 0.175 * viz.pulse)
         }
-        .animation(.linear(duration: 0.05), value: viz.levels)
+        .animation(.linear(duration: 1.0 / 60), value: viz.levels)
         .background(WallpaperProbe(luminance: $wallpaper))
         .onAppear { viz.start() }
         .onDisappear { viz.stop() }
