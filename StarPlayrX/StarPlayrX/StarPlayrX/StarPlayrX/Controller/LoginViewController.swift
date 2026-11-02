@@ -16,22 +16,23 @@ class LoginViewController: UIViewController {
     
     func selectCanadaPlayer(_ ca : Bool) {
         if ca {
-            siriusCanadaSwitch.isOn = true
+            siriusCanadaSwitch?.isOn = true
             let caUrl = "\(self.g.insecure)\(self.g.localhost):" + String(self.p.port) + "/api/v3/ca"
             Async.api.Text(endpoint: caUrl) { _ in /* print(ca as Any) */ }
         } else {
-            siriusCanadaSwitch.isOn = false
+            siriusCanadaSwitch?.isOn = false
             let usUrl = "\(self.g.insecure)\(self.g.localhost):" + String(self.p.port) + "/api/v3/us"
             Async.api.Text(endpoint: usUrl) { _ in /* print(us as Any) */ }
         }
     }
     
-    @IBOutlet weak var siriusCanadaSwitch: UISwitch!
+    @IBOutlet weak var siriusCanadaSwitch: UISwitch?
     
     @IBAction func siriusCanadaSwitchAction(_ sender: Any) {
-        selectCanadaPlayer(siriusCanadaSwitch.isOn)
-        UserDefaults.standard.set(siriusCanadaSwitch.isOn, forKey: "localeIsCA")
-        g.localeIsCA = siriusCanadaSwitch.isOn
+        let isOn = siriusCanadaSwitch?.isOn ?? false
+        selectCanadaPlayer(isOn)
+        UserDefaults.standard.set(isOn, forKey: "localeIsCA")
+        g.localeIsCA = isOn
     }
     
     override var preferredScreenEdgesDeferringSystemGestures: UIRectEdge { .bottom }
@@ -55,18 +56,18 @@ class LoginViewController: UIViewController {
 //        }
 //    }
     
-    @IBOutlet weak var userField: UITextField!
-    @IBOutlet weak var passField: UITextField!
-    @IBOutlet weak var loginButton: UIButton!
-    @IBOutlet weak var progressBar: UIProgressView!
-    @IBOutlet weak var StatusField: UILabel!
+    @IBOutlet weak var userField: UITextField?
+    @IBOutlet weak var passField: UITextField?
+    @IBOutlet weak var loginButton: UIButton?
+    @IBOutlet weak var progressBar: UIProgressView?
+    @IBOutlet weak var StatusField: UILabel?
     
     //override func viewWillAppear(_ animated: Bool) {}
     
     //login button action
     @IBAction func loginButton(_ sender: Any) {
-        self.g.Username = self.userField.text ?? ""
-        self.g.Password = self.passField.text ?? ""
+        self.g.Username = self.userField?.text ?? ""
+        self.g.Password = self.passField?.text ?? ""
         self.prog(0.0, " ", animated: false)
         self.autoLogin()
     }
@@ -83,8 +84,8 @@ class LoginViewController: UIViewController {
     func displayError(title: String, message: String, action: String) {
         DispatchQueue.main.async {
             self.prog(0.0, " ")
-            self.loginButton.isEnabled = true
-            self.loginButton.alpha = 1.0
+            self.loginButton?.isEnabled = true
+            self.loginButton?.alpha = 1.0
             self.showAlert(title: title, message: message, action: action)
         }
     }
@@ -93,8 +94,8 @@ class LoginViewController: UIViewController {
         checkForNetworkError()
         
         //MARK: 1 - Logging In
-        self.loginButton.isEnabled = false
-        self.loginButton.alpha = 0.5
+        self.loginButton?.isEnabled = false
+        self.loginButton?.alpha = 0.5
         self.view?.endEditing(true)
         
         let pingUrl = "\(self.g.insecure)\(self.g.localhost):" + String(self.p.port) + "/api/v3/ping"
@@ -142,8 +143,8 @@ class LoginViewController: UIViewController {
                 
             } else {
                 DispatchQueue.main.async {
-                    self.loginButton.isEnabled = true
-                    self.loginButton.alpha = 1.0
+                    self.loginButton?.isEnabled = true
+                    self.loginButton?.alpha = 1.0
                     if data == "411" {
                         self.prog(0, " ")
                         self.closeStarPlayr(title: "Local Network Error", message: message, action: "Close StarPlayrX")
@@ -349,11 +350,11 @@ class LoginViewController: UIViewController {
             let value = getFloat(Float) //return value
             
             if Float == 1.0  {
-                loginButton.isEnabled = true
-                loginButton.alpha = 1.0
+                loginButton?.isEnabled = true
+                loginButton?.alpha = 1.0
             }
             
-            StatusField.text = Text
+            StatusField?.text = Text
             progressBar?.setProgress( value, animated: animated)
         }
     }
@@ -367,8 +368,8 @@ class LoginViewController: UIViewController {
     }
     
     func runFinish(_ success: Bool) {
-        self.loginButton.isEnabled = true
-        self.loginButton.alpha = 1.0
+        self.loginButton?.isEnabled = true
+        self.loginButton?.alpha = 1.0
         
         if success {
             self.tabItem(index: 1, enable: true, selectItem: true)
@@ -510,7 +511,7 @@ class LoginViewController: UIViewController {
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
         
-        siriusCanadaSwitch.accessibilityLabel = "Canada"
+        siriusCanadaSwitch?.accessibilityLabel = "Canada"
         
         func bitSet(_ bits: [Int]) -> UInt {
             return bits.reduce(0) { $0 | (1 << $1) }
@@ -545,11 +546,11 @@ class LoginViewController: UIViewController {
         self.tabItem(index: 1, enable: false, selectItem: false)
         self.g.Username = UserDefaults.standard.string(forKey: "user") ?? ""
         self.g.Password = UserDefaults.standard.string(forKey: "pass") ?? ""
-        self.userField.text = self.g.Username
-        self.passField.text = self.g.Password
+        self.userField?.text = self.g.Username
+        self.passField?.text = self.g.Password
         
         self.g.localeIsCA = UserDefaults.standard.bool(forKey: "localeIsCA")
-        siriusCanadaSwitch.isOn = self.g.localeIsCA
+        siriusCanadaSwitch?.isOn = self.g.localeIsCA
         selectCanadaPlayer(self.g.localeIsCA)
         
         //Pause Gesture

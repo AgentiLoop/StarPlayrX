@@ -23,17 +23,17 @@ class PlayerViewController: UIViewController, AVRoutePickerViewDelegate  {
     override var preferredScreenEdgesDeferringSystemGestures: UIRectEdge { .bottom }
     override var prefersHomeIndicatorAutoHidden : Bool { return true }
     
-    @IBOutlet weak var mainView: UIView!
+    @IBOutlet weak var mainView: UIView?
     
     //UI Variables
-    weak var PlayerView   : UIView!
-    weak var AlbumArt     : UIImageView!
+    weak var PlayerView   : UIView?
+    weak var AlbumArt     : UIImageView?
     weak var Artist       : UILabel?
     weak var Song         : UILabel?
     weak var ArtistSong   : UILabel?
-    weak var VolumeSlider : UISlider!
-    weak var PlayerXL     : UIButton!
-    weak var SpeakerView  : UIImageView!
+    weak var VolumeSlider : UISlider?
+    weak var PlayerXL     : UIButton?
+    weak var SpeakerView  : UIImageView?
     
     var playerViewTimerX = Timer()
     var volumeTimer = Timer()
@@ -143,7 +143,8 @@ class PlayerViewController: UIViewController, AVRoutePickerViewDelegate  {
             isPhone = false
         }
         
-        drawPlayer(frame: mainView.frame, isPhone: isPhone, NavY: NavY, TabY: TabY)
+        guard let frame = mainView?.frame else { return }
+        drawPlayer(frame: frame, isPhone: isPhone, NavY: NavY, TabY: TabY)
     }
     
     func drawPlayer(frame: CGRect, isPhone: Bool, NavY: CGFloat, TabY: CGFloat) {
@@ -152,7 +153,9 @@ class PlayerViewController: UIViewController, AVRoutePickerViewDelegate  {
         
         
         //MARK: 1 - PlayerView must run 1st
-        PlayerView = draw.PlayerView(mainView: mainView)
+        if let mainView = mainView {
+            PlayerView = draw.PlayerView(mainView: mainView)
+        }
         
         if let pv = PlayerView {
             AlbumArt = draw.AlbumImageView(playerView: pv)
@@ -169,8 +172,8 @@ class PlayerViewController: UIViewController, AVRoutePickerViewDelegate  {
             addSliderAction()
             
             PlayerXL = draw.PlayerButton(playerView: pv)
-            PlayerXL.addTarget(self, action: #selector(PlayPause), for: .touchUpInside)
-            PlayerXL.accessibilityLabel = "Play Pause"
+            PlayerXL?.addTarget(self, action: #selector(PlayPause), for: .touchUpInside)
+            PlayerXL?.accessibilityLabel = "Play Pause"
             SpeakerView = draw.SpeakerImage(playerView: pv)
             updatePlayPauseIcon(play: true)
             setAllStarButton()
@@ -246,15 +249,15 @@ class PlayerViewController: UIViewController, AVRoutePickerViewDelegate  {
         case .none :
             
             Player.shared.state == PlayerState.playing ?
-            self.PlayerXL.setImage(UIImage(named: "pause_button"), for: .normal) :
-            self.PlayerXL.setImage(UIImage(named: "play_button"), for:  .normal)
+            self.PlayerXL?.setImage(UIImage(named: "pause_button"), for: .normal) :
+            self.PlayerXL?.setImage(UIImage(named: "play_button"), for:  .normal)
             
         case .some(true) :
             
-            self.PlayerXL.setImage(UIImage(named: "pause_button"), for: .normal)
+            self.PlayerXL?.setImage(UIImage(named: "pause_button"), for: .normal)
             
         case .some(false) :
-            self.PlayerXL.setImage(UIImage(named: "play_button"), for: .normal)
+            self.PlayerXL?.setImage(UIImage(named: "play_button"), for: .normal)
         }
     }
     
@@ -315,17 +318,17 @@ class PlayerViewController: UIViewController, AVRoutePickerViewDelegate  {
     func runSimulation() {
         let value = Player.shared.player.volume
         //value = value == 0.0 ? 1.0 : value
-        VolumeSlider.setValue(value, animated: true)
+        VolumeSlider?.setValue(value, animated: true)
         self.setSpeakers(value: value)
     }
     
     @objc func volumeChanged() {
-        if VolumeSlider.isTracking { return }
+        if VolumeSlider?.isTracking == true { return }
         
     #if !targetEnvironment(simulator)
         if !isMacCatalystApp, let ap2 = Player.shared.avSession.outputVolume as Float?  {
             DispatchQueue.main.async {
-                self.VolumeSlider.setValue(ap2, animated: true)
+                self.VolumeSlider?.setValue(ap2, animated: true)
                 self.setSpeakers(value: ap2)
             }
         }
@@ -344,11 +347,11 @@ class PlayerViewController: UIViewController, AVRoutePickerViewDelegate  {
     }
     
     override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey : Any]?, context: UnsafeMutableRawPointer?) {
-        if VolumeSlider.isTracking { return }
+        if VolumeSlider?.isTracking == true { return }
         
         if context == &Observation.Context {
             if keyPath == Observation.VolumeKey, let volume = (change?[NSKeyValueChangeKey.newKey] as? NSNumber)?.floatValue {
-                self.VolumeSlider.setValue(volume, animated: true)
+                self.VolumeSlider?.setValue(volume, animated: true)
                 
             }
         }
@@ -410,15 +413,17 @@ class PlayerViewController: UIViewController, AVRoutePickerViewDelegate  {
         accessibility()
         let labels = staticArtistSong()
         
-        self.AlbumArt.layer.shadowOpacity = 1.0
+        self.AlbumArt?.layer.shadowOpacity = 1.0
         
         func presentArtistSongAlbumArt(_ artist: UILabel, duration: Double) {
             DispatchQueue.main.async {
-                UIView.transition(with: self.AlbumArt,
-                                  duration:duration,
-                                  options: .transitionCrossDissolve,
-                                  animations: { _ = [self.AlbumArt.image = pdt.image, self.AlbumArt.layer.shadowOpacity = 1.0] },
-                                  completion: nil)
+                if let view = self.AlbumArt {
+                    UIView.transition(with: view,
+                                      duration:duration,
+                                      options: .transitionCrossDissolve,
+                                      animations: { _ = [self.AlbumArt?.image = pdt.image, self.AlbumArt?.layer.shadowOpacity = 1.0] },
+                                      completion: nil)
+                }
                 
                 for i in labels {
                     UILabel.transition(with: i.lbl ?? artist,
@@ -433,8 +438,8 @@ class PlayerViewController: UIViewController, AVRoutePickerViewDelegate  {
         func setGraphics(_ duration: Double) {
             
             if duration == 0 {
-                self.AlbumArt.image = pdt.image
-                self.AlbumArt.layer.shadowOpacity = 1.0
+                self.AlbumArt?.image = pdt.image
+                self.AlbumArt?.layer.shadowOpacity = 1.0
                 
                 for i in labels {
                     i.lbl?.text = i.str
@@ -465,19 +470,19 @@ class PlayerViewController: UIViewController, AVRoutePickerViewDelegate  {
     @objc func PlayPause() {
         checkForNetworkError()
         
-        PlayerXL.accessibilityHint = ""
+        PlayerXL?.accessibilityHint = ""
         
         if Player.shared.player.isBusy {
             DispatchQueue.main.async { [self] in
                 updatePlayPauseIcon(play: false)
                 Player.shared.new(.paused)
-                PlayerXL.accessibilityLabel = "Paused"
+                PlayerXL?.accessibilityLabel = "Paused"
             }
         } else {
             DispatchQueue.main.async { [self] in
                 updatePlayPauseIcon(play: true)
                 Player.shared.new(.playing)
-                PlayerXL.accessibilityLabel = "Now Playing"
+                PlayerXL?.accessibilityLabel = "Now Playing"
             }
         }
     }
@@ -499,7 +504,7 @@ class PlayerViewController: UIViewController, AVRoutePickerViewDelegate  {
 #if !targetEnvironment(simulator)
     if !isMacCatalystApp, let ap2 = Player.shared.avSession.outputVolume as Float?  {
         DispatchQueue.main.async {
-            self.VolumeSlider.setValue(ap2, animated: false)
+            self.VolumeSlider?.setValue(ap2, animated: false)
             self.setSpeakers(value: ap2)
         }
     }
@@ -541,11 +546,13 @@ class PlayerViewController: UIViewController, AVRoutePickerViewDelegate  {
     override func viewWillDisappear(_ animated: Bool) {
         shutdownVolume()
         
-        UIView.transition(with: self.AlbumArt,
-                          duration:0.4,
-                          options: .transitionCrossDissolve,
-                          animations: { _ = [self.AlbumArt.layer.shadowOpacity = 0.0] },
-                          completion: nil)
+        if let view = self.AlbumArt {
+            UIView.transition(with: view,
+                              duration:0.4,
+                              options: .transitionCrossDissolve,
+                              animations: { _ = [self.AlbumArt?.layer.shadowOpacity = 0.0] },
+                              completion: nil)
+        }
     }
     
     deinit {
@@ -587,11 +594,13 @@ class PlayerViewController: UIViewController, AVRoutePickerViewDelegate  {
             DispatchQueue.main.async {
                 let speakerName = self.currentSpeaker.rawValue
                 
-                UIView.transition(with: self.SpeakerView,
-                                  duration:0.2,
-                                  options: .transitionCrossDissolve,
-                                  animations: { self.SpeakerView.image = UIImage(named: speakerName) },
-                                  completion: nil)
+                if let view = self.SpeakerView {
+                    UIView.transition(with: view,
+                                      duration:0.2,
+                                      options: .transitionCrossDissolve,
+                                      animations: { self.SpeakerView?.image = UIImage(named: speakerName) },
+                                      completion: nil)
+                }
                 
                 self.previousSpeaker = self.currentSpeaker
             }
@@ -620,29 +629,29 @@ class PlayerViewController: UIViewController, AVRoutePickerViewDelegate  {
     
     //MARK: Add Volume Slider Action
     func addSliderAction() {
-        VolumeSlider.addTarget(self, action: #selector(VolumeChanged(slider:event:)), for: .valueChanged)
-        VolumeSlider.isContinuous = true
-        VolumeSlider.accessibilityRespondsToUserInteraction = true
-        VolumeSlider.accessibilityHint = "Volume Slider"
+        VolumeSlider?.addTarget(self, action: #selector(VolumeChanged(slider:event:)), for: .valueChanged)
+        VolumeSlider?.isContinuous = true
+        VolumeSlider?.accessibilityRespondsToUserInteraction = true
+        VolumeSlider?.accessibilityHint = "Volume Slider"
     }
     
     //MARK: Remove Volume Slider Action
     func removeSlider() {
-        VolumeSlider.removeTarget(nil, action: #selector(VolumeChanged(slider:event:)), for: .valueChanged)
+        VolumeSlider?.removeTarget(nil, action: #selector(VolumeChanged(slider:event:)), for: .valueChanged)
     }
     func isSliderEnabled() {
         if Player.shared.avSession.currentRoute.outputs.first?.portType == .usbAudio  {
-            VolumeSlider.isEnabled = false
+            VolumeSlider?.isEnabled = false
         } else {
-            VolumeSlider.isEnabled = true
+            VolumeSlider?.isEnabled = true
         }
         
     #if !targetEnvironment(simulator)
         if isMacCatalystApp {
             if Player.shared.avSession.currentRoute.outputs.first?.portType == .airPlay  {
-                VolumeSlider.isEnabled = false
+                VolumeSlider?.isEnabled = false
             } else {
-                VolumeSlider.isEnabled = true
+                VolumeSlider?.isEnabled = true
             }
         }
      #endif
@@ -671,7 +680,7 @@ class PlayerViewController: UIViewController, AVRoutePickerViewDelegate  {
                     if !isMacCatalystApp {
                         if let vol = ap2volume?.getSoda() {
                             DispatchQueue.main.async {
-                                self.VolumeSlider.setValue(vol, animated: true)
+                                self.VolumeSlider?.setValue(vol, animated: true)
                             }
                         }
                     }

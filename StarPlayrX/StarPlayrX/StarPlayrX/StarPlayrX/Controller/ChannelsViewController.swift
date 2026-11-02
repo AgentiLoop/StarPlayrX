@@ -79,8 +79,8 @@ class ChannelsViewController: UITableViewController,UISearchBarDelegate {
     
     private let Interactive = DispatchQueue(label: "Interactive", qos: .userInteractive )
 
-    @IBOutlet weak var ChannelsTableView: UITableView!
-    @IBOutlet weak var searchBar: UISearchBar!
+    @IBOutlet weak var ChannelsTableView: UITableView?
+    @IBOutlet weak var searchBar: UISearchBar?
 
     func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
         searchBar.resignFirstResponder() // hides the keyboard.
@@ -117,8 +117,8 @@ class ChannelsViewController: UITableViewController,UISearchBarDelegate {
         g.FilterData = nil
         g.ColdFilteredData = nil
         
-        ChannelsTableView.removeFromSuperview()
-        ChannelsTableView.reloadData()
+        ChannelsTableView?.removeFromSuperview()
+        ChannelsTableView?.reloadData()
     }
     
     func updateFilter() {
@@ -141,11 +141,11 @@ class ChannelsViewController: UITableViewController,UISearchBarDelegate {
     }
     
     override func viewWillAppear(_ animated: Bool) {
-        if let searchbartext = searchBar.text {
+        if let searchbartext = searchBar?.text {
             if searchbartext.count > 0 {
                 g.SearchText = searchbartext
             } else if g.SearchText.count > 0 {
-                searchBar.text = g.SearchText
+                searchBar?.text = g.SearchText
             }
         }
     
@@ -159,15 +159,15 @@ class ChannelsViewController: UITableViewController,UISearchBarDelegate {
         guard let filterdata = g.FilterData else { return }
         
         //Locate the channel is playing
-        if !filterdata.isEmpty && ( ChannelsTableView.numberOfRows(inSection: 0) == filterdata.count ) {
+        if !filterdata.isEmpty && ( ChannelsTableView?.numberOfRows(inSection: 0) == filterdata.count ) {
             let index = filterdata.firstIndex(where: {$0.channel == g.currentChannel})
             
-            if let i = index {
-                SPXSelectRow(myTableView: ChannelsTableView, position: i, scrollPosition: scrollPosition)
+            if let i = index, let tableView = ChannelsTableView {
+                SPXSelectRow(myTableView: tableView, position: i, scrollPosition: scrollPosition)
                 setAllStarButton()
             }
-        } else if let index = ChannelsTableView.indexPathForSelectedRow {
-            ChannelsTableView.deselectRow(at: index, animated: false)
+        } else if let index = ChannelsTableView?.indexPathForSelectedRow {
+            ChannelsTableView?.deselectRow(at: index, animated: false)
         }
     }
     
@@ -183,15 +183,15 @@ class ChannelsViewController: UITableViewController,UISearchBarDelegate {
       
         NotificationCenter.default.addObserver(self, selector: #selector(UpdateTableView), name: .updateChannelsView, object: nil)
 
-        ChannelsTableView.delegate = self
+        ChannelsTableView?.delegate = self
         UpdateTableView()
             
-        searchBar.backgroundColor = UIColor(displayP3Red: 20 / 255, green: 22 / 255, blue: 24 / 255, alpha: 1.0)
-        searchBar.barTintColor = UIColor(displayP3Red: 41 / 255, green: 42 / 255, blue: 48 / 255, alpha: 1.0)
-        searchBar.delegate = self
-        ChannelsTableView.rowHeight = 80
-        ChannelsTableView.estimatedRowHeight = 80
-        searchBar.sizeToFit()
+        searchBar?.backgroundColor = UIColor(displayP3Red: 20 / 255, green: 22 / 255, blue: 24 / 255, alpha: 1.0)
+        searchBar?.barTintColor = UIColor(displayP3Red: 41 / 255, green: 42 / 255, blue: 48 / 255, alpha: 1.0)
+        searchBar?.delegate = self
+        ChannelsTableView?.rowHeight = 80
+        ChannelsTableView?.estimatedRowHeight = 80
+        searchBar?.sizeToFit()
         
         setAllStarButton()
     }
@@ -211,7 +211,7 @@ class ChannelsViewController: UITableViewController,UISearchBarDelegate {
     
     @objc func UpdateTableView(scrollPosition: UITableView.ScrollPosition = .none) {
         updateFilter()
-        ChannelsTableView.reloadData()
+        ChannelsTableView?.reloadData()
         SelectMyRow(scrollPosition: scrollPosition)
     }
    
