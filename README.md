@@ -72,6 +72,8 @@ StarPlayrX was built for visually impaired listeners, a group of paying subscrib
 - Shows what's playing on the current channel and every channel in the list, with album art that stays put for the whole song
 - **Now Playing matches what you hear:** on live channels the song shown is held back by how far the audio runs behind the live feed, so it changes when the song you hear changes. The channel list's song info refreshes 3 times a minute. Long titles scroll instead of getting cut off
 - Xtra channels (1000+), searchable with "xtra" or "music"; tuning in plays the song the list shows
+- **Modern API for live channels:** live channels stream through the same current SiriusXM API the Xtra channels use (the one the web player uses), so they tune in well under a second with no local server. On by default; click the version number at the bottom of the panel to switch it off and go back to the legacy player path
+- **Modern API sign-in:** a checkbox on the sign-in screen signs in through the current API only, with every channel (live and Xtra) coming from it. Leave it off to sign in the legacy way; the switch under the version number then picks how live channels play
 - Play/pause from the keyboard media keys and Control Center, with the album art or channel art showing there too
 - Picks up where you left off: the last channel you played starts again when StarPlayrX opens
 - US and Canada channel lineups (pick Canada on the sign-in screen)
