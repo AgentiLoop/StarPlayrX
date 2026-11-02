@@ -166,18 +166,6 @@ struct MenuView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .contentShape(Rectangle())
             .simultaneousGesture(TapGesture().onEnded { revealCurrent() })
-            // The star (as the iOS "All Star" button): the current channel in or out of the presets.
-            if let ch = radio.current {
-                let starred = radio.presets.contains(ch.id)
-                Button { radio.togglePreset(ch.id) } label: {
-                    Image(systemName: starred ? "star.fill" : "star")
-                        .font(.system(size: 18))
-                        .foregroundStyle(starred ? Color.yellow : Color.secondary)
-                }
-                .buttonStyle(.plain)
-                .help(starred ? "Remove from stars" : "Add to stars")
-                .accessibilityLabel(starred ? "Preset On, Channel \(ch.name)" : "Preset Off")
-            }
             Button {
                 radio.togglePlayPause()
             } label: {
@@ -186,6 +174,20 @@ struct MenuView: View {
             }
             .buttonStyle(.plain)
             .disabled(radio.current == nil)
+            // The star (as the iOS "All Star" button): the current channel in or out of the presets.
+            // Outside the play button, same size and trailing edge as the search-bar and row stars.
+            if let ch = radio.current {
+                let starred = radio.presets.contains(ch.id)
+                Button { radio.togglePreset(ch.id) } label: {
+                    Image(systemName: starred ? "star.fill" : "star")
+                        .font(.system(size: 14))
+                        .foregroundStyle(starred ? Color.yellow : Color.secondary)
+                }
+                .buttonStyle(.plain)
+                .padding(.trailing, 10)
+                .help(starred ? "Remove from stars" : "Add to stars")
+                .accessibilityLabel(starred ? "Preset On, Channel \(ch.name)" : "Preset Off")
+            }
         }
     }
 
