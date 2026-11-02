@@ -68,8 +68,11 @@ struct MenuView: View {
                         SearchField(text: $menu.search, placeholder: "Search channels, artists, songs")
                         // "All Stars" (as on iOS): the list shows only the starred channels.
                         Button { menu.starsOnly.toggle() } label: {
-                            Image(systemName: menu.starsOnly ? "star.fill" : "star")
-                                .font(.system(size: 14))
+                            Image(menu.starsOnly ? "star_on" : "star_off")
+                                .renderingMode(.template)
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 14, height: 14)
                                 .foregroundStyle(menu.starsOnly ? Color.yellow : Color.secondary)
                         }
                         .buttonStyle(.plain)
@@ -179,8 +182,11 @@ struct MenuView: View {
             if let ch = radio.current {
                 let starred = radio.presets.contains(ch.id)
                 Button { radio.togglePreset(ch.id) } label: {
-                    Image(systemName: starred ? "star.fill" : "star")
-                        .font(.system(size: 14))
+                    Image(starred ? "star_on" : "star_off")
+                        .renderingMode(.template)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 14, height: 14)
                         .foregroundStyle(starred ? Color.yellow : Color.secondary)
                 }
                 .buttonStyle(.plain)
@@ -321,8 +327,11 @@ private struct ChannelRow: View, Equatable {
             .frame(maxWidth: .infinity, alignment: .leading)
             // Click the star to put the channel in the presets or take it out (the row itself plays it).
             Button { Radio.shared.togglePreset(channel.id) } label: {
-                Image(systemName: isStarred ? "star.fill" : "star")
-                    .font(.system(size: 14))
+                Image(isStarred ? "star_on" : "star_off")
+                    .renderingMode(.template)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 14, height: 14)
                     .foregroundStyle(isStarred ? Color.yellow : Color.secondary)
             }
             .buttonStyle(.plain)
