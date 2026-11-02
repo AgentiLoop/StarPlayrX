@@ -272,6 +272,8 @@ final class MenuController: NSObject, ObservableObject {
 
     @Published private(set) var detached = false
     @Published var shaded = false
+    /// The panel is on screen and not covered; the scrolling text pauses otherwise.
+    @Published private(set) var panelVisible = false
     private(set) lazy var panel = MenuPanel.make()
     private lazy var statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
     private var outsideClick: Any?
@@ -280,6 +282,13 @@ final class MenuController: NSObject, ObservableObject {
 
     func install() {
         _ = panel
+        NotificationCenter.default.addObserver(forName: NSWindow.didChangeOcclusionStateNotification, object: panel, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                let visible = self.panel.isVisible && self.panel.occlusionState.contains(.visible)
+                if visible != self.panelVisible { self.panelVisible = visible }
+            }
+        }
         statusItem.button?.target = self
         statusItem.button?.action = #selector(statusItemClicked)
         playing = Radio.shared.$isPlaying.sink { [weak self] on in
@@ -787,6 +796,8 @@ private struct MarqueeText: View {
     let font: Font
     @State private var textWidth: CGFloat = 0
     @State private var start = Date()
+    /// TimelineView(.animation) kept redrawing every scrolling line at 60 fps even with the panel closed.
+    @ObservedObject private var menu = MenuController.shared
 
     private let gap: CGFloat = 40      // space between the end of the text and its repeat
     private let speed: CGFloat = 30    // points per second
@@ -808,7 +819,7 @@ private struct MarqueeText: View {
                     if textWidth <= geo.size.width {
                         Text(text).font(font).fixedSize()
                     } else {
-                        TimelineView(.animation) { ctx in
+                        TimelineView(.animation(paused: !menu.panelVisible)) { ctx in
                             let cycle = textWidth + gap
                             let period = Double(cycle / speed) + pause
                             let t = ctx.date.timeIntervalSince(start).truncatingRemainder(dividingBy: period)

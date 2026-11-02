@@ -214,6 +214,19 @@ actor XtraClient {
     /// Done the way the web player does it (its remote config: lookaround pollingMs 45000,
     /// livePointIntervalMs 60000): the web player refetches the feed every 45 s; we do every 20 s. The music reaches the
     /// speakers `behind` seconds after the feed's clock says it aired, so read the feed that far back.
+    /// Parsed validFrom dates. The same few thousand strings come back on every 5 s tick, and
+    /// parsing them all with ISO8601DateFormatter each time was a steady few % of CPU.
+    private var validFromCache = [String: Date]()
+
+    private func validFrom(_ s: String?) -> Date? {
+        guard let s else { return nil }
+        if let d = validFromCache[s] { return d }
+        guard let d = Self.date(s) else { return nil }
+        if validFromCache.count > 50_000 { validFromCache.removeAll() }
+        validFromCache[s] = d
+        return d
+    }
+
     func liveNowPlaying(behind: TimeInterval) async throws -> [String: NowPlaying] {
         // 3 times a minute. Checked on the 5 s PDT tick and stamped after the download finishes, so the
         // 4th tick sees ~19.7 s; "> 20" waited for the 5th tick (every 25 s). "> 18" lands on the 4th.
@@ -228,7 +241,7 @@ actor XtraClient {
         var result = [String: NowPlaying]()
         for (id, ch) in lookAroundChannels {
             func current(_ key: String) -> [String: Any]? {
-                (ch[key] as? [[String: Any]] ?? []).last { $0["isAd"] as? Bool != true && (Self.date($0["validFrom"] as? String) ?? now) <= now }
+                (ch[key] as? [[String: Any]] ?? []).last { $0["isAd"] as? Bool != true && (validFrom($0["validFrom"] as? String) ?? now) <= now }
             }
             guard let cut = current("cuts") else { continue }
             let show = current("shows")
