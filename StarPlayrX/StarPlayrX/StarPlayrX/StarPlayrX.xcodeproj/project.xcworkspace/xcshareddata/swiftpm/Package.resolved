@@ -1,9 +1,10 @@
 {
+  "originHash" : "11100ac92d7bce07b06c5fa885206abcbea42f37b0692ffe0f2e5f4a78ac268a",
   "pins" : [
     {
       "identity" : "starplayrradiokit",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/StarPlayrX/StarPlayrRadioKit",
+      "location" : "https://github.com/AgentiLoop/StarPlayrRadioKit",
       "state" : {
         "branch" : "mustang",
         "revision" : "0f326b16dd3237057f6f5a906ccf13e46f161f54"
@@ -19,5 +20,5 @@
       }
     }
   ],
-  "version" : 2
+  "version" : 3
 }

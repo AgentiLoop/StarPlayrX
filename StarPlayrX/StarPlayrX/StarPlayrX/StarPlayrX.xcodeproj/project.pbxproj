@@ -525,7 +525,7 @@
 /* Begin XCRemoteSwiftPackageReference section */
 		5F014C4528CD2D6500D4F682 /* XCRemoteSwiftPackageReference "StarPlayrRadioKit" */ = {
 			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/StarPlayrX/StarPlayrRadioKit";
+			repositoryURL = "https://github.com/AgentiLoop/StarPlayrRadioKit";
 			requirement = {
 				branch = mustang;
 				kind = branch;
