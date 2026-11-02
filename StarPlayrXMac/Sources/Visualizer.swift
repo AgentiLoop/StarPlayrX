@@ -4,59 +4,73 @@ import ImageIO
 import MetalKit
 
 /// Spectrum of what is playing. The bars are worked out ahead of time from the decoded audio
-/// (`SpectrumTimeline`); this reads the frame at the player's position 60 times a second
-/// and adds the colour, glow and blob motion.
+/// (`SpectrumTimeline`). The Metal view's own frame loop ticks this 30 times a second (no separate
+/// timer); it keeps the previous step too, so the GPU tweens bars and bubbles between the two at 60 fps.
 @MainActor
-final class Visualizer: ObservableObject {
+final class Visualizer {
     static let shared = Visualizer()
     nonisolated static let bandCount = 24
+    /// Seconds between state steps. Each step runs the 60 fps tuned update twice, so speeds are unchanged.
+    static let step = 1.0 / 30
 
-    @Published private(set) var levels = [Float](repeating: 0, count: bandCount)
+    private(set) var levels = [Float](repeating: 0, count: bandCount)
     /// Lava-lamp colour phase (in hue turns). Drifts slowly and speeds up with loudness.
-    @Published private(set) var phase: Double = 0
+    private(set) var phase: Double = 0
     /// Bass kick above its recent average, 0...1: drives the glow and blob pulse.
-    @Published private(set) var pulse: Double = 0
+    private(set) var pulse: Double = 0
     /// Background blob position, -1 (left) ... 1 (right): follows where the music's energy
     /// sits in the spectrum plus a random wander that jumps on beats.
-    @Published private(set) var blobX: Double = 0
+    private(set) var blobX: Double = 0
     /// Per-bar hue (0...1 turns), driven by the music; see `update`.
-    @Published private(set) var hues = (0..<bandCount).map { _ in Double.random(in: 0..<1) }
+    private(set) var hues = (0..<bandCount).map { _ in Double.random(in: 0..<1) }
     /// Lava-lamp bubbles inside each bar: how far they have risen (in bar heights, wraps at 1).
     /// They drift up slowly when the band is quiet and faster when it's loud; a kick gives them a push.
-    @Published private(set) var rise = (0..<bandCount).map { _ in Double.random(in: 0..<1) }
+    private(set) var rise = (0..<bandCount).map { _ in Double.random(in: 0..<1) }
+    /// The state one step back, for tweening: levels, rise, pulse, blob position.
+    private(set) var previous = (levels: [Float](repeating: 0, count: bandCount), rise: [Double](repeating: 0, count: bandCount), pulse: 0.0, blobX: 0.0)
+    /// Bumped on every step, so each renderer knows when to rebuild its bar colours.
+    private(set) var generation = 0
     private var hueTargets = (0..<bandCount).map { _ in Double.random(in: 0..<1) }
     private var paletteCooldown = 0
     private var bassAverage: Float = 0
     private var wander: Double = 0
     private var wanderTarget: Double = 0
 
-    private var timer: Timer?
+    private var running = false
+    private var lastStep: CFTimeInterval = 0
     private var viewers = 0   // menu and torn-off window can both show bars
 
     func start() {
         viewers += 1
-        guard timer == nil else { return }
-        let timer = Timer(timeInterval: 1.0 / 60, repeats: true) { _ in
-            Task { @MainActor in
-                let v = Visualizer.shared
-                v.update(Radio.shared.spectrumNow ?? [Float](repeating: 0, count: Self.bandCount))
-            }
-        }
-        RunLoop.main.add(timer, forMode: .common)   // keeps ticking while the menu is tracking
-        self.timer = timer
+        running = true
     }
 
     func stop() {
         viewers = max(0, viewers - 1)
         guard viewers == 0 else { return }
-        timer?.invalidate()
-        timer = nil
+        running = false
         levels = [Float](repeating: 0, count: Self.bandCount)
         pulse = 0
+        previous = (levels, rise, 0, blobX)
+    }
+
+    /// Called by every visible Metal view each frame. Steps the state when 1/30 s has passed and
+    /// returns how far the frame is between the previous step and the current one (0...1).
+    func tick(now: CFTimeInterval) -> Float {
+        if running, now - lastStep >= Self.step - 0.004 {
+            previous = (levels, rise, pulse, blobX)
+            let new = Radio.shared.spectrumNow ?? [Float](repeating: 0, count: Self.bandCount)
+            update(new)
+            update(new)
+            // Keep to the 30 Hz grid, but don't try to catch up after a pause.
+            lastStep = now - lastStep < 2 * Self.step ? lastStep + Self.step : now
+            generation &+= 1
+        }
+        return Float(min(1, max(0, (now - lastStep) / Self.step)))
     }
 
     private func update(_ new: [Float]) {
-        guard timer != nil else { return }
+        guard running else { return }
         let previous = levels
         // Rise fast but over a few frames, fall slowly. At 60 fps an instant rise showed every
         // frame-to-frame wobble of the FFT as jitter; easing in hides it without adding lag you can see.
@@ -145,6 +159,21 @@ enum ContrastColor {
 
     /// The contrast-checked colour as sRGB components (alpha 1), for the Metal shader.
     static func components(hue: Double, saturation: Double, against bg: Double, minRatio: Double = 3.5) -> SIMD4<Float> {
+        // Remembered per half-degree of hue: the same few hundred colours come round again and again,
+        // and the search below costs up to 21 × 3 pow() calls.
+        let key = Key(hue: Int((hue - floor(hue)) * 720), saturation: Int(saturation * 100),
+                      bg: Int(bg * 1000), minRatio: Int(minRatio * 10))
+        if let hit = cache[key] { return hit }
+        if cache.count > 20_000 { cache.removeAll() }
+        let c = search(hue: Double(key.hue) / 720, saturation: saturation, against: bg, minRatio: minRatio)
+        cache[key] = c
+        return c
+    }
+
+    private struct Key: Hashable { let hue, saturation, bg, minRatio: Int }
+    nonisolated(unsafe) private static var cache = [Key: SIMD4<Float>]()   // only used on the main thread
+
+    private static func search(hue: Double, saturation: Double, against bg: Double, minRatio: Double) -> SIMD4<Float> {
         let dark = bg < 0.5
         // Dark background: full brightness, then wash toward white. Light: darken.
         for step in 0...20 {
@@ -252,6 +281,28 @@ private struct SpectrumMetalView: NSViewRepresentable {
     /// Clicks go through to the SwiftUI gestures (and the tear-off area) behind it.
     final class PassThroughMTKView: MTKView {
         override func hitTest(_ point: NSPoint) -> NSView? { nil }
+
+        private var observers = [NSObjectProtocol]()
+        deinit { observers.forEach(NotificationCenter.default.removeObserver) }
+
+        /// Stops the 60 fps loop entirely while the window is hidden or covered, instead of waking
+        /// up every frame only to find there is nothing to draw on.
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            observers.forEach(NotificationCenter.default.removeObserver)
+            observers = []
+            guard let window else { isPaused = true; return }
+            observers.append(NotificationCenter.default.addObserver(
+                forName: NSWindow.didChangeOcclusionStateNotification, object: window, queue: .main) { [weak self] _ in
+                    MainActor.assumeIsolated { self?.updatePaused() }
+                })
+            updatePaused()
+        }
+
+        private func updatePaused() {
+            guard let window else { return }
+            isPaused = !(window.isVisible && window.occlusionState.contains(.visible))
+        }
     }
 }
 
@@ -276,6 +327,10 @@ final class SpectrumRenderer: NSObject, MTKViewDelegate {
         return try! device.makeRenderPipelineState(descriptor: desc)
     }()
     var fixed = 0.025, bg = 0.025, light = false, bubbles = 0.5
+    private var bars = [Bar]()
+    private var blobColour = SIMD4<Float>(1, 1, 1, 1)
+    private var builtGeneration = -1
+    private var builtStyle = [Double]()
 
     private static func hue(_ x: Double) -> Double { (x.truncatingRemainder(dividingBy: 1) + 1).truncatingRemainder(dividingBy: 1) }
 
@@ -289,26 +344,36 @@ final class SpectrumRenderer: NSObject, MTKViewDelegate {
               let pass = view.currentRenderPassDescriptor, let drawable = view.currentDrawable,
               let commands = queue.makeCommandBuffer(), let encoder = commands.makeRenderCommandEncoder(descriptor: pass) else { return }
         let viz = Visualizer.shared
-        let pulse = viz.pulse
-        var bars = viz.levels.indices.map { i -> Bar in
-            let level = Double(viz.levels[i]), h = viz.hues[i]
-            let top = ContrastColor.components(hue: Self.hue(h + 0.06 + 0.1 * level), saturation: 0.75, against: fixed, minRatio: 4.5)
-            return Bar(base: ContrastColor.components(hue: h, saturation: 0.9, against: fixed),
-                       top: top,
-                       glow: ContrastColor.hsb(Self.hue(h + 0.1 + 0.35 * level), 1, 0.55 + 0.45 * bg),   // lighter background, lighter glow; fully saturated
-                       shade: ContrastColor.hsb(h, 0.9, 1),   // the bar's pure colour, not contrast-darkened
-                       misc: [Float(level), Float(viz.rise[i]), 0, 0])
+        let f = viz.tick(now: CACurrentMediaTime())
+        let style = [fixed, bg, light ? 1 : 0]
+        if viz.generation != builtGeneration || style != builtStyle {
+            builtGeneration = viz.generation
+            builtStyle = style
+            bars = viz.levels.indices.map { i -> Bar in
+                let level = Double(viz.levels[i]), h = viz.hues[i]
+                let top = ContrastColor.components(hue: Self.hue(h + 0.06 + 0.1 * level), saturation: 0.75, against: fixed, minRatio: 4.5)
+                return Bar(base: ContrastColor.components(hue: h, saturation: 0.9, against: fixed),
+                           top: top,
+                           glow: ContrastColor.hsb(Self.hue(h + 0.1 + 0.35 * level), 1, 0.55 + 0.45 * bg),   // lighter background, lighter glow; fully saturated
+                           shade: ContrastColor.hsb(h, 0.9, 1),   // the bar's pure colour, not contrast-darkened
+                           // The GPU tweens level and bubble rise from the previous step to this one.
+                           misc: [Float(level), Float(viz.rise[i]), viz.previous.levels[i], Float(viz.previous.rise[i])])
+            }
+            blobColour = ContrastColor.hsb(Self.hue(viz.hues[Visualizer.bandCount / 2] + 0.5), 0.8, 1)
         }
+        // A handful of scalars: tweened here.
+        let pulse = viz.previous.pulse + (viz.pulse - viz.previous.pulse) * Double(f)
+        let blobX = viz.previous.blobX + (viz.blobX - viz.previous.blobX) * Double(f)
         // The "lava": a blurred blob of the colour opposite the middle bar's, swelling on the beat.
-        var blob = ContrastColor.hsb(Self.hue(viz.hues[Visualizer.bandCount / 2] + 0.5), 0.8, 1)
+        var blob = blobColour
         blob.w = Float(0.075 + 0.175 * pulse)
         var globals = Globals(
             view: [Float(view.bounds.width) - 2 * Self.pad, 28, Float(view.drawableSize.width / view.bounds.width), Self.pad],
             state: [Float(pulse), light ? 1 : 0, Float(bubbles), Float(Date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 3600))],
             bubble: light ? [0, 0, 0, 0.7] : [1, 1, 1, 1],   // dark bubbles at 70% strength, so they stay soft
             blob: blob,
-            blobShape: [Float(80 * viz.blobX), Float(0.6 + 0.3 * sin(viz.phase * 2 * .pi * 2)), Float(0.6 + 0.5 * pulse), 0],
-            glowStyle: [Float(light ? 0.75 + 0.25 * pulse : 0.7 + 0.3 * pulse), Float(1 + 4 * pulse), 0, 0])
+            blobShape: [Float(80 * blobX), Float(0.6 + 0.3 * sin(viz.phase * 2 * .pi * 2)), Float(0.6 + 0.5 * pulse), 0],
+            glowStyle: [Float(light ? 0.75 + 0.25 * pulse : 0.7 + 0.3 * pulse), Float(1 + 4 * pulse), f, 0])
         encoder.setRenderPipelineState(pipeline)
         encoder.setFragmentBytes(&globals, length: MemoryLayout<Globals>.stride, index: 0)
         encoder.setFragmentBytes(&bars, length: MemoryLayout<Bar>.stride * bars.count, index: 1)
@@ -330,7 +395,7 @@ final class SpectrumRenderer: NSObject, MTKViewDelegate {
         float4 bubble;     // bubble colour, alpha
         float4 blob;       // blob colour, opacity
         float4 blobShape;  // x offset (pt), x scale, y scale
-        float4 glowStyle;  // glow opacity, glow radius (pt)
+        float4 glowStyle;  // glow opacity, glow radius (pt), tween 0...1 from the previous step
     };
 
     vertex float4 spectrumVertex(uint id [[vertex_id]]) {
@@ -406,6 +471,11 @@ final class SpectrumRenderer: NSObject, MTKViewDelegate {
         float sigma = max(g.glowStyle.y * 0.5, 0.5);
         for (int i = 0; i < BANDS; i++) {
             Bar b = bars[i];
+            // Tween from the previous 30 Hz step to this one; rise wraps at 1, so go forward round it.
+            float t = g.glowStyle.z;
+            b.misc.x = mix(b.misc.z, b.misc.x, t);
+            float r1 = b.misc.y < b.misc.w ? b.misc.y + 1 : b.misc.y;
+            b.misc.y = fract(mix(b.misc.w, r1, t));
             float hb = max(2.0, b.misc.x * H);
             float2 hs = float2(bw, hb) / 2;
             float2 centre = float2(i * (bw + 2) + hs.x, H - hs.y);
