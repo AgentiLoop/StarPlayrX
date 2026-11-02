@@ -21,7 +21,7 @@ StarPlayrX was built for visually impaired listeners, a group of paying subscrib
 ## 🎛️ StarPlayrX for Mac (menu bar app)
 
 <p align="center">
-  <img src="docs/starplayrx-mac-demo.gif" width="400" alt="StarPlayrX playing BPM: the panel is torn off the menu bar into its own window, then rolled up like a window shade to just what's playing and the equalizer">
+  <img src="docs/starplayrx-mac-demo.gif" width="400" alt="StarPlayrX playing 70s/80s: click the menu bar icon, drag the panel off the menu bar into its own window, double-click the header to roll it up like a window shade and again to roll it down, then click the icon to glide it back under the menu bar">
 </p>
 
 <table align="center">
