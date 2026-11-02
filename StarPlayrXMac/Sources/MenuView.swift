@@ -895,7 +895,9 @@ private struct ScrollingStrip: NSViewRepresentable {
         override func layout() {
             super.layout()
             let size = host.fittingSize
-            host.frame = NSRect(x: 0, y: (bounds.height - size.height) / 2, width: max(size.width, 2 * cycle), height: size.height)
+            // Exactly the content's width: anything wider and SwiftUI centers the two copies in it,
+            // so the text paused a half-gap in from the left edge instead of flush left.
+            host.frame = NSRect(x: 0, y: (bounds.height - size.height) / 2, width: size.width, height: size.height)
             startAnimation()
         }
 
