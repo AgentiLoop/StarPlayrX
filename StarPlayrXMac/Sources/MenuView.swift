@@ -846,7 +846,7 @@ private struct MarqueeText: View {
                                 Text(text).font(font).fixedSize()
                             }
                             .foregroundStyle(secondary ? .secondary : .primary)),
-                            key: "\(text)|\(secondary)", cycle: textWidth + gap, speed: speed, pause: pause)
+                            key: "\(text)|\(secondary)", width: 2 * textWidth + gap, cycle: textWidth + gap, speed: speed, pause: pause)
                     }
                 }
                 .clipped()
@@ -859,18 +859,19 @@ private struct MarqueeText: View {
 private struct ScrollingStrip: NSViewRepresentable {
     let content: AnyView
     let key: String
+    let width: CGFloat   // of `content` (both copies and the gap), measured by MarqueeText
     let cycle: CGFloat, speed: CGFloat, pause: Double
 
     func makeNSView(context: Context) -> Strip { Strip() }
 
     func updateNSView(_ view: Strip, context: Context) {
-        view.configure(content: content, key: key, cycle: cycle, speed: speed, pause: pause)
+        view.configure(content: content, key: key, width: width, cycle: cycle, speed: speed, pause: pause)
     }
 
     final class Strip: NSView {
         private let host = NSHostingView(rootView: AnyView(EmptyView()))
         private var key = ""
-        private var cycle: CGFloat = 0, speed: CGFloat = 30, pause: Double = 2
+        private var width: CGFloat = 0, cycle: CGFloat = 0, speed: CGFloat = 30, pause: Double = 2
 
         init() {
             super.init(frame: .zero)
@@ -884,20 +885,20 @@ private struct ScrollingStrip: NSViewRepresentable {
 
         override func hitTest(_ point: NSPoint) -> NSView? { nil }   // clicks go to the row
 
-        func configure(content: AnyView, key: String, cycle: CGFloat, speed: CGFloat, pause: Double) {
-            guard key != self.key || cycle != self.cycle else { return }
+        func configure(content: AnyView, key: String, width: CGFloat, cycle: CGFloat, speed: CGFloat, pause: Double) {
+            guard key != self.key || cycle != self.cycle || width != self.width else { return }
             self.key = key
-            (self.cycle, self.speed, self.pause) = (cycle, speed, pause)
+            (self.width, self.cycle, self.speed, self.pause) = (width, cycle, speed, pause)
             host.rootView = content
             needsLayout = true
         }
 
         override func layout() {
             super.layout()
-            let size = host.fittingSize
-            // Exactly the content's width: anything wider and SwiftUI centers the two copies in it,
-            // so the text paused a half-gap in from the left edge instead of flush left.
-            host.frame = NSRect(x: 0, y: (bounds.height - size.height) / 2, width: size.width, height: size.height)
+            // Exactly the content's width (measured in SwiftUI; fittingSize isn't reliable here): any
+            // wider and SwiftUI centers the two copies in it, so the text paused in from the left edge.
+            let height = host.fittingSize.height > 0 ? host.fittingSize.height : bounds.height
+            host.frame = NSRect(x: 0, y: (bounds.height - height) / 2, width: width, height: height)
             startAnimation()
         }
 

@@ -1,0 +1,936 @@
+Error: diff_and_apply refused — this file had not been read this task. It has now been read FOR YOU and is marked as read. Do NOT call file(action:"read") on it. Your very next call must be the same diff_and_apply, with old_string/source/line numbers copied verbatim from the content below.
+
+/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrXMac/Sources/MenuView.swift:
+1  	//
+2  	//  MenuView.swift
+3  	//  StarPlayrXMac
+4  	//
+5  	//  Created by Todd Bruss on 10/31/26.
+6  	//  Modified by Todd Bruss on 11/2/26.
+7  	//  Copyright © 2026 Todd Bruss. All rights reserved.
+8  	//
+9  	
+10 	import SwiftUI
+11 	import Combine
+12 	import ImageIO
+13 	
+14 	extension Channel {
+15 	    /// The search field's matching: number, name, category, "Music Xtra", artist and song.
+16 	    static func filter(_ channels: [Channel], nowPlaying: [String: NowPlaying], search: String) -> [Channel] {
+17 	        guard !search.isEmpty else { return channels }
+18 	        return channels.filter { ch in
+19 	            let np = nowPlaying[ch.id]
+20 	            let xtraTerms = ch.xtraID != nil ? "Music Xtra" : ""
+21 	            return [ch.id, ch.name, ch.category, xtraTerms, np?.artist ?? "", np?.song ?? ""]
+22 	                .contains { $0.localizedCaseInsensitiveContains(search) }
+23 	        }
+24 	    }
+25 	}
+26 	
+27 	struct MenuView: View {
+28 	    @EnvironmentObject var radio: Radio
+29 	    @ObservedObject private var menu = MenuController.shared
+30 	
+31 	    private var filtered: [Channel] {
+32 	        Channel.filter(radio.channels, nowPlaying: radio.nowPlaying, search: menu.search)
+33 	    }
+34 	
+35 	    /// Double-click the tear-off area to roll the panel up to just that area (under the menu bar or torn off).
+36 	    private var shaded: Bool { menu.shaded }
+37 	
+38 	    var body: some View {
+39 	        VStack(alignment: .leading, spacing: 0) {
+40 	            VStack(alignment: .leading, spacing: 10) {
+41 	                if radio.isLoggedIn {
+42 	                    // Tear-off / drag area: artwork, titles and the spectrum.
+43 	                    VStack(alignment: .leading, spacing: 0) {
+44 	                        nowPlaying
+45 	                        // Tucked up under the artwork: the bar area is 40 pt tall but mostly empty when the
+46 	                        // music is quiet, so a full gap above it left a big hole. Loud bars may rise beside the art.
+47 	                        if radio.isPlaying { SpectrumView().padding(.top, -5) }
+48 	                    }
+49 	                    .contentShape(Rectangle())
+50 	                    .gesture(tearOff)
+51 	                    .simultaneousGesture(TapGesture(count: 2).onEnded { menu.shaded.toggle() })
+52 	                } else {
+53 	                    Text(radio.status).foregroundStyle(.secondary)
+54 	                    Button(radio.isBusy ? "Signing in…" : "Sign In…") {
+55 	                        Task { await CredentialPrompt.signIn() }
+56 	                    }
+57 	                    .disabled(radio.isBusy)
+58 	                }
+59 	            }
+60 	            // Shading collapses this part instead of removing it: rebuilding the whole channel
+61 	            // list on unshade blocked the main thread and froze the equalizer.
+62 	            VStack(alignment: .leading, spacing: 10) {
+63 	                if radio.isLoggedIn {
+64 	                    SearchField(text: $menu.search, placeholder: "Search channels, artists, songs")
+65 	                    channelList
+66 	                }
+67 	                Divider()
+68 	                footer
+69 	            }
+70 	            .padding(.top, 10)
+71 	            .frame(height: shaded ? 0 : nil, alignment: .top)
+72 	            .clipped()
+73 	            .opacity(shaded ? 0 : 1)
+74 	            .allowsHitTesting(!shaded)
+75 	            .accessibilityHidden(shaded)
+76 	        }
+77 	        .padding(12)
+78 	        .frame(width: 340)
+79 	    }
+80 	
+81 	    @State private var dragMouseStart: NSPoint?
+82 	
+83 	    /// Drag the header to pull the panel off the menu bar; let go far enough away and the same
+84 	    /// panel stays where it was dropped (torn off). Once torn off, dragging just moves it.
+85 	    private var tearOff: some Gesture {
+86 	        DragGesture(minimumDistance: 4)
+87 	            .onChanged { _ in
+88 	                let mouse = NSEvent.mouseLocation
+89 	                if dragMouseStart == nil {
+90 	                    dragMouseStart = mouse
+91 	                    menu.beginDrag()
+92 	                }
+93 	                guard let start = dragMouseStart else { return }
+94 	                menu.drag(by: CGSize(width: mouse.x - start.x, height: mouse.y - start.y))
+95 	            }
+96 	            .onEnded { _ in
+97 	                guard dragMouseStart != nil else { return }
+98 	                dragMouseStart = nil
+99 	                menu.endDrag()
+100	            }
+101	    }
+102	
+103	
+104	
+105	    private var nowPlaying: some View {
+106	        HStack(spacing: 10) {
+107	            let np = radio.current.flatMap { radio.displayed($0.id) }
+108	            let isAlbumArt = np?.image.isEmpty == false
+109	            CachedArt(url: (isAlbumArt ? np?.image : radio.current?.imageURL) ?? "", size: 64, isAlbumArt: isAlbumArt) { art, isAlbumArt in
+110	                if let art, isAlbumArt {
+111	                    // Fill only: square art fits exactly; non-square art is enlarged just enough to cover the tile.
+112	                    Image(nsImage: art).resizable().scaledToFill()
+113	                } else if let art {
+114	                    // Channel logos must stay whole; square channel art is enlarged to fill the squircle.
+115	                    let logo = ChannelLogo(image: Image(nsImage: art))
+116	                        .frame(width: 64, height: 64)
+117	                    if #available(macOS 26.0, *) {
+118	                        // Dark-tinted Liquid Glass tile behind the logo.
+119	                        // Glass only behind the logo, so the logo itself stays crisp (not lensed by the glass).
+120	                        logo.background(Color.clear.glassEffect(.regular.tint(Color(white: 0.12).opacity(0.6)),
+121	                                                                in: RoundedRectangle(cornerRadius: 14.5, style: .continuous)))
+122	                    } else {
+123	                        logo.background(Color(white: 0.12))   // dark tile so logos sit like album art
+124	                    }
+125	                } else {
+126	                    // No channel art or logo (or not loaded yet): the StarPlayrX logo, enlarged past the
+127	                    // icon's transparent margin (824pt body on a 1024pt canvas) so it fills the tile like art.
+128	                    Image(nsImage: NSApp.applicationIconImage).resizable().scaledToFill().scaleEffect(1024 / 824)
+129	                }
+130	            }
+131	            .frame(width: 64, height: 64)
+132	            .clipShape(RoundedRectangle(cornerRadius: 14.5, style: .continuous))   // squircle, app-icon ratio
+133	            .simultaneousGesture(TapGesture().onEnded {
+134	                // Click the artwork: channel logo ⇄ show art, remembered per channel. When there's nothing
+135	                // to switch (song art, or no show art) it scrolls the list to the channel as before.
+136	                if let id = radio.current?.id, radio.toggleShowArt(id) { return }
+137	                revealCurrent()
+138	            })
+139	
+140	            VStack(alignment: .leading, spacing: 2) {
+141	                if let ch = radio.current {
+142	                    Text("\(ch.id) · \(ch.name)").font(.caption).foregroundStyle(.secondary)
+143	                    MarqueeText(text: np?.song ?? "", font: .headline).id(np?.song ?? "")
+144	                    MarqueeText(text: np?.artist ?? "", font: .body).id(np?.artist ?? "")
+145	                } else {
+146	                    Text("Pick a channel").font(.headline)
+147	                }
+148	            }
+149	            .frame(maxWidth: .infinity, alignment: .leading)
+150	            .contentShape(Rectangle())
+151	            .simultaneousGesture(TapGesture().onEnded { revealCurrent() })
+152	            Button {
+153	                radio.togglePlayPause()
+154	            } label: {
+155	                Image(systemName: radio.isPlaying ? "pause.circle.fill" : "play.circle.fill")
+156	                    .font(.system(size: 30))
+157	            }
+158	            .buttonStyle(.plain)
+159	            .disabled(radio.current == nil)
+160	        }
+161	    }
+162	
+163	    /// Single click on the now-playing art or titles: bring the current channel's row into view.
+164	    private func revealCurrent() {
+165	        if let id = radio.current?.id { menu.reveal(id) }
+166	    }
+167	
+168	    /// LazyVStack: only rows near the visible part of the list exist, so the hundreds of channels
+169	    /// don't each keep a live view (and its art) in memory; rows that scroll away are freed.
+170	    private var channelList: some View {
+171	        let list = filtered
+172	        return ScrollViewReader { proxy in
+173	            ScrollView {
+174	                LazyVStack(spacing: 0) {
+175	                    ForEach(Array(list.enumerated()), id: \.element.id) { index, ch in
+176	                        Button {
+177	                            radio.play(ch)
+178	                        } label: {
+179	                            ChannelRow(channel: ch, nowPlaying: radio.displayed(ch.id),
+180	                                       isCurrent: ch == radio.current,
+181	                                       isPlaying: ch == radio.current && radio.isPlaying)
+182	                                .equatable()
+183	                        }
+184	                        .buttonStyle(.plain)
+185	                        .id(ch.id)
+186	                        .onAppear { prefetchArt(around: index, in: list) }
+187	                    }
+188	                }
+189	            }
+190	            .frame(height: CachedArt<EmptyView>.listHeight)
+191	            .padding(.trailing, -12)   // scroll bar sits at the window's right edge
+192	            .onAppear { if let id = radio.current?.id { proxy.scrollTo(id, anchor: .center) } }
+193	        }
+194	    }
+195	
+196	    /// Look-ahead: when a row appears, start loading the art of the 10 rows above and below it,
+197	    /// so it's usually already in `ArtCache` by the time those rows scroll into view.
+198	    private func prefetchArt(around index: Int, in list: [Channel]) {
+199	        for ch in list[max(0, index - 10)..<min(list.count, index + 11)] {
+200	            let np = radio.displayed(ch.id)
+201	            ArtCache.shared.prefetch((np?.image).flatMap { $0.isEmpty ? nil : $0 } ?? ch.imageURL, pixels: ArtCache.pixels(32))
+202	        }
+203	    }
+204	
+205	    /// "v1.1.8" from the bundle; Debug builds add "-dev".
+206	    static let version: String = {
+207	        let v = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "?"
+208	        #if DEBUG
+209	        return "v\(v)-dev"
+210	        #else
+211	        return "v\(v)"
+212	        #endif
+213	    }()
+214	
+215	    private var footer: some View {
+216	        HStack {
+217	            // Click for the Modern API switch. Not offered after a modern sign-in: there is no
+218	            // legacy session to switch to.
+219	            if radio.modernLogin {
+220	                Text(Self.version).font(.caption).foregroundStyle(.tertiary).offset(y: 2)
+221	            } else {
+222	                Menu {
+223	                    Toggle("Modern API for live channels", isOn: Binding(
+224	                        get: { radio.modernLive }, set: { radio.setModernLive($0) }))
+225	                } label: {
+226	                    Text(Self.version).font(.caption).foregroundStyle(.tertiary)
+227	                }
+228	                .menuStyle(.borderlessButton)
+229	                .menuIndicator(.hidden)
+230	                .fixedSize()
+231	                .offset(y: 2)
+232	            }
+233	            Spacer()
+234	            if radio.isLoggedIn {
+235	                Button("Sign Out") { radio.signOut() }
+236	            }
+237	            if menu.detached {
+238	                Button("Close") { menu.hide() }
+239	            }
+240	            Button("Quit") { NSApp.terminate(nil) }
+241	        }
+242	    }
+243	}
+244	
+245	/// One channel row. Equatable so a now-playing update redraws only the row it changed,
+246	/// and always two lines tall so the list never has to re-measure rows while scrolling.
+247	private struct ChannelRow: View, Equatable {
+248	    let channel: Channel
+249	    let nowPlaying: NowPlaying?
+250	    let isCurrent: Bool
+251	    let isPlaying: Bool
+252	
+253	    var body: some View {
+254	        HStack {
+255	            Text(channel.id).monospacedDigit().foregroundStyle(.secondary).frame(width: 34, alignment: .trailing)
+256	            // Album art when the channel has it, else the channel logo, else the StarPlayrX logo.
+257	            let albumArt = nowPlaying?.image.isEmpty == false
+258	            CachedArt(url: (albumArt ? nowPlaying?.image : channel.imageURL) ?? "", size: 32, isAlbumArt: albumArt) { art, albumArt in
+259	                if let art {
+260	                    if albumArt {
+261	                        Image(nsImage: art).resizable().scaledToFill()
+262	                    } else {
+263	                        // Same as the header: square channel art is enlarged to fill the squircle,
+264	                        // on the same dark-tinted Liquid Glass tile (solid dark before macOS 26).
+265	                        let logo = ChannelLogo(image: Image(nsImage: art), inset: 2)
+266	                            .frame(width: 32, height: 32)
+267	                        if #available(macOS 26.0, *) {
+268	                            logo.background(Color.clear.glassEffect(.regular.tint(Color(white: 0.12).opacity(0.6)),
+269	                                                                    in: RoundedRectangle(cornerRadius: 7.25, style: .continuous)))
+270	                        } else {
+271	                            logo.background(Color(white: 0.12))
+272	                        }
+273	                    }
+274	                } else {
+275	                    // Same as the header: enlarged past the icon's transparent margin so it fills like art.
+276	                    Image(nsImage: NSApp.applicationIconImage).resizable().scaledToFill().scaleEffect(1024 / 824)
+277	                }
+278	            }
+279	            .frame(width: 32, height: 32)
+280	            .clipShape(RoundedRectangle(cornerRadius: 7.25, style: .continuous))
+281	            VStack(alignment: .leading) {
+282	                // Same as Now Playing: text that doesn't fit scrolls instead of ending in "…".
+283	                MarqueeText(text: channel.name, font: isCurrent ? .body.bold() : .body).id(channel.name)
+284	                let line = nowPlaying.map { "\($0.artist) – \($0.song)" } ?? " "
+285	                MarqueeText(text: line, font: .caption, secondary: true).id(line)
+286	            }
+287	            .frame(maxWidth: .infinity, alignment: .leading)
+288	            if isPlaying {
+289	                Image(systemName: "speaker.wave.2.fill").foregroundStyle(.tint)
+290	            }
+291	        }
+292	        .padding(.vertical, 4)
+293	        .padding(.trailing, 12)
+294	        .contentShape(Rectangle())
+295	    }
+296	}
+297	
+298	/// Owns the menu bar item and the one panel used both under the menu bar and torn off.
+299	@MainActor
+300	final class MenuController: NSObject, ObservableObject {
+301	    static let shared = MenuController()
+302	
+303	    @Published private(set) var detached = false
+304	    @Published var shaded = false
+305	    private(set) lazy var panel = MenuPanel.make()
+306	    private lazy var statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
+307	    private var outsideClick: Any?
+308	    private var glide: Timer?
+309	    private var playing: AnyCancellable?
+310	
+311	    func install() {
+312	        _ = panel
+313	        statusItem.button?.target = self
+314	        statusItem.button?.action = #selector(statusItemClicked)
+315	        playing = Radio.shared.$isPlaying.sink { [weak self] on in
+316	            self?.statusItem.button?.image = NSImage(systemSymbolName: on ? "dot.radiowaves.left.and.right" : "radio",
+317	                                                      accessibilityDescription: "StarPlayrX")
+318	        }
+319	    }
+320	
+321	    /// Icon click: open under the menu bar, close if open there, or move a torn-off panel back under it.
+322	    @objc func statusItemClicked() {
+323	        if panel.isVisible && !detached { hide(); return }
+324	        // Shaded and torn off: glide back still rolled up, then unroll once in place.
+325	        let unshade = panel.isVisible && detached && shaded
+326	        if !unshade {
+327	            detached = false
+328	            shaded = false
+329	        }
+330	        if let button = statusItem.button?.window?.frame {
+331	            let screen = statusItem.button?.window?.screen?.visibleFrame ?? .infinite
+332	            let x = min(button.minX, screen.maxX - panel.frame.width)
+333	            let top = NSPoint(x: x, y: button.minY - 4)
+334	            if panel.isVisible {
+335	                // Torn off: glide back under the menu bar instead of jumping. Stepped by hand
+336	                // (top-left point per frame) so the unshade resize can't cut the animation short.
+337	                let start = NSPoint(x: panel.frame.minX, y: panel.frame.maxY)
+338	                let began = CACurrentMediaTime()
+339	                let duration = 0.4
+340	                glide?.invalidate()
+341	                glide = Timer.scheduledTimer(withTimeInterval: 1.0 / 60.0, repeats: true) { [weak self] timer in
+342	                    Task { @MainActor in
+343	                        guard let self else { timer.invalidate(); return }
+344	                        let t = min((CACurrentMediaTime() - began) / duration, 1)
+345	                        let eased = t < 0.5 ? 2 * t * t : 1 - pow(-2 * t + 2, 2) / 2   // ease in-out
+346	                        self.panel.setFrameTopLeftPoint(NSPoint(x: start.x + (top.x - start.x) * eased,
+347	                                                                y: start.y + (top.y - start.y) * eased))
+348	                        guard t >= 1 else { return }
+349	                        timer.invalidate()
+350	                        self.glide = nil
+351	                        self.panel.refreshShadow()
+352	                        if unshade {
+353	                            // Same as the double-click unshade: the panel grows from its pinned top edge.
+354	                            self.detached = false
+355	                            self.shaded = false
+356	                        }
+357	                    }
+358	                }
+359	            } else {
+360	                panel.setFrameTopLeftPoint(top)
+361	            }
+362	        }
+363	        // Like MenuBarExtra: the app becomes active (controls draw active, not greyed) and
+364	        // the menu bar icon stays highlighted while the panel hangs under it.
+365	        NSApp.activate(ignoringOtherApps: true)
+366	        statusItem.button?.highlight(true)
+367	        panel.makeKeyAndOrderFront(nil)
+368	        // Under the menu bar it behaves like a menu: a click in another app closes it.
+369	        // Clicks on our own icon are left to statusItemClicked, or the two would fight
+370	        // (monitor hides, then the click reopens).
+371	        if outsideClick == nil {
+372	            outsideClick = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
+373	                let point = NSEvent.mouseLocation
+374	                Task { @MainActor in
+375	                    guard let self, !(self.statusItem.button?.window?.frame.contains(point) ?? false) else { return }
+376	                    self.hide()
+377	                }
+378	            }
+379	        }
+380	    }
+381	
+382	    /// Torn off: the panel stays where it was dropped, until Close / Esc / the icon.
+383	    func detach() {
+384	        detached = true
+385	        statusItem.button?.highlight(false)
+386	        removeOutsideClick()
+387	    }
+388	
+389	    func hide() {
+390	        glide?.invalidate()
+391	        glide = nil
+392	        panel.orderOut(nil)
+393	        detached = false
+394	        shaded = false
+395	        statusItem.button?.highlight(false)
+396	        removeOutsideClick()
+397	    }
+398	
+399	    private func removeOutsideClick() {
+400	        if let outsideClick { NSEvent.removeMonitor(outsideClick) }
+401	        outsideClick = nil
+402	    }
+403	
+404	    /// Opens the panel under the menu bar unless it is already showing (anywhere).
+405	    func ensureShown() {
+406	        if !panel.isVisible { statusItemClicked() }
+407	    }
+408	
+409	    // MARK: Drag / tear off (header gesture and scripts)
+410	
+411	    static let tearOffDistance: CGFloat = 40
+412	    private var dragOrigin: NSPoint?
+413	
+414	    func beginDrag() { dragOrigin = panel.frame.origin }
+415	
+416	    /// `delta` is in screen points (Cocoa: y up) from where the drag began.
+417	    func drag(by delta: CGSize) {
+418	        guard let start = dragOrigin else { return }
+419	        panel.setFrameOrigin(NSPoint(x: start.x + delta.width, y: start.y + delta.height))
+420	    }
+421	
+422	    /// Let go far enough from the menu bar and it stays torn off; otherwise it snaps back.
+423	    func endDrag() {
+424	        guard let start = dragOrigin else { return }
+425	        dragOrigin = nil
+426	        defer { panel.refreshShadow() }
+427	        guard !detached else { return }
+428	        if hypot(panel.frame.minX - start.x, panel.frame.minY - start.y) > Self.tearOffDistance {
+429	            detach()
+430	        } else {
+431	            panel.setFrameOrigin(start)
+432	        }
+433	    }
+434	
+435	    // MARK: Position and parking
+436	
+437	    enum Corner { case upperLeft, upperRight, lowerLeft, lowerRight }
+438	
+439	    /// Top-left point that puts a panel of `size` in `corner` of `visible`, `margin` points in.
+440	    nonisolated static func parkedTopLeft(_ corner: Corner, size: NSSize, in visible: NSRect, margin: CGFloat = 8) -> NSPoint {
+441	        let left = corner == .upperLeft || corner == .lowerLeft
+442	        let upper = corner == .upperLeft || corner == .upperRight
+443	        return NSPoint(x: left ? visible.minX + margin : visible.maxX - size.width - margin,
+444	                       y: upper ? visible.maxY - margin : visible.minY + size.height + margin)
+445	    }
+446	
+447	    /// Tears the panel off and moves it to a corner of its screen (below the menu bar, above the Dock).
+448	    func park(_ corner: Corner) {
+449	        ensureShown()
+450	        detach()
+451	        let visible = (panel.screen ?? NSScreen.main)?.visibleFrame ?? .zero
+452	        panel.setFrameTopLeftPoint(Self.parkedTopLeft(corner, size: panel.frame.size, in: visible))
+453	    }
+454	
+455	    /// AppleScript screen coordinates have y going down from the top of the main screen; Cocoa's go up.
+456	    /// The conversion is its own inverse.
+457	    nonisolated static func flipY(_ p: NSPoint, mainScreenHeight h: CGFloat) -> NSPoint { NSPoint(x: p.x, y: h - p.y) }
+458	
+459	    private var mainScreenHeight: CGFloat { NSScreen.screens.first?.frame.maxY ?? 0 }
+460	
+461	    /// Top-left of the panel in AppleScript coordinates. Moving it tears it off, like dragging.
+462	    var scriptPosition: NSPoint {
+463	        get { Self.flipY(NSPoint(x: panel.frame.minX, y: panel.frame.maxY), mainScreenHeight: mainScreenHeight) }
+464	        set {
+465	            ensureShown()
+466	            detach()
+467	            panel.setFrameTopLeftPoint(Self.flipY(newValue, mainScreenHeight: mainScreenHeight))
+468	        }
+469	    }
+470	
+471	    // MARK: Channel list (search and scrolling)
+472	
+473	    @Published var search = ""
+474	
+475	    /// The channels the list shows right now (after the search field).
+476	    var visibleChannels: [Channel] {
+477	        Channel.filter(Radio.shared.channels, nowPlaying: Radio.shared.nowPlaying, search: search)
+478	    }
+479	
+480	    /// The channel list's NSScrollView (the SwiftUI ScrollView's backing view): the one with the tallest content.
+481	    var channelScrollView: NSScrollView? {
+482	        func all(_ view: NSView) -> [NSScrollView] {
+483	            ((view as? NSScrollView).map { [$0] } ?? []) + view.subviews.flatMap(all)
+484	        }
+485	        guard let root = panel.contentView else { return nil }
+486	        return all(root).filter { $0.documentView != nil }
+487	            .max { ($0.documentView?.frame.height ?? 0) < ($1.documentView?.frame.height ?? 0) }
+488	    }
+489	
+490	    /// Height of one channel row (rows are fixed height), 0 when the list isn't on screen.
+491	    var rowHeight: CGFloat {
+492	        let count = visibleChannels.count
+493	        guard count > 0, let doc = channelScrollView?.documentView else { return 0 }
+494	        return doc.frame.height / CGFloat(count)
+495	    }
+496	
+497	    /// How far the list is scrolled, in points from the top. Setting it scrolls (clamped to the list).
+498	    var scrollOffset: CGFloat {
+499	        get {
+500	            guard let sv = channelScrollView, let doc = sv.documentView else { return 0 }
+501	            let clip = sv.contentView.bounds
+502	            return doc.isFlipped ? clip.minY : doc.frame.height - clip.maxY
+503	        }
+504	        set {
+505	            guard let sv = channelScrollView, let doc = sv.documentView else { return }
+506	            let clip = sv.contentView.bounds
+507	            let offset = min(max(newValue, 0), max(doc.frame.height - clip.height, 0))
+508	            let y = doc.isFlipped ? offset : doc.frame.height - clip.height - offset
+509	            sv.contentView.scroll(to: NSPoint(x: clip.minX, y: y))
+510	            sv.reflectScrolledClipView(sv.contentView)
+511	        }
+512	    }
+513	
+514	    /// The first channel row at the top of the scrolled list.
+515	    var topVisibleChannel: Channel? {
+516	        let rows = visibleChannels
+517	        let h = rowHeight
+518	        guard h > 0, !rows.isEmpty else { return nil }
+519	        return rows[min(rows.count - 1, max(0, Int((scrollOffset + 1) / h)))]
+520	    }
+521	
+522	    /// Scrolls so the channel's row is at the top (or as far as the list goes). False if it isn't listed.
+523	    @discardableResult
+524	    func scroll(to id: String) -> Bool {
+525	        guard let index = visibleChannels.firstIndex(where: { $0.id == id }), rowHeight > 0 else { return false }
+526	        scrollOffset = CGFloat(index) * rowHeight
+527	        return true
+528	    }
+529	
+530	    /// Centers the channel's row in the list, unless it's already fully in view.
+531	    func reveal(_ id: String) {
+532	        let h = rowHeight
+533	        guard h > 0, let index = visibleChannels.firstIndex(where: { $0.id == id }),
+534	              let clip = channelScrollView?.contentView.bounds.height else { return }
+535	        let top = CGFloat(index) * h
+536	        guard top < scrollOffset || top + h > scrollOffset + clip else { return }
+537	        scrollOffset = top - (clip - h) / 2
+538	    }
+539	}
+540	
+541	/// Borderless panel with the translucent menu look, rounded corners and shadow.
+542	final class MenuPanel: NSPanel {
+543	    override var canBecomeKey: Bool { true }   // borderless panels can't otherwise take typing (search)
+544	    override func cancelOperation(_ sender: Any?) { MenuController.shared.hide() }   // Esc closes it
+545	
+546	    /// Keep the top edge pinned when the content resizes (window shade), instead of the bottom.
+547	    override func setFrame(_ frameRect: NSRect, display flag: Bool) {
+548	        var rect = frameRect
+549	        if isVisible, rect.size != frame.size {
+550	            rect.origin = NSPoint(x: frame.minX, y: frame.maxY - rect.height)
+551	        }
+552	        super.setFrame(rect, display: flag)
+553	        if isVisible { refreshShadow() }
+554	    }
+555	
+556	    /// A clear borderless window can leave its old shadow on screen after it moves or resizes
+557	    /// (a ghost the compositor shows but screenshots don't). Rebuild the shadow from scratch.
+558	    func refreshShadow() {
+559	        hasShadow = false
+560	        hasShadow = true
+561	        invalidateShadow()
+562	    }
+563	
+564	    static func make() -> MenuPanel {
+565	        let panel = MenuPanel(contentRect: .zero,
+566	                              styleMask: [.borderless, .nonactivatingPanel, .fullSizeContentView],
+567	                              backing: .buffered, defer: false)
+568	        panel.isFloatingPanel = true
+569	        panel.level = .floating
+570	        panel.hidesOnDeactivate = false
+571	        panel.isReleasedWhenClosed = false
+572	        panel.isOpaque = false
+573	        panel.backgroundColor = .clear
+574	        panel.hasShadow = true
+575	        let menu = MenuView().environmentObject(Radio.shared)
+576	        let root: AnyView
+577	        if #available(macOS 26, *) {
+578	            // Same Liquid Glass look as a MenuBarExtra window. AppKit's NSGlassEffectView, not
+579	            // SwiftUI's .glassEffect, which leaves a dark rim in a borderless clear window.
+580	            root = AnyView(menu.background(MenuGlass())
+581	                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous)))
+582	        } else {
+583	            root = AnyView(menu.background(MenuMaterial())
+584	                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous)))
+585	        }
+586	        // A hosting controller sizes the panel to the view (and follows it when the
+587	        // spectrum appears); a bare hosting view in a .zero rect leaves it 0×0 and invisible.
+588	        let host = NSHostingController(rootView: root)
+589	        panel.contentViewController = host
+590	        panel.setContentSize(host.view.fittingSize)
+591	        return panel
+592	    }
+593	}
+594	
+595	/// Liquid Glass background (macOS 26+).
+596	@available(macOS 26, *)
+597	private struct MenuGlass: NSViewRepresentable {
+598	    func makeNSView(context: Context) -> NSGlassEffectView {
+599	        let view = NSGlassEffectView()
+600	        view.cornerRadius = 16
+601	        return view
+602	    }
+603	
+604	    func updateNSView(_ nsView: NSGlassEffectView, context: Context) {}
+605	}
+606	
+607	/// The blurred, behind-window material menu bar panels use.
+608	private struct MenuMaterial: NSViewRepresentable {
+609	    func makeNSView(context: Context) -> NSVisualEffectView {
+610	        let view = NSVisualEffectView()
+611	        view.material = .popover
+612	        view.blendingMode = .behindWindow
+613	        view.state = .active
+614	        return view
+615	    }
+616	
+617	    func updateNSView(_ nsView: NSVisualEffectView, context: Context) {}
+618	}
+619	/// Channel art scaled to fit; when the art is square (it would fit the squircle but leave a margin
+620	/// and show its own baked-in corners) it's enlarged to fill the squircle instead.
+621	private struct ChannelLogo: View {
+622	    let image: Image
+623	    var inset: CGFloat = 4
+624	    @State private var isSquare = false
+625	
+626	    var body: some View {
+627	        image.resizable().interpolation(.high).scaledToFit()
+628	            .onGeometryChange(for: Bool.self) { abs($0.size.width - $0.size.height) < 2 } action: { isSquare = $0 }
+629	            .scaleEffect(isSquare ? 1.12 : 1)
+630	            .padding(isSquare ? 0 : inset)
+631	    }
+632	}
+633	
+634	/// Channel logos and album art kept in memory once loaded. Nothing is fetched until it's shown or about to be (list look-ahead),
+635	/// and a URL that is already loading is shared instead of downloaded twice. Each image is fetched
+636	/// (where the server can resize) and decoded at 2x the points it is shown at, so the 32pt channel
+637	/// rows and the 64pt Now Playing tile each get their own size, and the cache is bounded.
+638	@MainActor
+639	final class ArtCache {
+640	    static let shared = ArtCache()
+641	    private let images: NSCache<NSString, NSImage> = {
+642	        let cache = NSCache<NSString, NSImage>()
+643	        cache.countLimit = 200
+644	        cache.totalCostLimit = 200 * 192 * 192 * 4
+645	        return cache
+646	    }()
+647	    /// Its own on-disk URL cache (small in memory), so art evicted from `images` or from a
+648	    /// previous launch comes back from disk instead of the network.
+649	    nonisolated private static let session: URLSession = {
+650	        let config = URLSessionConfiguration.default
+651	        config.urlCache = URLCache(memoryCapacity: 2 * 1024 * 1024, diskCapacity: 100 * 1024 * 1024,
+652	                                   directory: FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first?
+653	                                       .appendingPathComponent(Bundle.main.bundleIdentifier ?? "StarPlayrX", isDirectory: true)
+654	                                       .appendingPathComponent("ArtCache", isDirectory: true))
+655	        config.requestCachePolicy = .returnCacheDataElseLoad   // art at a URL never changes
+656	        return URLSession(configuration: config)
+657	    }()
+658	    // Download and decode run off the main actor so arriving art never stalls scrolling;
+659	    // the NSImage is made here on the main actor, since NSImage is only Sendable from macOS 14.
+660	    private var loading: [String: Task<Thumbnail?, Never>] = [:]
+661	    /// `sized(_:pixels:)` results: it base64-decodes JSON, too slow to redo in every row's body.
+662	    private var sizedURLs: [String: String] = [:]
+663	
+664	    /// A decoded bitmap handed back from a background task.
+665	    struct Thumbnail: @unchecked Sendable { let image: CGImage }
+666	
+667	    /// Pixels for art shown at `points`: 3x, so square logos enlarged 1.12x to fill the squircle
+668	    /// are still downscaled on a 2x display instead of stretched (which made them blurry).
+669	    static let scale: CGFloat = 3
+670	    static func pixels(_ points: CGFloat) -> Int { Int((points * scale).rounded(.up)) }
+671	
+672	    // Keyed by pixels too: hosts with one size give the 32pt row and the 64pt header the same URL,
+673	    // and the header must not get the row's small bitmap.
+674	    func cached(_ url: String, pixels: Int) -> NSImage? {
+675	        images.object(forKey: "\(pixels) \(sizedURL(url, pixels: pixels))" as NSString)
+676	    }
+677	
+678	    func image(_ url: String, pixels: Int) async -> NSImage? {
+679	        let url = sizedURL(url, pixels: pixels)
+680	        let key = "\(pixels) \(url)"
+681	        if let image = images.object(forKey: key as NSString) { return image }
+682	        guard !url.isEmpty, let address = URL(string: url) else { return nil }
+683	        let task = loading[key] ?? Task.detached(priority: .utility) {
+684	            guard let data = try? await ArtCache.session.data(from: address).0,
+685	                  let thumb = ArtCache.thumbnail(data, pixels: pixels) else { return nil }
+686	            return Thumbnail(image: thumb)
+687	        }
+688	        loading[key] = task
+689	        let thumb = await task.value?.image
+690	        loading[key] = nil
+691	        if let image = images.object(forKey: key as NSString) { return image }   // another caller already made it
+692	        guard let thumb else { return nil }
+693	        let image = NSImage(cgImage: thumb, size: NSSize(width: CGFloat(thumb.width) / Self.scale, height: CGFloat(thumb.height) / Self.scale))
+694	        images.setObject(image, forKey: key as NSString, cost: thumb.bytesPerRow * thumb.height)
+695	        return image
+696	    }
+697	
+698	    /// Starts loading art that isn't shown yet; `image` shares the download if a row asks for it meanwhile.
+699	    func prefetch(_ url: String, pixels: Int) {
+700	        guard !url.isEmpty, cached(url, pixels: pixels) == nil else { return }
+701	        Task { _ = await image(url, pixels: pixels) }
+702	    }
+703	
+704	    private func sizedURL(_ url: String, pixels: Int) -> String {
+705	        let key = "\(pixels) \(url)"
+706	        if let sized = sizedURLs[key] { return sized }
+707	        let sized = Self.sized(url, pixels: pixels)
+708	        sizedURLs[key] = sized
+709	        return sized
+710	    }
+711	
+712	    /// The same art at the smallest size the server offers that still covers `pixels`.
+713	    /// Other hosts (live channel logos, Xtra track art) only have one size and are just decoded smaller.
+714	    private static func sized(_ url: String, pixels: Int) -> String {
+715	        // SiriusXM's image server (channel tiles): the resize is part of the base64 JSON path.
+716	        let imageServer = "https://imgsrv-sxm-prod-device.streaming.siriusxm.com/"
+717	        if url.hasPrefix(imageServer),
+718	           let data = Data(base64Encoded: String(url.dropFirst(imageServer.count))),
+719	           var spec = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] {
+720	            spec["edits"] = [["resize": ["width": pixels, "height": pixels]]]
+721	            guard let json = try? JSONSerialization.data(withJSONObject: spec, options: [.sortedKeys, .withoutEscapingSlashes])
+722	            else { return url }
+723	            return imageServer + json.base64EncodedString()
+724	        }
+725	        // Live album art comes as _m (450px); _t is 75px and _s 170px.
+726	        if url.hasPrefix("http://albumart.siriusxm.com/"), url.hasSuffix("_m.jpg") {
+727	            let size = pixels <= 75 ? "_t" : pixels <= 170 ? "_s" : "_m"
+728	            return url.dropLast("_m.jpg".count) + size + ".jpg"
+729	        }
+730	        return url
+731	    }
+732	
+733	    /// Decodes straight to a small bitmap, so neither the downloaded Data nor a full-size image is kept.
+734	    nonisolated private static func thumbnail(_ data: Data, pixels: Int) -> CGImage? {
+735	        guard let source = CGImageSourceCreateWithData(data as CFData, nil) else { return nil }
+736	        let options: [CFString: Any] = [kCGImageSourceCreateThumbnailFromImageAlways: true,
+737	                                        kCGImageSourceCreateThumbnailWithTransform: true,
+738	                                        kCGImageSourceShouldCacheImmediately: true,
+739	                                        kCGImageSourceThumbnailMaxPixelSize: pixels]
+740	        return CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary)
+741	    }
+742	}
+743	
+744	/// Shows the image at `url` from `ArtCache`, loading it lazily at 2x `size` points. `content` gets
+745	/// the image and whether it is album art (`isAlbumArt` belongs to `url`); nil when nothing is loaded.
+746	private struct CachedArt<Content: View>: View {
+747	    let url: String
+748	    let size: CGFloat
+749	    var isAlbumArt = false
+750	    @ViewBuilder let content: (NSImage?, Bool) -> Content
+751	    @State private var loaded: (url: String, image: NSImage?, isAlbumArt: Bool)?
+752	
+753	    var body: some View {
+754	        let pixels = ArtCache.pixels(size)
+755	        let image = loaded?.url == url ? loaded?.image : ArtCache.shared.cached(url, pixels: pixels)
+756	        // Until the new art arrives, keep showing the previous art as it was (album art stays album
+757	        // art): no flash of the logo or the StarPlayrX icon in between, in the header or in a row.
+758	        Group {
+759	            if let image { content(image, isAlbumArt) } else { content(loaded?.image, loaded?.isAlbumArt ?? false) }
+760	        }
+761	        .task(id: url) {
+762	            let image = await ArtCache.shared.image(url, pixels: pixels)
+763	            if !Task.isCancelled { loaded = (url, image, isAlbumArt) }
+764	        }
+765	    }
+766	}
+767	
+768	extension CachedArt {
+769	    nonisolated static var listHeight: CGFloat { 360 }
+770	}
+771	
+772	/// The channel search box. A plain AppKit search field with AutoFill, text completion and inline
+773	/// predictions turned off: SwiftUI's TextField sometimes popped up an empty AutoFill list.
+774	private struct SearchField: NSViewRepresentable {
+775	    @Binding var text: String
+776	    let placeholder: String
+777	
+778	    func makeNSView(context: Context) -> NSSearchField {
+779	        let field = NSSearchField()
+780	        field.placeholderString = placeholder
+781	        field.contentType = nil
+782	        field.isAutomaticTextCompletionEnabled = false
+783	        field.sendsSearchStringImmediately = true
+784	        field.sendsWholeSearchString = false
+785	        field.delegate = context.coordinator
+786	        return field
+787	    }
+788	
+789	    func updateNSView(_ field: NSSearchField, context: Context) {
+790	        context.coordinator.text = $text
+791	        if field.stringValue != text { field.stringValue = text }   // e.g. set from AppleScript
+792	    }
+793	
+794	    func makeCoordinator() -> Coordinator { Coordinator(text: $text) }
+795	
+796	    final class Coordinator: NSObject, NSSearchFieldDelegate {
+797	        var text: Binding<String>
+798	        init(text: Binding<String>) { self.text = text }
+799	
+800	        func controlTextDidBeginEditing(_ note: Notification) {
+801	            guard let editor = note.userInfo?["NSFieldEditor"] as? NSTextView else { return }
+802	            editor.isAutomaticTextCompletionEnabled = false
+803	            if #available(macOS 14.0, *) { editor.inlinePredictionType = .no }
+804	        }
+805	
+806	        func controlTextDidChange(_ note: Notification) {
+807	            guard let field = note.object as? NSTextField else { return }
+808	            text.wrappedValue = field.stringValue
+809	        }
+810	    }
+811	}
+812	
+813	/// One line of text that never truncates: if it doesn't fit, it scrolls smoothly left in a loop
+814	/// (pausing at the start of each pass); if it fits, it just sits still.
+815	private struct MarqueeText: View {
+816	    let text: String
+817	    let font: Font
+818	    var secondary = false
+819	    @State private var textWidth: CGFloat = 0
+820	
+821	    private let gap: CGFloat = 40      // space between the end of the text and its repeat
+822	    private let speed: CGFloat = 30    // points per second
+823	    private let pause: Double = 2      // seconds held at the start of each pass
+824	
+825	    var body: some View {
+826	        // Invisible line sets the height; the width comes from the parent.
+827	        Text(" ").font(font).hidden()
+828	            .frame(maxWidth: .infinity, alignment: .leading)
+829	            .background(alignment: .leading) {
+830	                Text(text).font(font).fixedSize().hidden()
+831	                    .background(GeometryReader { g in
+832	                        Color.clear.preference(key: MarqueeWidthKey.self, value: g.size.width)
+833	                    })
+834	            }
+835	            .onPreferenceChange(MarqueeWidthKey.self) { textWidth = $0 }
+836	            .overlay(alignment: .leading) {
+837	                GeometryReader { geo in
+838	                    if textWidth <= geo.size.width {
+839	                        Text(text).font(font).fixedSize().foregroundStyle(secondary ? .secondary : .primary)
+840	                    } else {
+841	                        // Drawn once, then moved by Core Animation in the render server: no per-frame work
+842	                        // in the app. (A TimelineView rebuilt every scrolling line 60 times a second.)
+843	                        ScrollingStrip(content: AnyView(
+844	                            HStack(spacing: gap) {
+845	                                Text(text).font(font).fixedSize()
+846	                                Text(text).font(font).fixedSize()
+847	                            }
+848	                            .foregroundStyle(secondary ? .secondary : .primary)),
+849	                            key: "\(text)|\(secondary)", width: 2 * textWidth + gap, cycle: textWidth + gap, speed: speed, pause: pause)
+850	                    }
+851	                }
+852	                .clipped()
+853	            }
+854	    }
+855	}
+856	
+857	/// Hosts `content` once and slides it left by `cycle` points on a repeating Core Animation, holding
+858	/// at the start for `pause` seconds each pass. The content must repeat after `cycle` points.
+859	private struct ScrollingStrip: NSViewRepresentable {
+860	    let content: AnyView
+861	    let key: String
+862	    let cycle: CGFloat, speed: CGFloat, pause: Double
+863	
+864	    func makeNSView(context: Context) -> Strip { Strip() }
+865	
+866	    func updateNSView(_ view: Strip, context: Context) {
+867	        view.configure(content: content, key: key, cycle: cycle, speed: speed, pause: pause)
+868	    }
+869	
+870	    final class Strip: NSView {
+871	        private let host = NSHostingView(rootView: AnyView(EmptyView()))
+872	        private var key = ""
+873	        private var width: CGFloat = 0, cycle: CGFloat = 0, speed: CGFloat = 30, pause: Double = 2
+874	
+875	        init() {
+876	            super.init(frame: .zero)
+877	            wantsLayer = true
+878	            layer?.masksToBounds = true
+879	            host.sizingOptions = []
+880	            host.wantsLayer = true
+881	            addSubview(host)
+882	        }
+883	        required init?(coder: NSCoder) { nil }
+884	
+885	        override func hitTest(_ point: NSPoint) -> NSView? { nil }   // clicks go to the row
+886	
+887	        func configure(content: AnyView, key: String, width: CGFloat, cycle: CGFloat, speed: CGFloat, pause: Double) {
+888	            guard key != self.key || cycle != self.cycle || width != self.width else { return }
+889	            self.key = key
+890	            (self.width, self.cycle, self.speed, self.pause) = (width, cycle, speed, pause)
+891	            host.rootView = content
+892	            needsLayout = true
+893	        }
+894	
+895	        override func layout() {
+896	            super.layout()
+897	            // Exactly the content's width (measured in SwiftUI; fittingSize isn't reliable here): any
+898	            // wider and SwiftUI centers the two copies in it, so the text paused in from the left edge.
+899	            let height = host.fittingSize.height > 0 ? host.fittingSize.height : bounds.height
+900	            host.frame = NSRect(x: 0, y: (bounds.height - height) / 2, width: width, height: height)
+901	            startAnimation()
+902	        }
+903	
+904	        override func viewDidMoveToWindow() {
+905	            super.viewDidMoveToWindow()
+906	            if window != nil { startAnimation() }
+907	        }
+908	
+909	        private func startAnimation() {
+910	            guard let layer = host.layer, cycle > 0 else { return }
+911	            let move = Double(cycle / speed)
+912	            let period = move + pause
+913	            let anim = CAKeyframeAnimation(keyPath: "transform.translation.x")
+914	            anim.values = [0, 0, -cycle]
+915	            anim.keyTimes = [0, NSNumber(value: pause / period), 1]
+916	            anim.duration = period
+917	            anim.repeatCount = .infinity
+918	            anim.isRemovedOnCompletion = false
+919	            layer.removeAnimation(forKey: "marquee")
+920	            layer.add(anim, forKey: "marquee")
+921	        }
+922	    }
+923	}
+924	
+925	private struct MarqueeWidthKey: PreferenceKey {
+926	    static var defaultValue: CGFloat = 0
+927	    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = max(value, nextValue()) }
+928	}
+929	
+930	
+
+
+[error_code: rate_limited] Back off — the harness handles retry timing. Work on something else this turn.
