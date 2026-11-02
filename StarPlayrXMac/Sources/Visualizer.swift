@@ -244,7 +244,7 @@ struct SpectrumView: View {
             // Names the new stage in a chat bubble whose pointer tip is on the mouse.
             BubblePopup.shared.show(["Bubbles", "Soft Bubbles", "No Bubbles"][bubbleStage], at: NSEvent.mouseLocation)
         }
-        .help("Click to change the bubbles: full, soft, off")
+        .help(["Bubbles", "Soft Bubbles", "No Bubbles"][bubbleStage % 3])
         .onAppear { viz.start() }
         .onDisappear { viz.stop() }
     }
