@@ -184,6 +184,10 @@ struct SpectrumView: View {
     @Environment(\.colorScheme) private var scheme
     /// Luminance of the wallpaper behind the panel (it shows through the translucent material).
     @State private var wallpaper: Double?
+    /// Clicking the bars steps the bubbles: full → half strength → off → full. Starts on the default
+    /// look and fades out one step at a time, so a click always does something visible; remembered.
+    @AppStorage("bubbleStage") private var bubbleStage = 0
+    private var bubbleStrength: Double { [1, 0.5, 0][bubbleStage % 3] }
 
     private func hue(_ x: Double) -> Double { (x.truncatingRemainder(dividingBy: 1) + 1).truncatingRemainder(dividingBy: 1) }
 
@@ -210,8 +214,9 @@ struct SpectrumView: View {
                             RoundedRectangle(cornerRadius: 1.5).strokeBorder(.black.opacity(0.25), lineWidth: 0.5)
                         }
                     }
-                    .overlay { LavaBubbles(rise: viz.rise[i], seed: Double(i), color: light ? .black.opacity(0.7) : .white,   // dark bubbles at 70% strength, so they stay soft
-                                                  shade: Color(hue: h, saturation: 0.9, brightness: 1)) }   // the bar's pure colour, not contrast-darkened
+                    .overlay { if bubbleStrength > 0 { LavaBubbles(rise: viz.rise[i], seed: Double(i), color: light ? .black.opacity(0.7) : .white,   // dark bubbles at 70% strength, so they stay soft
+                                                  shade: Color(hue: h, saturation: 0.9, brightness: 1))   // the bar's pure colour, not contrast-darkened
+                        .opacity(bubbleStrength) } }
                     .clipShape(RoundedRectangle(cornerRadius: 1.5))
                     .frame(height: max(2, CGFloat(level) * 28))
                     .shadow(color: glow.opacity(light ? 0.75 + 0.25 * viz.pulse : 0.4 + 0.6 * viz.pulse), radius: 1 + 4 * viz.pulse)
@@ -229,6 +234,9 @@ struct SpectrumView: View {
         }
         .animation(.linear(duration: 1.0 / 60), value: viz.levels)
         .background(WallpaperProbe(luminance: $wallpaper))
+        .contentShape(Rectangle())
+        .onTapGesture { bubbleStage = (bubbleStage + 1) % 3 }
+        .help("Click to change the bubbles: full, soft, off")
         .onAppear { viz.start() }
         .onDisappear { viz.stop() }
     }
