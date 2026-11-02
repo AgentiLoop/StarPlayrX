@@ -455,16 +455,18 @@ final class Radio: ObservableObject {
 
     /// Bars for what is coming out of the speakers right now, read from the frames worked out
     /// ahead of time at the player's exact position; nil when nothing is playing.
-    var spectrumNow: [Float]? {
+    /// `ahead` seconds past the playing position: the bars are frames worked out in advance, so the
+    /// visualizer can read slightly ahead to make up for the time its smoothing takes to show them.
+    func spectrumNow(ahead: Double = 0) -> [Float]? {
         guard isPlaying, let current else { return nil }
         if current.xtraID != nil {
             guard xtraPlayer.timeControlStatus == .playing, let item = xtraPlayer.currentItem,
                   let file = (item.asset as? AVURLAsset)?.url else { return nil }
-            return SpectrumTimeline.shared.levels(track: file, at: item.currentTime().seconds)
+            return SpectrumTimeline.shared.levels(track: file, at: item.currentTime().seconds + ahead)
         }
         // The item's own timeline, not its date: the date jumps back each time the playlist window slides.
         guard player.timeControlStatus == .playing, let time = player.currentItem?.currentTime().seconds else { return nil }
-        return SpectrumTimeline.shared.levels(time: time)
+        return SpectrumTimeline.shared.levels(time: time + ahead)
     }
 
     private func isPlayingXtra(_ id: String) -> Bool {

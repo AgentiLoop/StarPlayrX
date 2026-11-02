@@ -28,6 +28,8 @@ final class Visualizer {
     private(set) var rise = (0..<bandCount).map { _ in Double.random(in: 0..<1) }
     /// The state one step back, for tweening: levels, rise, pulse, blob position.
     private(set) var previous = (levels: [Float](repeating: 0, count: bandCount), rise: [Double](repeating: 0, count: bandCount), pulse: 0.0, blobX: 0.0)
+    /// Bar heights of the last four steps, oldest first, for the shader's curve.
+    private(set) var history = [[Float]](repeating: [Float](repeating: 0, count: bandCount), count: 4)
     /// Bumped on every step, so each renderer knows when to rebuild its bar colours.
     private(set) var generation = 0
     private var hueTargets = (0..<bandCount).map { _ in Double.random(in: 0..<1) }
@@ -52,6 +54,7 @@ final class Visualizer {
         levels = [Float](repeating: 0, count: Self.bandCount)
         pulse = 0
         previous = (levels, rise, 0, blobX)
+        history = [[Float]](repeating: levels, count: 4)
     }
 
     /// Called by every visible Metal view each frame. Steps the state when 1/30 s has passed and
@@ -59,9 +62,13 @@ final class Visualizer {
     func tick(now: CFTimeInterval) -> Float {
         if running, now - lastStep >= Self.step - 0.004 {
             previous = (levels, rise, pulse, blobX)
-            let new = Radio.shared.spectrumNow ?? [Float](repeating: 0, count: Self.bandCount)
+            history.removeFirst()
+            // The shader draws a smooth curve through the last four steps, which shows each one two
+            // steps (~67 ms) late; reading the audio two steps ahead puts the bars back on the beat.
+            let new = Radio.shared.spectrumNow(ahead: 2 * Self.step) ?? [Float](repeating: 0, count: Self.bandCount)
             update(new)
             update(new)
+            history.append(levels)
             // Keep to the 30 Hz grid, but don't try to catch up after a pause.
             lastStep = now - lastStep < 2 * Self.step ? lastStep + Self.step : now
             generation &+= 1
@@ -313,7 +320,7 @@ final class SpectrumRenderer: NSObject, MTKViewDelegate {
     /// Points the Metal view overhangs the bars on each side, for the glow and the blob.
     static let pad: Float = 18
 
-    struct Bar { var base, top, glow, shade, misc: SIMD4<Float> }   // misc: level, rise
+    struct Bar { var base, top, glow, shade, misc, curve: SIMD4<Float> }   // misc: level, rise, previous level, previous rise; curve: last four levels
     struct Globals { var view, state, bubble, blob, blobShape, glowStyle: SIMD4<Float> }
 
     let device = MTLCreateSystemDefaultDevice()!
@@ -357,7 +364,8 @@ final class SpectrumRenderer: NSObject, MTKViewDelegate {
                            glow: ContrastColor.hsb(Self.hue(h + 0.1 + 0.35 * level), 1, 0.55 + 0.45 * bg),   // lighter background, lighter glow; fully saturated
                            shade: ContrastColor.hsb(h, 0.9, 1),   // the bar's pure colour, not contrast-darkened
                            // The GPU tweens level and bubble rise from the previous step to this one.
-                           misc: [Float(level), Float(viz.rise[i]), viz.previous.levels[i], Float(viz.previous.rise[i])])
+                           misc: [Float(level), Float(viz.rise[i]), viz.previous.levels[i], Float(viz.previous.rise[i])],
+                           curve: [viz.history[0][i], viz.history[1][i], viz.history[2][i], viz.history[3][i]])
             }
             blobColour = ContrastColor.hsb(Self.hue(viz.hues[Visualizer.bandCount / 2] + 0.5), 0.8, 1)
         }
@@ -388,7 +396,7 @@ final class SpectrumRenderer: NSObject, MTKViewDelegate {
     using namespace metal;
     #define BANDS \(Visualizer.bandCount)
 
-    struct Bar { float4 base, top, glow, shade, misc; };
+    struct Bar { float4 base, top, glow, shade, misc, curve; };
     struct Globals {
         float4 view;       // bars width, bars height (pt), pixels per point, overhang (pt)
         float4 state;      // pulse, light panel, bubble strength, seconds
@@ -473,7 +481,12 @@ final class SpectrumRenderer: NSObject, MTKViewDelegate {
             Bar b = bars[i];
             // Tween from the previous 30 Hz step to this one; rise wraps at 1, so go forward round it.
             float t = g.glowStyle.z;
-            b.misc.x = mix(b.misc.z, b.misc.x, t);
+            // Height: a Catmull-Rom curve through the last four steps, drawn between the middle two.
+            // Speed changes smoothly from one step to the next instead of jumping at every step,
+            // so the bars glide up and down rather than moving in straight segments.
+            float4 c = b.curve;
+            b.misc.x = saturate(0.5 * (2 * c.y + (c.z - c.x) * t + (2 * c.x - 5 * c.y + 4 * c.z - c.w) * t * t
+                                       + (3 * c.y - c.x - 3 * c.z + c.w) * t * t * t));
             float r1 = b.misc.y < b.misc.w ? b.misc.y + 1 : b.misc.y;
             b.misc.y = fract(mix(b.misc.w, r1, t));
             float hb = max(2.0, b.misc.x * H);
