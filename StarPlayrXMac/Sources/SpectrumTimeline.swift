@@ -22,6 +22,8 @@ final class SpectrumTimeline: @unchecked Sendable {
     /// the live edge. Segments are placed on that same 10 s grid so the bars match the player exactly.
     private var anchor: (sequence: Int, date: Date)?
     private var startSlot: Int?   // the segment slot playback started on, in the item's timeline
+    /// Segment the player was last in: (sequence, its start in the item's timeline, its length).
+    private var cursor: (sequence: Int, time: Double, duration: Double)?
     private static let nominal = 10.0
     private var live = [Chunk]()
     private var tracks = [URL: Track]()
@@ -50,7 +52,7 @@ final class SpectrumTimeline: @unchecked Sendable {
         }
         guard let channel = dates.keys.first.map(Self.channel) else { return }
         lock.lock()
-        if channel != liveChannel { anchor = nil; startSlot = nil }
+        if channel != liveChannel { anchor = nil; startSlot = nil; cursor = nil }
         if anchor == nil, let first = dates.min(by: { $0.value < $1.value }), let seq = Self.sequence(first.key) {
             anchor = (seq, first.value)
         }
@@ -104,27 +106,28 @@ final class SpectrumTimeline: @unchecked Sendable {
         guard let anchor, time >= 0 else { return nil }
         let start = startSlot ?? Int(time / Self.nominal)
         startSlot = start
-        var slot = start
-        var t = time - Double(slot) * Self.nominal
-        if t < 0 {   // before where playback started (a seek back): still on the tagged 10 s grid
-            slot = Int(time / Self.nominal)
-            t = time - Double(slot) * Self.nominal
+        // Resume from the segment found last time instead of walking from where playback started
+        // every frame. That walk stopped after 60 segments, so the bars died ~10 minutes into a channel.
+        if let c = cursor, time >= c.time {} else {
+            var slot = start
+            if time < Double(slot) * Self.nominal { slot = Int(time / Self.nominal) }   // seek back: tagged 10 s grid
+            cursor = (anchor.sequence + slot, Double(slot) * Self.nominal, 9.75)
         }
-        var sequence = anchor.sequence + slot
-        var lastDuration = 9.75
-        for _ in 0..<60 {
+        guard var (sequence, segStart, lastDuration) = cursor else { return nil }
+        while true {
             let c = live.first { $0.channel == liveChannel && $0.sequence == sequence }
             let duration = c?.duration ?? lastDuration
+            let t = time - segStart
             if t < duration {
+                cursor = (sequence, segStart, duration)
                 guard let c, let last = c.frames.last else { return nil }
                 let k = Int(t / c.hop)
                 return k < c.frames.count ? c.frames[k] : last
             }
-            t -= duration
+            segStart += duration
             lastDuration = duration
             sequence += 1
         }
-        return nil
     }
 
     /// The real on-air time (stream PDT) of the player's current date, which runs ahead of it.
@@ -144,6 +147,7 @@ final class SpectrumTimeline: @unchecked Sendable {
         lock.lock()
         anchor = nil
         startSlot = nil
+        cursor = nil
         live.removeAll()
         lock.unlock()
     }
@@ -273,6 +277,3 @@ final class SpectrumTimeline: @unchecked Sendable {
         }
     }
 }
-
-
-
