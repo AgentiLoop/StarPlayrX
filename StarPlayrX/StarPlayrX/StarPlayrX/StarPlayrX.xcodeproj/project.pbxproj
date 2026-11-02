@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		5F014C4728CD2D6500D4F682 /* StarPlayrRadioKit in Frameworks */ = {isa = PBXBuildFile; productRef = 5F014C4628CD2D6500D4F682 /* StarPlayrRadioKit */; };
+		5A11F7E2000000000000B001 /* SwifterLite in Frameworks */ = {isa = PBXBuildFile; productRef = 5A11F7E2000000000000B002 /* SwifterLite */; };
 		5F381C17245F568E009BA91D /* Draw.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F381C16245F568E009BA91D /* Draw.swift */; };
 		5F5C5009244CBBD300A35D76 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F5C5008244CBBD300A35D76 /* AppDelegate.swift */; };
 		5F5C500B244CBBD300A35D76 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F5C500A244CBBD300A35D76 /* SceneDelegate.swift */; };
@@ -67,6 +68,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				5F014C4728CD2D6500D4F682 /* StarPlayrRadioKit in Frameworks */,
+				5A11F7E2000000000000B001 /* SwifterLite in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -196,6 +198,7 @@
 			name = StarPlayrX;
 			packageProductDependencies = (
 				5F014C4628CD2D6500D4F682 /* StarPlayrRadioKit */,
+				5A11F7E2000000000000B002 /* SwifterLite */,
 			);
 			productName = StarPlayrX;
 			productReference = 5F5C5005244CBBD300A35D76 /* StarPlayrX.app */;
@@ -229,6 +232,7 @@
 			mainGroup = 5F5C4FFC244CBBD300A35D76;
 			packageReferences = (
 				5F014C4528CD2D6500D4F682 /* XCRemoteSwiftPackageReference "StarPlayrRadioKit" */,
+				5A11F7E2000000000000B003 /* XCRemoteSwiftPackageReference "SwifterLite" */,
 			);
 			productRefGroup = 5F5C5006244CBBD300A35D76 /* Products */;
 			projectDirPath = "";
@@ -531,6 +535,14 @@
 				kind = branch;
 			};
 		};
+		5A11F7E2000000000000B003 /* XCRemoteSwiftPackageReference "SwifterLite" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/AgentiLoop/SwifterLite";
+			requirement = {
+				branch = mustang;
+				kind = branch;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -538,6 +550,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 5F014C4528CD2D6500D4F682 /* XCRemoteSwiftPackageReference "StarPlayrRadioKit" */;
 			productName = StarPlayrRadioKit;
+		};
+		5A11F7E2000000000000B002 /* SwifterLite */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 5A11F7E2000000000000B003 /* XCRemoteSwiftPackageReference "SwifterLite" */;
+			productName = SwifterLite;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
