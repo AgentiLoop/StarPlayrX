@@ -4,6 +4,7 @@
 //
 //  Created by Todd Bruss on 5/12/20.
 //  Modified by Todd Bruss on 11/2/26.
+//  Copyright © 2020 Todd Bruss. All rights reserved.
 //
 
 import Foundation

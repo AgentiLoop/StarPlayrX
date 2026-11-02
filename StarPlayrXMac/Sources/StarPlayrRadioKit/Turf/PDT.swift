@@ -3,6 +3,7 @@
 //
 //  Created by Todd Bruss on 1/27/19.
 //  Modified by Todd Bruss on 11/2/26.
+//  Copyright © 2019 Todd Bruss. All rights reserved.
 //
 
 import Foundation
