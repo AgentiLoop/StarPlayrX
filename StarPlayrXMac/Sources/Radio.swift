@@ -263,12 +263,6 @@ final class Radio: ObservableObject {
         }
     }
 
-    /// EXPERIMENT diagnostics
-    private func dbg(_ s: String) {
-        let line = "\(Date()) \(s)\n"
-        if let h = FileHandle(forWritingAtPath: "/tmp/spx-modern.log") { h.seekToEndOfFile(); h.write(Data(line.utf8)); h.closeFile() }
-        else { try? line.write(toFile: "/tmp/spx-modern.log", atomically: true, encoding: .utf8) }
-    }
     func togglePlayPause() {
         if isPlaying { stop() } else if let current { play(current) }
     }
