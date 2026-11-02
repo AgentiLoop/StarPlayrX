@@ -14,7 +14,7 @@ StarPlayrX was built for visually impaired listeners, a group of paying subscrib
 | --- | --- |
 | [`StarPlayrXMac/`](StarPlayrXMac) | **New:** a native SwiftUI menu bar app for macOS |
 | [`StarPlayrX/`](StarPlayrX) | The original Mac Catalyst App. May not work, unsupported, abandoned. |
-| `StarPlayrRadioKit/` | SiriusXM API layer and the local HLS streaming server. Its source is copied into each app ([Mac](StarPlayrXMac/Sources/StarPlayrRadioKit), [iOS](StarPlayrX/StarPlayrX/StarPlayrX/StarPlayrX/StarPlayrRadioKit)), not used as a Swift package. |
+| `StarPlayrRadioKit/` | SiriusXM API layer and the local HLS streaming server. Its source is copied into each app ([Mac](StarPlayrXMac/Sources/StarPlayrRadioKit), [iOS](StarPlayrX/StarPlayrX/StarPlayrX/StarPlayrX/StarPlayrRadioKit))
 | `SwifterLite/` | Small embedded HTTP server used by StarPlayrRadioKit, copied into each app the same way ([Mac](StarPlayrXMac/Sources/SwifterLite), [iOS](StarPlayrX/StarPlayrX/StarPlayrX/StarPlayrX/SwifterLite)) |
 
 
