@@ -69,9 +69,13 @@ struct MenuView: View {
                         // "All Stars" (as on iOS): the list shows only the starred channels.
                         Button { menu.starsOnly.toggle() } label: {
                             Image(systemName: menu.starsOnly ? "star.fill" : "star")
+                                .font(.system(size: 14))
                                 .foregroundStyle(menu.starsOnly ? Color.yellow : Color.secondary)
                         }
                         .buttonStyle(.plain)
+                        // Same size and trailing edge as the row stars: a row's star ends 10pt from the
+                        // content edge (16 outer trailing − 12 list overhang + 4 + 2 inner padding).
+                        .padding(.trailing, 10)
                         .help(menu.starsOnly ? "Show every channel" : "Show only starred channels")
                         .accessibilityLabel(menu.starsOnly ? "All Stars On" : "All Stars Off")
                     }
@@ -167,7 +171,7 @@ struct MenuView: View {
                 let starred = radio.presets.contains(ch.id)
                 Button { radio.togglePreset(ch.id) } label: {
                     Image(systemName: starred ? "star.fill" : "star")
-                        .font(.system(size: 16))
+                        .font(.system(size: 18))
                         .foregroundStyle(starred ? Color.yellow : Color.secondary)
                 }
                 .buttonStyle(.plain)
@@ -315,7 +319,7 @@ private struct ChannelRow: View, Equatable {
             // Click the star to put the channel in the presets or take it out (the row itself plays it).
             Button { Radio.shared.togglePreset(channel.id) } label: {
                 Image(systemName: isStarred ? "star.fill" : "star")
-                    .font(.caption)
+                    .font(.system(size: 14))
                     .foregroundStyle(isStarred ? Color.yellow : Color.secondary)
             }
             .buttonStyle(.plain)
