@@ -1,0 +1,1 @@
+{"input":{"command":"cd \"\/Users\/toddbruss\/Library\/Mobile Documents\/com~apple~CloudDocs\/Documents\/GitHub\/StarPlayrRadioKit\/Sources\/StarPlayrRadioKit\"; wc -l Xtra\/*.swift; cat Xtra\/XtraSession.swift Xtra\/XtraTune.swift Xtra\/XtraRoutes.swift"},"tool":"execute_agent_command","spilled":1793644898.894052}

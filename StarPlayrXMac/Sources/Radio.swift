@@ -220,9 +220,20 @@ final class Radio: ObservableObject {
             return
         }
         Task {
-            await startServerIfNeeded()
-            guard let url = URL(string: "http://localhost:\(port)/api/v3/m3u/\(channel.id).m3u8") else { return }
-            let item = AVPlayerItem(url: url)
+            let item: AVPlayerItem
+            // EXPERIMENT: tune live channels through the modern API (as Xtra does); legacy local server as fallback.
+            // `defaults write com.starplayrx.mac modernLive -bool NO` turns it off.
+            if UserDefaults.standard.object(forKey: "modernLive") as? Bool ?? true, let liveID = liveIDs[channel.id],
+               let live = try? await xtra.liveStream(channelID: liveID) {
+                print("MODERN live \(channel.id): \(live.url.lastPathComponent)")
+                // The segments are signed URLs; only the AES key request needs the bearer.
+                item = AVPlayerItem(asset: AVURLAsset(url: live.url, options: [
+                    "AVURLAssetHTTPHeaderFieldsKey": ["Authorization": "Bearer \(live.bearer)"]]))
+            } else {
+                await startServerIfNeeded()
+                guard let url = URL(string: "http://localhost:\(port)/api/v3/m3u/\(channel.id).m3u8") else { return }
+                item = AVPlayerItem(url: url)
+            }
             // Start as soon as a little audio is buffered instead of waiting to fill a large buffer.
             item.preferredForwardBufferDuration = 3
             // Stay paused until the start position is settled so the old position never plays

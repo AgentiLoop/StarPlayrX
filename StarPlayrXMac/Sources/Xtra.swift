@@ -201,6 +201,20 @@ actor XtraClient {
         return (tracks, tune["sequenceToken"] as? String)
     }
 
+    /// EXPERIMENT: a live (channel-linear) channel tuned through the modern API, the way the web player does.
+    /// Returns the signed master playlist (AES-128 HLS, ~5 h DVR) and the bearer its key URI needs.
+    func liveStream(channelID: String) async throws -> (url: URL, bearer: String) {
+        let auth = try await bearer()
+        let tune = try await json("POST", "/playback/play/v1/tuneSource",
+                                  body: ["id": channelID, "type": "channel-linear", "hlsVersion": "V3",
+                                         "manifestVariant": "WEB", "mtcVersion": "V2"],
+                                  bearer: auth)
+        let urls = (tune["streams"] as? [[String: Any]])?.first?["urls"] as? [[String: Any]] ?? []
+        guard let s = (urls.first { $0["isPrimary"] as? Bool == true } ?? urls.first)?["url"] as? String,
+              let url = URL(string: s) else { throw XtraError.badResponse("live stream url") }
+        return (url, auth)
+    }
+
     /// The track an Xtra channel would start with if tuned now, without downloading anything.
     func peek(channelID: String) async throws -> XtraTrack? {
         try await tune(channelID: channelID).tracks.first
