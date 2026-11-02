@@ -11,6 +11,7 @@ import Foundation
 import AVFoundation
 import MediaPlayer
 import Combine
+import os
 
 struct Channel: Identifiable, Hashable {
     let id: String          // channel number
@@ -560,8 +561,17 @@ final class Radio: ObservableObject {
         }
         // The item's own timeline, not its date: the date jumps back each time the playlist window slides.
         guard player.timeControlStatus == .playing, let time = player.currentItem?.currentTime().seconds else { return nil }
-        return SpectrumTimeline.shared.levels(time: time + ahead)
+        let levels = SpectrumTimeline.shared.levels(time: time + ahead)
+        // The EQ went dark while a live channel played, with nothing to go on. Log the transitions
+        // (once per dropout, once per recovery) with the timeline's state: `log show --predicate 'subsystem == "com.starplayrx.mac"'`.
+        if (levels == nil) != eqDark {
+            eqDark = levels == nil
+            Self.log.notice("live EQ \(self.eqDark ? "dark" : "back", privacy: .public) ch=\(current.id, privacy: .public) t=\(time, privacy: .public) modern=\(self.modernLive || self.modernLogin) \(SpectrumTimeline.shared.state, privacy: .public)")
+        }
+        return levels
     }
+    private static let log = Logger(subsystem: "com.starplayrx.mac", category: "eq")
+    private var eqDark = false
 
     private func isPlayingXtra(_ id: String) -> Bool {
         isPlaying && current?.id == id && current?.xtraID != nil

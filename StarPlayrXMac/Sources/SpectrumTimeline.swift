@@ -126,6 +126,12 @@ final class SpectrumTimeline: @unchecked Sendable {
     /// starts on at its tagged position (10 s per segment before it), but from there on its clock runs
     /// on the audio itself, ~9.75 s per segment. Assuming 10 s put the bars 0.25 s further behind with
     /// every segment (1 s after 40 s, 2 s after 80 s), so walk the real decoded durations instead.
+    /// One line of the live state, for the EQ dropout log in Radio.spectrumNow.
+    var state: String {
+        lock.lock(); defer { lock.unlock() }
+        let seqs = live.map(\.sequence).sorted()
+        return "anchor=\(anchor.map { "\($0.sequence)" } ?? "nil") slot=\(startSlot.map(String.init) ?? "nil") cursor=\(cursor.map { "\($0.sequence)@\(Int($0.time))" } ?? "nil") nominal=\(nominal) channel=\(liveChannel) dates=\(segmentDates.count) live=\(seqs.first.map { "\($0)…\(seqs.last ?? $0)(\(seqs.count))" } ?? "none")"
+    }
     func levels(time: Double) -> [Float]? {
         lock.lock()
         defer { lock.unlock() }
