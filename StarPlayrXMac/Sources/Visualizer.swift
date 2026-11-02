@@ -20,6 +20,9 @@ final class Visualizer: ObservableObject {
     @Published private(set) var blobX: Double = 0
     /// Per-bar hue (0...1 turns), driven by the music; see `update`.
     @Published private(set) var hues = (0..<bandCount).map { _ in Double.random(in: 0..<1) }
+    /// Lava-lamp bubbles inside each bar: how far they have risen (in bar heights, wraps at 1).
+    /// They drift up slowly when the band is quiet and faster when it's loud; a kick gives them a push.
+    @Published private(set) var rise = (0..<bandCount).map { _ in Double.random(in: 0..<1) }
     private var hueTargets = (0..<bandCount).map { _ in Double.random(in: 0..<1) }
     private var paletteCooldown = 0
     private var bassAverage: Float = 0
@@ -54,8 +57,12 @@ final class Visualizer: ObservableObject {
     private func update(_ new: [Float]) {
         guard timer != nil else { return }
         let previous = levels
-        // Rise instantly, fall slowly.
-        levels = zip(levels, new).map { old, new in max(new, old * 0.894) }   // √0.8: same fall speed as 0.8 at 30 fps
+        // Rise fast but over a few frames, fall slowly. At 60 fps an instant rise showed every
+        // frame-to-frame wobble of the FFT as jitter; easing in hides it without adding lag you can see.
+        levels = zip(levels, new).map { old, new in new > old ? old + (new - old) * 0.55 : max(new, old * 0.894) }
+        rise = rise.indices.map { i in
+            (rise[i] + 0.0015 + 0.006 * Double(levels[i]) + 0.004 * pulse).truncatingRemainder(dividingBy: 1)
+        }
         // 60 updates a second (every step below is half its 30 fps size): quiet ≈ one colour cycle per 30 s, loud ≈ one per 3 s.
         let energy = Double(new.reduce(0, +) / Float(new.count))
         phase = (phase + 0.0005 + energy * 0.01).truncatingRemainder(dividingBy: 1)
@@ -203,6 +210,8 @@ struct SpectrumView: View {
                             RoundedRectangle(cornerRadius: 1.5).strokeBorder(.black.opacity(0.25), lineWidth: 0.5)
                         }
                     }
+                    .overlay { LavaBubbles(rise: viz.rise[i], seed: Double(i), color: light ? .black : .white) }
+                    .clipShape(RoundedRectangle(cornerRadius: 1.5))
                     .frame(height: max(2, CGFloat(level) * 28))
                     .shadow(color: glow.opacity(light ? 0.75 + 0.25 * viz.pulse : 0.4 + 0.6 * viz.pulse), radius: 1 + 4 * viz.pulse)
             }
@@ -221,6 +230,30 @@ struct SpectrumView: View {
         .background(WallpaperProbe(luminance: $wallpaper))
         .onAppear { viz.start() }
         .onDisappear { viz.stop() }
+    }
+}
+
+/// Three soft blobs rising through a bar, each a step behind the last. They wobble side to side,
+/// stretch as they climb, swell in the middle and fade near the top; a blur melts touching blobs together.
+private struct LavaBubbles: View {
+    let rise: Double
+    let seed: Double
+    let color: Color
+
+    var body: some View {
+        Canvas { ctx, size in
+            guard size.height > 6 else { return }
+            ctx.addFilter(.blur(radius: 1))
+            for k in 0..<3 {
+                let p = (rise + Double(k) / 3 + seed * 0.137).truncatingRemainder(dividingBy: 1)
+                let d = size.width * (0.45 + 0.25 * sin(p * .pi))            // grow mid-way, shrink at the ends
+                let x = size.width / 2 + size.width * 0.18 * sin(p * 9 + seed * 2 + Double(k))
+                let y = size.height * (1.1 - 1.2 * p)                         // from just below the bar to just above
+                let rect = CGRect(x: x - d / 2, y: y - d * 0.65, width: d, height: d * 1.3)
+                ctx.fill(Path(ellipseIn: rect), with: .color(color.opacity(0.32 * sin(p * .pi))))
+            }
+        }
+        .allowsHitTesting(false)
     }
 }
 
