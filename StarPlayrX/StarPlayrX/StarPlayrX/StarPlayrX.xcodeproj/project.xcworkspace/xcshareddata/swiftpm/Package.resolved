@@ -7,7 +7,7 @@
       "location" : "https://github.com/AgentiLoop/StarPlayrRadioKit",
       "state" : {
         "branch" : "mustang",
-        "revision" : "0f326b16dd3237057f6f5a906ccf13e46f161f54"
+        "revision" : "dd534907bfe637423c956c387f53dfa00e1a9335"
       }
     },
     {
@@ -16,7 +16,7 @@
       "location" : "https://github.com/StarPlayrX/SwifterLite",
       "state" : {
         "branch" : "mustang",
-        "revision" : "47866b6080d883e07be725b706efdb65ab21058f"
+        "revision" : "f32f90001fd51177cb04c1ceba83c7c517842da3"
       }
     }
   ],
