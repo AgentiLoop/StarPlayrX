@@ -67,7 +67,7 @@ StarPlayrX was built for visually impaired listeners, a group of paying subscrib
 </table>
 
 - **Liquid Glass** look on macOS 26 and later
-- **AppleScript support:** play, stop, and resume channels, read what's showing and what's actually playing, search, scroll, tear off, park, and shade the window. Open the StarPlayrX dictionary in Script Editor to see every command
+- **AppleScript support:** play, stop, resume, and step through channels, read what each channel shows and what's actually playing (artist, song, artwork), list channels by category, search, scroll, tear off, park, and shade the window, pick the bubble mode, and flip the modern API switches. Open the StarPlayrX dictionary in Script Editor to see every command
 - Search channels, artists and songs
 - Shows what's playing on the current channel and every channel in the list, with album art that stays put for the whole song
 - **Now Playing matches what you hear:** on live channels the song shown is held back by how far the audio runs behind the live feed, so it changes when the song you hear changes. The channel list's song info refreshes 3 times a minute. Long titles scroll instead of getting cut off
@@ -89,13 +89,21 @@ StarPlayrX was built for visually impaired listeners, a group of paying subscrib
 
 ```applescript
 tell application "StarPlayrX"
+    wait until ready                     -- right after launch, while the Keychain sign-in runs
     play channel "1009"
     get {shown artist, shown song}       -- what the list shows
     get {playing artist, playing song}   -- what's actually playing
+    get {shown artwork, current channel logo}
+    next channel                         -- step through the list (as filtered by search text)
+    set bubble mode to no bubbles        -- bubbles / soft bubbles / no bubbles
+    set modern live to false             -- live channels through the legacy player path
+    sign in user "me@example.com" password "…" modern true
     park menu at upper right
     toggle shade
 end tell
 ```
+
+Every property and command is in the StarPlayrX dictionary (open the app in Script Editor): sign-in state, channels (numbers, names, categories, logos, Xtra or live), what each channel shows and plays, the panel (show, hide, tear off, reattach, park, shade, drag, search, scroll), the equalizer's bubble mode, show-art per channel, and the modern API switches.
 
 ### 🔌 Modern API and modern sign-in
 
