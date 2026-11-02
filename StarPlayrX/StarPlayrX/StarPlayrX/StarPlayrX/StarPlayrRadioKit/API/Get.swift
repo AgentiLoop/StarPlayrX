@@ -1,3 +1,12 @@
+//
+//  Get.swift
+//  StarPlayrX
+//
+//  Created by Todd Bruss on 11/2/26.
+//  Modified by Todd Bruss on 11/2/26.
+//  Copyright © 2026 Todd Bruss. All rights reserved.
+//
+
 import Foundation
 
 //MARK: GetAsync

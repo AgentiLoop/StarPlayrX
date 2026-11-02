@@ -1,3 +1,12 @@
+//
+//  Scripting.swift
+//  StarPlayrXMac
+//
+//  Created by Todd Bruss on 10/31/26.
+//  Modified by Todd Bruss on 11/1/26.
+//  Copyright © 2026 Todd Bruss. All rights reserved.
+//
+
 import AppKit
 
 /// AppleScript (Cocoa Scripting) support. Terminology is in StarPlayrX.sdef, enabled by
