@@ -1,4 +1,6 @@
 import SwiftUI
+import AppKit
+import ImageIO
 
 /// Spectrum of what is playing. The bars are worked out ahead of time from the decoded audio
 /// (`SpectrumTimeline`); this reads the frame at the player's position ~30 times a second
@@ -173,11 +175,15 @@ enum ContrastColor {
 struct SpectrumView: View {
     @ObservedObject private var viz = Visualizer.shared
     @Environment(\.colorScheme) private var scheme
+    /// Luminance of the wallpaper behind the panel (it shows through the translucent material).
+    @State private var wallpaper: Double?
 
     private func hue(_ x: Double) -> Double { (x.truncatingRemainder(dividingBy: 1) + 1).truncatingRemainder(dividingBy: 1) }
 
     var body: some View {
-        let bg = ContrastColor.background(scheme)
+        let fixed = ContrastColor.background(scheme)
+        // The material mostly hides the wallpaper; let a bright or dark desktop pull the guess part way.
+        let bg = wallpaper.map { fixed * 0.7 + $0 * 0.3 } ?? fixed
         HStack(alignment: .bottom, spacing: 2) {
             ForEach(viz.levels.indices, id: \.self) { i in
                 let level = Double(viz.levels[i])
@@ -203,7 +209,75 @@ struct SpectrumView: View {
                 .opacity(0.075 + 0.175 * viz.pulse)
         }
         .animation(.linear(duration: 0.05), value: viz.levels)
+        .background(WallpaperProbe(luminance: $wallpaper))
         .onAppear { viz.start() }
         .onDisappear { viz.stop() }
+    }
+}
+
+/// Measures the desktop picture under the window hosting the bars: on show, and whenever the
+/// window moves or the Space changes. Reads the wallpaper file, so no screen-recording permission.
+private struct WallpaperProbe: NSViewRepresentable {
+    @Binding var luminance: Double?
+
+    func makeNSView(context: Context) -> ProbeView { ProbeView { lum in DispatchQueue.main.async { luminance = lum } } }
+    func updateNSView(_ view: ProbeView, context: Context) {}
+
+    final class ProbeView: NSView {
+        private let report: (Double?) -> Void
+        private var observers = [NSObjectProtocol]()
+        init(report: @escaping (Double?) -> Void) { self.report = report; super.init(frame: .zero) }
+        required init?(coder: NSCoder) { nil }
+        deinit { observers.forEach(NotificationCenter.default.removeObserver) }
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            observers.forEach(NotificationCenter.default.removeObserver)
+            observers = []
+            guard let window else { return }
+            let center = NotificationCenter.default
+            for name in [NSWindow.didMoveNotification, NSWindow.didChangeScreenNotification] {
+                observers.append(center.addObserver(forName: name, object: window, queue: .main) { [weak self] _ in self?.measure() })
+            }
+            observers.append(NSWorkspace.shared.notificationCenter.addObserver(
+                forName: NSWorkspace.activeSpaceDidChangeNotification, object: nil, queue: .main) { [weak self] _ in self?.measure() })
+            measure()
+        }
+
+        private func measure() {
+            guard let window, let screen = window.screen,
+                  let url = NSWorkspace.shared.desktopImageURL(for: screen) else { return report(nil) }
+            let rect = window.convertToScreen(convert(bounds, to: nil))
+            let frame = screen.frame
+            let report = report
+            DispatchQueue.global(qos: .utility).async {
+                report(Self.luminance(of: url, in: rect, screen: frame))
+            }
+        }
+
+        /// Average luminance of the part of the wallpaper (scaled to fill the screen) under `rect`.
+        private static func luminance(of url: URL, in rect: CGRect, screen: CGRect) -> Double? {
+            guard let src = CGImageSourceCreateWithURL(url as CFURL, nil),
+                  let image = CGImageSourceCreateThumbnailAtIndex(src, 0, [kCGImageSourceCreateThumbnailFromImageAlways: true,
+                                                                          kCGImageSourceThumbnailMaxPixelSize: 512] as CFDictionary)
+            else { return nil }
+            let iw = Double(image.width), ih = Double(image.height)
+            let scale = max(iw / screen.width, ih / screen.height)          // fill: crop the overflow, centred
+            let ox = (iw - screen.width * scale) / 2, oy = (ih - screen.height * scale) / 2
+            // Screen y goes up from the bottom; image y goes down from the top.
+            let x = ox + (rect.minX - screen.minX) * scale
+            let y = oy + (screen.maxY - rect.maxY) * scale
+            let crop = CGRect(x: x, y: y, width: max(1, rect.width * scale), height: max(1, rect.height * scale)).integral
+            guard let part = image.cropping(to: crop) else { return nil }
+            guard let ctx = CGContext(data: nil, width: 1, height: 1, bitsPerComponent: 8, bytesPerRow: 4,
+                                      space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                                      bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return nil }
+            ctx.interpolationQuality = .medium
+            ctx.draw(part, in: CGRect(x: 0, y: 0, width: 1, height: 1))
+            guard let data = ctx.data else { return nil }
+            let px = data.assumingMemoryBound(to: UInt8.self)
+            func lin(_ c: UInt8) -> Double { let v = Double(c) / 255; return v <= 0.04045 ? v / 12.92 : pow((v + 0.055) / 1.055, 2.4) }
+            return 0.2126 * lin(px[0]) + 0.7152 * lin(px[1]) + 0.0722 * lin(px[2])
+        }
     }
 }
