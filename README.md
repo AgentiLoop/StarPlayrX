@@ -21,7 +21,7 @@ StarPlayrX was built for visually impaired listeners, a group of paying subscrib
 ## 🎛️ StarPlayrX for Mac (menu bar app)
 
 <p align="center">
-  <img src="docs/starplayrx-mac-demo.gif" width="400" alt="StarPlayrX playing 70s/80s: click the menu bar icon, drag the panel off the menu bar into its own window, double-click the header to roll it up like a window shade and again to roll it down, then click the icon to glide it back under the menu bar">
+  <img src="docs/starplayrx-mac-demo.gif" width="400" alt="StarPlayrX playing 90s on 9: click the menu bar icon, drag the panel off the menu bar into its own window, double-click the header to roll it up like a window shade and again to roll it down, then click the icon to glide it back under the menu bar">
 </p>
 
 <table align="center">
@@ -66,6 +66,7 @@ StarPlayrX was built for visually impaired listeners, a group of paying subscrib
   </tr>
 </table>
 
+- **Stars (presets):** every channel row has a star; click it to add the channel to your presets or take it out. The star beside the play button stars the playing channel, and the star beside the search field shows just your starred channels. Stars are kept on this Mac, under the same key and with the same starting set as the iOS app
 - **Liquid Glass** look on macOS 26 and later
 - **AppleScript support:** play, stop, resume, and step through channels, read what each channel shows and what's actually playing (artist, song, artwork), list channels by category, search, scroll, tear off, park, and shade the window, pick the bubble mode, and flip the modern API switches. Open the StarPlayrX dictionary in Script Editor to see every command
 - Search channels, artists and songs
@@ -81,7 +82,7 @@ StarPlayrX was built for visually impaired listeners, a group of paying subscrib
 
 **Requirements:** macOS 13 Ventura or later, Apple Silicon or Intel, and an active SiriusXM subscription.
 
-**Download:** [StarPlayrX for Mac 1.1.13](https://github.com/AgentiLoop/StarPlayrX/releases/tag/mac-1.1.13) (signed and notarized). All builds are on the [Releases](https://github.com/AgentiLoop/StarPlayrX/releases) page.
+**Download:** [StarPlayrX for Mac 1.1.14](https://github.com/AgentiLoop/StarPlayrX/releases/tag/mac-1.1.14) (signed and notarized). All builds are on the [Releases](https://github.com/AgentiLoop/StarPlayrX/releases) page.
 
 > **Updating to 1.1.9?** Sign in once more after updating. Your login moves to a new, protected keychain that stops the repeated Mac password prompts, so StarPlayrX asks for your SiriusXM email and password one time.
 
