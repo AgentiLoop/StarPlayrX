@@ -251,7 +251,7 @@ struct SpectrumView: View {
         // The Metal view overhangs the bars on every side so the glow and the blurred blob aren't clipped.
         SpectrumMetalView(fixed: fixed, bg: bg, light: light, bubbles: bubbleStrength)
             .padding(-CGFloat(SpectrumRenderer.pad))
-            .frame(height: 28)
+            .frame(height: CGFloat(SpectrumRenderer.barHeight))
             .background(WallpaperProbe(luminance: $wallpaper))
             .contentShape(Rectangle())
             // A double-click is left to the tear-off area around the bars, which rolls the panel up. This
@@ -324,6 +324,8 @@ private struct SpectrumMetalView: NSViewRepresentable {
 final class SpectrumRenderer: NSObject, MTKViewDelegate {
     /// Points the Metal view overhangs the bars on each side, for the glow and the blob.
     static let pad: Float = 18
+    /// Height of the tallest bar, in points (was 28).
+    static let barHeight: Float = 40
 
     struct Bar { var base, top, glow, shade, misc, curve: SIMD4<Float> }   // misc: level, rise, previous level, previous rise; curve: last four levels
     struct Globals { var view, state, bubble, blob, blobShape, glowStyle: SIMD4<Float> }
@@ -389,7 +391,7 @@ final class SpectrumRenderer: NSObject, MTKViewDelegate {
         var blob = blobColour
         blob.w = Float(0.075 + 0.175 * pulse)
         var globals = Globals(
-            view: [Float(view.bounds.width) - 2 * Self.pad, 28, Float(view.drawableSize.width / view.bounds.width), Self.pad],
+            view: [Float(view.bounds.width) - 2 * Self.pad, Self.barHeight, Float(view.drawableSize.width / view.bounds.width), Self.pad],
             state: [Float(pulse), light ? 1 : 0, Float(bubbles), Float(Date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 3600))],
             bubble: light ? [0, 0, 0, 0.7] : [1, 1, 1, 1],   // dark bubbles at 70% strength, so they stay soft
             blob: blob,
