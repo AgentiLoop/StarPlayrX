@@ -45,18 +45,22 @@ final class SpectrumTimeline: @unchecked Sendable {
         let f = ISO8601DateFormatter()
         f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         let tag = "#EXT-X-PROGRAM-DATE-TIME:"
+        let plain = ISO8601DateFormatter()
         var dates = [String: Date]()
         var date: Date?
         var tagged: Double?
+        var duration = 0.0
         for line in text.split(whereSeparator: \.isNewline) {
-            if tagged == nil, line.hasPrefix("#EXTINF:") {
-                tagged = Double(line.dropFirst("#EXTINF:".count).prefix { $0 != "," })
-            }
-            if line.hasPrefix(tag) {
-                date = f.date(from: String(line.dropFirst(tag.count)))
+            if line.hasPrefix("#EXTINF:") {
+                duration = Double(line.dropFirst("#EXTINF:".count).prefix { $0 != "," }) ?? 0
+                if tagged == nil { tagged = duration }
+            } else if line.hasPrefix(tag) {
+                let stamp = String(line.dropFirst(tag.count))
+                date = f.date(from: stamp) ?? plain.date(from: stamp)
             } else if !line.hasPrefix("#"), let d = date, let name = line.split(separator: "/").last {
                 dates[String(name)] = d
-                date = nil
+                // The modern API tags only the first segment; the rest follow at their EXTINF lengths.
+                date = d.addingTimeInterval(duration)
             }
         }
         // Modern-API masters also list a side playlist ("0152_209.aac") that isn't the audio the player
