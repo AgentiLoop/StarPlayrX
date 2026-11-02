@@ -252,7 +252,7 @@ private struct ChannelRow: View, Equatable {
                 // Same as Now Playing: text that doesn't fit scrolls instead of ending in "…".
                 MarqueeText(text: channel.name, font: isCurrent ? .body.bold() : .body).id(channel.name)
                 let line = nowPlaying.map { "\($0.artist) – \($0.song)" } ?? " "
-                MarqueeText(text: line, font: .caption).foregroundStyle(.secondary).id(line)
+                MarqueeText(text: line, font: .caption, secondary: true).id(line)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             if isPlaying {
@@ -794,10 +794,8 @@ private struct SearchField: NSViewRepresentable {
 private struct MarqueeText: View {
     let text: String
     let font: Font
+    var secondary = false
     @State private var textWidth: CGFloat = 0
-    @State private var start = Date()
-    /// TimelineView(.animation) kept redrawing every scrolling line at 60 fps even with the panel closed.
-    @ObservedObject private var menu = MenuController.shared
 
     private let gap: CGFloat = 40      // space between the end of the text and its repeat
     private let speed: CGFloat = 30    // points per second
@@ -817,22 +815,87 @@ private struct MarqueeText: View {
             .overlay(alignment: .leading) {
                 GeometryReader { geo in
                     if textWidth <= geo.size.width {
-                        Text(text).font(font).fixedSize()
+                        Text(text).font(font).fixedSize().foregroundStyle(secondary ? .secondary : .primary)
                     } else {
-                        TimelineView(.animation(paused: !menu.panelVisible)) { ctx in
-                            let cycle = textWidth + gap
-                            let period = Double(cycle / speed) + pause
-                            let t = ctx.date.timeIntervalSince(start).truncatingRemainder(dividingBy: period)
+                        // Drawn once, then moved by Core Animation in the render server: no per-frame work
+                        // in the app. (A TimelineView rebuilt every scrolling line 60 times a second.)
+                        ScrollingStrip(content: AnyView(
                             HStack(spacing: gap) {
                                 Text(text).font(font).fixedSize()
                                 Text(text).font(font).fixedSize()
                             }
-                            .offset(x: -CGFloat(max(0, t - pause)) * speed)
-                        }
+                            .foregroundStyle(secondary ? .secondary : .primary)),
+                            key: "\(text)|\(secondary)", cycle: textWidth + gap, speed: speed, pause: pause)
                     }
                 }
                 .clipped()
             }
+    }
+}
+
+/// Hosts `content` once and slides it left by `cycle` points on a repeating Core Animation, holding
+/// at the start for `pause` seconds each pass. The content must repeat after `cycle` points.
+private struct ScrollingStrip: NSViewRepresentable {
+    let content: AnyView
+    let key: String
+    let cycle: CGFloat, speed: CGFloat, pause: Double
+
+    func makeNSView(context: Context) -> Strip { Strip() }
+
+    func updateNSView(_ view: Strip, context: Context) {
+        view.configure(content: content, key: key, cycle: cycle, speed: speed, pause: pause)
+    }
+
+    final class Strip: NSView {
+        private let host = NSHostingView(rootView: AnyView(EmptyView()))
+        private var key = ""
+        private var cycle: CGFloat = 0, speed: CGFloat = 30, pause: Double = 2
+
+        init() {
+            super.init(frame: .zero)
+            wantsLayer = true
+            layer?.masksToBounds = true
+            host.sizingOptions = []
+            host.wantsLayer = true
+            addSubview(host)
+        }
+        required init?(coder: NSCoder) { nil }
+
+        override func hitTest(_ point: NSPoint) -> NSView? { nil }   // clicks go to the row
+
+        func configure(content: AnyView, key: String, cycle: CGFloat, speed: CGFloat, pause: Double) {
+            guard key != self.key || cycle != self.cycle else { return }
+            self.key = key
+            (self.cycle, self.speed, self.pause) = (cycle, speed, pause)
+            host.rootView = content
+            needsLayout = true
+        }
+
+        override func layout() {
+            super.layout()
+            let size = host.fittingSize
+            host.frame = NSRect(x: 0, y: (bounds.height - size.height) / 2, width: max(size.width, 2 * cycle), height: size.height)
+            startAnimation()
+        }
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            if window != nil { startAnimation() }
+        }
+
+        private func startAnimation() {
+            guard let layer = host.layer, cycle > 0 else { return }
+            let move = Double(cycle / speed)
+            let period = move + pause
+            let anim = CAKeyframeAnimation(keyPath: "transform.translation.x")
+            anim.values = [0, 0, -cycle]
+            anim.keyTimes = [0, NSNumber(value: pause / period), 1]
+            anim.duration = period
+            anim.repeatCount = .infinity
+            anim.isRemovedOnCompletion = false
+            layer.removeAnimation(forKey: "marquee")
+            layer.add(anim, forKey: "marquee")
+        }
     }
 }
 
