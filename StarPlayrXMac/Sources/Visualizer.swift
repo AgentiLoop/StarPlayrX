@@ -282,7 +282,11 @@ final class SpectrumRenderer: NSObject, MTKViewDelegate {
     func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {}
 
     func draw(in view: MTKView) {
-        guard view.bounds.width > 0, let pass = view.currentRenderPassDescriptor, let drawable = view.currentDrawable,
+        // A hidden, occluded or rolled-up window doesn't hand drawables back, so asking for one would
+        // block the main thread for up to a second each frame.
+        guard view.bounds.width > 0, view.bounds.height > 0, let window = view.window,
+              window.isVisible, window.occlusionState.contains(.visible),
+              let pass = view.currentRenderPassDescriptor, let drawable = view.currentDrawable,
               let commands = queue.makeCommandBuffer(), let encoder = commands.makeRenderCommandEncoder(descriptor: pass) else { return }
         let viz = Visualizer.shared
         let pulse = viz.pulse
