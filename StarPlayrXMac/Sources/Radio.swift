@@ -431,8 +431,9 @@ final class Radio: ObservableObject {
             try? FileManager.default.removeItem(at: file)
         }
         guard let item = xtraPlayer.currentItem, let track = xtraTracks[item], let current, current.xtraID != nil else { return }
-        print("XTRA playing \(current.id) \(track.artist) – \(track.title)")
         let np = NowPlaying(artist: track.artist, song: track.title, image: track.imageURL)
+        // Called from both the queue observer and playXtra for the same item: log the track once.
+        if xtraNowPlaying[current.id] != np { print("XTRA playing \(current.id) \(track.artist) – \(track.title)") }
         xtraNowPlaying[current.id] = np
         nowPlaying[current.id] = np
         updateNowPlayingInfo()
