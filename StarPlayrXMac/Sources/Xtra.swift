@@ -448,6 +448,8 @@ final class LiveLoader: NSObject, AVAssetResourceLoaderDelegate {
     let client: XtraClient
     init(client: XtraClient) { self.client = client }
 
+    /// Cleared when another channel is tuned, so a late playlist refresh of this one can't reset the EQ.
+    var isActive = true
     private let lock = NSLock()
     private var analyzed = Set<String>()   // segment names already handed to the EQ
     private var keys = [String: Data]()
@@ -462,15 +464,16 @@ final class LiveLoader: NSObject, AVAssetResourceLoaderDelegate {
     }
 
     private func key(id: String) async throws -> Data {
-        lock.lock(); let cached = keys[id]; lock.unlock()
+        let cached = lock.withLock { keys[id] }
         if let cached { return cached }
         let key = try await client.key(id: id)
-        lock.lock(); keys[id] = key; lock.unlock()
+        lock.withLock { keys[id] = key }
         return key
     }
 
     /// Hands the media playlist and its newest segments (where the player starts and keeps playing) to the EQ.
     private func feedSpectrum(_ body: String, base: URL) {
+        guard isActive else { return }
         SpectrumTimeline.shared.livePlaylist(body)
         var keyID: String?
         var segments = [URL]()
@@ -488,7 +491,7 @@ final class LiveLoader: NSObject, AVAssetResourceLoaderDelegate {
         lock.unlock()
         for url in fresh {
             Task {
-                guard let data = try? await client.fetchData(url), let key = try? await key(id: keyID) else { return }
+                guard let data = try? await client.fetchData(url), let key = try? await key(id: keyID), isActive else { return }
                 SpectrumTimeline.shared.liveSegment(url.lastPathComponent, data, key)
             }
         }

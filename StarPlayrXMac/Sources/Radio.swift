@@ -221,6 +221,10 @@ final class Radio: ObservableObject {
             return
         }
         Task {
+            liveLoader?.isActive = false
+            liveLoader = nil
+            // Before the new item exists, so the EQ is dated from the first playlist that item loads.
+            SpectrumTimeline.shared.resetLive()
             let item: AVPlayerItem
             // EXPERIMENT: tune live channels through the modern API (as Xtra does); legacy local server as fallback.
             // `defaults write com.starplayrx.mac modernLive -bool NO` turns it off.
@@ -240,7 +244,6 @@ final class Radio: ObservableObject {
             // Stay paused until the start position is settled so the old position never plays
             // (that was the half-second stutter before the jump).
             player.pause()
-            SpectrumTimeline.shared.resetLive()
             player.replaceCurrentItem(with: item)
             isPlaying = true
             var tries = 0

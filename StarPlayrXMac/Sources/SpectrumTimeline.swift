@@ -24,7 +24,8 @@ final class SpectrumTimeline: @unchecked Sendable {
     private var startSlot: Int?   // the segment slot playback started on, in the item's timeline
     /// Segment the player was last in: (sequence, its start in the item's timeline, its length).
     private var cursor: (sequence: Int, time: Double, duration: Double)?
-    private static let nominal = 10.0
+    /// Tagged segment length (EXTINF): 10 s from the local server, ~9.75 s from the modern API (LiveLoader).
+    private var nominal = 10.0
     private var live = [Chunk]()
     private var tracks = [URL: Track]()
 
@@ -46,7 +47,11 @@ final class SpectrumTimeline: @unchecked Sendable {
         let tag = "#EXT-X-PROGRAM-DATE-TIME:"
         var dates = [String: Date]()
         var date: Date?
+        var tagged: Double?
         for line in text.split(whereSeparator: \.isNewline) {
+            if tagged == nil, line.hasPrefix("#EXTINF:") {
+                tagged = Double(line.dropFirst("#EXTINF:".count).prefix { $0 != "," })
+            }
             if line.hasPrefix(tag) {
                 date = f.date(from: String(line.dropFirst(tag.count)))
             } else if !line.hasPrefix("#"), let d = date, let name = line.split(separator: "/").last {
@@ -57,6 +62,7 @@ final class SpectrumTimeline: @unchecked Sendable {
         guard let channel = dates.keys.first.map(Self.channel) else { return }
         lock.lock()
         if channel != liveChannel { anchor = nil; startSlot = nil; cursor = nil }
+        if let tagged, tagged > 0 { nominal = tagged }
         if anchor == nil, let first = dates.min(by: { $0.value < $1.value }), let seq = Self.sequence(first.key) {
             anchor = (seq, first.value)
         }
@@ -64,7 +70,7 @@ final class SpectrumTimeline: @unchecked Sendable {
             segmentDates = [:]
             for name in dates.keys {
                 guard let seq = Self.sequence(name) else { continue }
-                segmentDates[name] = anchor.date.addingTimeInterval(Double(seq - anchor.sequence) * Self.nominal)
+                segmentDates[name] = anchor.date.addingTimeInterval(Double(seq - anchor.sequence) * nominal)
             }
         }
         realDates = dates
@@ -108,14 +114,14 @@ final class SpectrumTimeline: @unchecked Sendable {
         lock.lock()
         defer { lock.unlock() }
         guard let anchor, time >= 0 else { return nil }
-        let start = startSlot ?? Int(time / Self.nominal)
+        let start = startSlot ?? Int(time / nominal)
         startSlot = start
         // Resume from the segment found last time instead of walking from where playback started
         // every frame. That walk stopped after 60 segments, so the bars died ~10 minutes into a channel.
         if let c = cursor, time >= c.time {} else {
             var slot = start
-            if time < Double(slot) * Self.nominal { slot = Int(time / Self.nominal) }   // seek back: tagged 10 s grid
-            cursor = (anchor.sequence + slot, Double(slot) * Self.nominal, 9.75)
+            if time < Double(slot) * nominal { slot = Int(time / nominal) }   // seek back: tagged 10 s grid
+            cursor = (anchor.sequence + slot, Double(slot) * nominal, 9.75)
         }
         guard var (sequence, segStart, lastDuration) = cursor else { return nil }
         while true {
@@ -140,8 +146,8 @@ final class SpectrumTimeline: @unchecked Sendable {
         defer { lock.unlock() }
         for (name, start) in segmentDates {
             let t = date.timeIntervalSince(start)
-            guard t >= 0, t < Self.nominal, let real = realDates[name] else { continue }
-            return real.addingTimeInterval(t * 0.975)   // a 10 s slot holds ~9.75 s of audio
+            guard t >= 0, t < nominal, let real = realDates[name] else { continue }
+            return real.addingTimeInterval(t * min(1, 9.7524 / nominal))   // a 10 s slot holds ~9.75 s of audio
         }
         return nil
     }
