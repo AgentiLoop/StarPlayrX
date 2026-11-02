@@ -763,17 +763,17 @@ final class ArtCache {
             let i = (y * w + x) * 4
             return (Int(px[i]), Int(px[i + 1]), Int(px[i + 2]))
         }
-        let tolerance = 28   // JPEG ringing and dithering within a flat colour
-        func near(_ a: RGB, _ b: RGB) -> Bool {
+        // JPEG ringing and dithering within a flat colour; opposite sides of a frame drift further.
+        func near(_ a: RGB, _ b: RGB, tolerance: Int = 28) -> Bool {
             abs(a.0 - b.0) <= tolerance && abs(a.1 - b.1) <= tolerance && abs(a.2 - b.2) <= tolerance
         }
         // How deep the frame is on one side: lines (rows or columns) from the edge inward, and the
         // colour of the outermost line. A frame is a band of one flat colour, which may carry a
-        // title or logo (a sliver of other pixels) and may be followed by a thin band of another
-        // flat colour (double border, hairline). It ends at a line that is mostly another colour:
-        // the picture's edge. Depth 0 when it isn't a frame: the band gave way gradually (a horse
-        // against a flat background of the same colour); `limit` when it never ended (a flat
-        // background all the way in).
+        // title or logo (a sliver of other pixels, or a bold title with the band's colour back
+        // after it) and may be followed by a thin band of another flat colour (double border,
+        // hairline). It ends at a line that is mostly another colour: the picture's edge. Depth 0
+        // when it isn't a frame: the band gave way gradually (a horse against a flat background of
+        // the same colour); `limit` when it never ended (a flat background all the way in).
         func inset(upTo limit: Int, _ line: (Int) -> [RGB]) -> (depth: Int, color: RGB) {
             let count = line(0).count
             let allowed = count / 100        // stray pixels a flat line may have
@@ -793,17 +793,27 @@ final class ArtCache {
                 let flat = off(l, m) <= allowed
                 if let e = edge {
                     // Just past the band: a flat line of another colour within 2 lines (JPEG blurs
-                    // the transition) is an inner border; the same colour again means a hairline
-                    // sat in the band. Otherwise the picture starts at the edge.
-                    guard flat, n - e <= 2 else { return (e, outer) }
-                    if !near(m, ref) { ref = m; bandStart = e }
-                    edge = nil
-                    lastFlat = n
+                    // the transition) is an inner border; the band's own colour again within 2
+                    // thins means a title or hairline sat in the band. Otherwise the picture
+                    // starts at the edge.
+                    if flat, near(m, ref) {
+                        edge = nil
+                        lastFlat = n
+                    } else if flat, n - e <= 2 {
+                        ref = m; bandStart = e
+                        edge = nil
+                        lastFlat = n
+                    } else if n - e >= 2 * thin {
+                        return (e, outer)
+                    }
+                } else if bandStart > 0, n - bandStart > thin {
+                    return (bandStart, outer)   // an inner band this deep is the picture (a flat sky)
                 } else if flat, near(m, ref) {
                     lastFlat = n
                 } else if off(l, ref) * 2 >= count {
-                    if n - lastFlat > 3 { return (0, outer) }   // gave way gradually: a subject, not a frame
-                    if bandStart > 0, n - bandStart > thin { return (bandStart, outer) }   // the inner band was the picture
+                    // Gave way gradually: a subject against a flat background, not a frame. Inside
+                    // an inner band that means the band was the picture.
+                    if n - lastFlat > 3 { return (bandStart, outer) }
                     edge = n
                 }
                 n += 1
@@ -811,24 +821,30 @@ final class ArtCache {
             if let e = edge { return (e, outer) }
             return (bandStart > 0 ? bandStart : limit, outer)
         }
-        // A pair of opposite sides is a frame when both are frames of the same colour, about as
-        // deep (a letterbox is symmetric; a title in the frame may shift one side a little), and
-        // neither ran into the limit. Each side loses its depth plus one line, where the frame's
-        // edge bleeds into the picture.
-        func frame(_ a: (depth: Int, color: RGB), _ b: (depth: Int, color: RGB), limit: Int) -> (Int, Int) {
-            guard a.depth > 0, b.depth > 0, a.depth < limit, b.depth < limit,
-                  abs(a.depth - b.depth) <= max(3, limit / 5), near(a.color, b.color) else { return (0, 0) }
-            return (a.depth + 1, b.depth + 1)
+        // A pair of opposite sides is a frame when both are bands of the same colour that reached
+        // the picture and are about as deep. On its own (a letterbox) the pair is nearly symmetric;
+        // when all four sides are bands of one colour it is a full frame, and the side carrying the
+        // title may be a good deal deeper. Each side loses its depth plus one line, where the
+        // frame's edge bleeds into the picture.
+        typealias Side = (depth: Int, color: RGB)
+        func band(_ a: Side, _ b: Side, limit: Int) -> Bool {
+            a.depth > 0 && b.depth > 0 && a.depth < limit && b.depth < limit && near(a.color, b.color, tolerance: 40)
         }
+        func symmetric(_ a: Side, _ b: Side, within slack: Int) -> Bool { abs(a.depth - b.depth) <= max(3, slack) }
         // Letterboxed 2.35:1 art has bars of 29% a side, so look up to 30% in. Each line is read
         // over the middle 70% of its length only, so the frame along the other two sides (and a
         // hairline inside it) doesn't make the lines of an inner band look busy.
         let limitY = h * 3 / 10, limitX = w * 3 / 10
         let xs = (w * 3 / 20)..<(w * 17 / 20), ys = (h * 3 / 20)..<(h * 17 / 20)
-        let (top, bottom) = frame(inset(upTo: limitY) { y in xs.map { pixel($0, y) } },
-                                  inset(upTo: limitY) { y in xs.map { pixel($0, h - 1 - y) } }, limit: limitY)
-        let (left, right) = frame(inset(upTo: limitX) { x in ys.map { pixel(x, $0) } },
-                                  inset(upTo: limitX) { x in ys.map { pixel(w - 1 - x, $0) } }, limit: limitX)
+        let t = inset(upTo: limitY) { y in xs.map { pixel($0, y) } }
+        let b = inset(upTo: limitY) { y in xs.map { pixel($0, h - 1 - y) } }
+        let l = inset(upTo: limitX) { x in ys.map { pixel(x, $0) } }
+        let r = inset(upTo: limitX) { x in ys.map { pixel(w - 1 - x, $0) } }
+        let rows = band(t, b, limit: limitY), cols = band(l, r, limit: limitX)
+        let full = rows && cols && near(t.color, l.color, tolerance: 40)
+            && symmetric(t, b, within: limitY / 3) && symmetric(l, r, within: limitX / 3)
+        let (top, bottom) = full || (rows && symmetric(t, b, within: limitY / 5)) ? (t.depth + 1, b.depth + 1) : (0, 0)
+        let (left, right) = full || (cols && symmetric(l, r, within: limitX / 5)) ? (l.depth + 1, r.depth + 1) : (0, 0)
         guard top + bottom + left + right > 0 else { return image }
         let rect = CGRect(x: left, y: top, width: w - left - right, height: h - top - bottom)
         return image.cropping(to: rect) ?? image
