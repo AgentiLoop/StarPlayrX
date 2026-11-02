@@ -389,7 +389,7 @@ final class SpectrumRenderer: NSObject, MTKViewDelegate {
         let blobX = viz.previous.blobX + (viz.blobX - viz.previous.blobX) * Double(f)
         // The "lava": a blurred blob of the colour opposite the middle bar's, swelling on the beat.
         var blob = blobColour
-        blob.w = Float(0.075 + 0.175 * pulse)
+        blob.w = Float(0.04 + 0.085 * pulse)   // about half the old 0.075 + 0.175 × pulse: a softer glow behind the bars
         var globals = Globals(
             view: [Float(view.bounds.width) - 2 * Self.pad, Self.barHeight, Float(view.drawableSize.width / view.bounds.width), Self.pad],
             state: [Float(pulse), light ? 1 : 0, Float(bubbles), Float(Date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 3600))],
