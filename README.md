@@ -14,9 +14,9 @@ StarPlayrX was built for visually impaired listeners, a group of paying subscrib
 | --- | --- |
 | [`StarPlayrXMac/`](StarPlayrXMac) | **New:** a native SwiftUI menu bar app for macOS |
 | [`StarPlayrX/`](StarPlayrX) | The original Mac Catalyst / iOS / iPadOS app (UIKit, Swift with some Objective-C) |
-| [`StarPlayrRadioKit/`](StarPlayrRadioKit) | Swift package with the SiriusXM API layer and the local HLS streaming server |
-| [`SwifterLite/`](SwifterLite) | Small embedded HTTP server used by StarPlayrRadioKit |
-| `SPX.xcworkspace` | Xcode workspace for the Catalyst app and its packages |
+| `StarPlayrRadioKit/` | SiriusXM API layer and the local HLS streaming server. Its source is copied into each app ([Mac](StarPlayrXMac/Sources/StarPlayrRadioKit), [iOS](StarPlayrX/StarPlayrX/StarPlayrX/StarPlayrX/StarPlayrRadioKit)), not used as a Swift package |
+| `SwifterLite/` | Small embedded HTTP server used by StarPlayrRadioKit, copied into each app the same way ([Mac](StarPlayrXMac/Sources/SwifterLite), [iOS](StarPlayrX/StarPlayrX/StarPlayrX/StarPlayrX/SwifterLite)) |
+| `SPX.xcworkspace` | Xcode workspace for the Catalyst app |
 
 ## 🎛️ StarPlayrX for Mac (menu bar app)
 
@@ -93,9 +93,8 @@ You need Xcode 16 or later.
 
 **In Xcode:**
 1. Open `StarPlayrXMac/StarPlayrXMac.xcodeproj`
-2. Wait for Swift Package Manager to resolve packages
-3. Pick the `StarPlayrXMac` scheme and press **⌘R**
-4. Look for 📻 in the menu bar
+2. Pick the `StarPlayrXMac` scheme and press **⌘R**
+3. Look for 📻 in the menu bar
 
 To sign with your own account, change the team under **Signing & Capabilities**, or edit `DEVELOPMENT_TEAM` in `project.yml`.
 
