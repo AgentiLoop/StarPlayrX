@@ -203,7 +203,7 @@ struct MenuView: View {
     }
 
     /// "v1.1.8" from the bundle; Debug builds add "-dev".
-    private static let version: String = {
+    static let version: String = {
         let v = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "?"
         #if DEBUG
         return "v\(v)-dev"

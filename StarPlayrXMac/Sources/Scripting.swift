@@ -21,7 +21,9 @@ extension AppDelegate {
         "spChannelNumbers", "spXtraChannelNumbers", "spLiveChannelNumbers",
         "spMenuVisible", "spMenuDetached", "spMenuShaded",
         "spMenuPosition", "spMenuSize", "spSearchText", "spVisibleChannelNumbers",
-        "spScrollPosition", "spTopVisibleChannel"]
+        "spScrollPosition", "spTopVisibleChannel",
+        "spVersion", "spChannelsLoaded", "spAudioStarted", "spCurrentChannelCategory", "spCategories",
+        "spShownArtwork", "spCurrentChannelLogo", "spShowArt", "spBubbleMode", "spModernLive", "spModernSignIn"]
 
     func application(_ sender: NSApplication, delegateHandlesKey key: String) -> Bool {
         Self.scriptingKeys.contains(key)
@@ -108,6 +110,36 @@ extension AppDelegate {
     }
 
     @objc var spTopVisibleChannel: String { menu.topVisibleChannel?.id ?? "" }
+    @objc var spVersion: String { String(MenuView.version.dropFirst()) }   // "v1.1.13-dev" -> "1.1.13-dev"
+    @objc var spChannelsLoaded: Bool { radio.channelsLoaded }
+    @objc var spAudioStarted: Bool { radio.audioStarted }
+    @objc var spCurrentChannelCategory: String { radio.current?.category ?? "" }
+    @objc var spCategories: [String] {
+        var seen = Set<String>()
+        return radio.channels.map(\.category).filter { !$0.isEmpty && seen.insert($0).inserted }
+    }
+    @objc var spShownArtwork: String { radio.current.flatMap { radio.displayed($0.id) }?.image ?? "" }
+    @objc var spCurrentChannelLogo: String { radio.current?.imageURL ?? "" }
+    @objc var spShowArt: Bool {
+        get { radio.current.map { radio.showArtChannels.contains($0.id) } ?? false }
+        set { if let id = radio.current?.id, newValue != spShowArt { radio.toggleShowArt(id) } }
+    }
+    /// Four-char enumerator codes SPB0 / SPB1 / SPB2 = bubbleStage 0 / 1 / 2 (Visualizer's @AppStorage).
+    @objc var spBubbleMode: NSNumber {
+        get { NSNumber(value: SPXCommand.code("SPB\(Self.bubbleStage)")) }
+        set {
+            for i in 0..<3 where SPXCommand.code("SPB\(i)") == newValue.uint32Value { Self.bubbleStage = i }
+        }
+    }
+    static var bubbleStage: Int {
+        get { UserDefaults.standard.object(forKey: "bubbleStage") as? Int ?? 1 }
+        set { UserDefaults.standard.set(newValue % 3, forKey: "bubbleStage") }
+    }
+    @objc var spModernLive: Bool {
+        get { radio.modernLive || radio.modernLogin }
+        set { if !radio.modernLogin, newValue != radio.modernLive { radio.setModernLive(newValue) } }
+    }
+    @objc var spModernSignIn: Bool { radio.modernLogin }
 }
 
 /// A script error with a message (raised to AppleScript as error -10000).
@@ -142,16 +174,20 @@ final class SPXCommand: NSScriptCommand {
         case "sign in":
             let user = evaluatedArguments?["user"] as? String
             let pass = evaluatedArguments?["password"] as? String
+            let modern = evaluatedArguments?["modern"] as? Bool
             guard let creds = user.map({ ($0, pass ?? "") }) ?? Keychain.load().map({ ($0.user, $0.pass) }) else {
                 return fail("No user given and no credentials in the Keychain.")
             }
             return later {
-                guard await radio.login(user: creds.0, pass: creds.1) else { throw ScriptFailure(radio.status) }
+                guard await radio.login(user: creds.0, pass: creds.1, modern: modern) else { throw ScriptFailure(radio.status) }
                 try await Self.ready()
                 return true
             }
         case "sign out":
             radio.signOut()
+        case "wait until ready":
+            let wait = (evaluatedArguments?["wait"] as? Int) ?? 60
+            return later { try await Self.ready(timeout: TimeInterval(wait)); return true }
         case "refresh now playing":
             return later { try await Self.ready(); await radio.updatePDT(); return nil }
         case "now playing":
@@ -163,8 +199,33 @@ final class SPXCommand: NSScriptCommand {
                 return [channel.id, channel.name, channel.category, channel.xtraID != nil ? "xtra" : "live",
                         np?.artist ?? "", np?.song ?? ""].joined(separator: "\t")
             }
+        case "channel name":
+            return whenReady { radio.channels.first { $0.id == arg }?.name ?? "" }
+        case "channel logo":
+            return whenReady { radio.channels.first { $0.id == arg }?.imageURL ?? "" }
+        case "artwork of":
+            return whenReady { radio.displayed(arg)?.image ?? "" }
+        case "channels in category":
+            return whenReady { radio.channels.filter { $0.category.caseInsensitiveCompare(arg) == .orderedSame }.map(\.id) }
         case "search channels":
             return whenReady { Channel.filter(radio.channels, nowPlaying: radio.nowPlaying, search: arg).map(\.id) }
+        case "next channel", "previous channel":
+            // Step through the list as the panel shows it (search text applied), wrapping at the ends.
+            let step = commandDescription.commandName == "next channel" ? 1 : -1
+            let list = Channel.filter(radio.channels, nowPlaying: radio.nowPlaying, search: menu.search)
+            guard let current = radio.current, let i = list.firstIndex(where: { $0.id == current.id }), !list.isEmpty else { return "" }
+            let target = list[(i + step + list.count) % list.count]
+            return later {
+                try await Self.ready()
+                try await Self.play(target)
+                return target.id
+            }
+        case "toggle show art":
+            guard let id = radio.current?.id else { return false }
+            return radio.toggleShowArt(id)
+        case "toggle bubbles":
+            AppDelegate.bubbleStage = (AppDelegate.bubbleStage + 1) % 3
+            return NSNumber(value: Self.code("SPB\(AppDelegate.bubbleStage)"))
         case "select channel":
             // A click on the row: only channels the list is showing (after the search field).
             return playWhenReady { menu.visibleChannels.first { $0.id == arg } }
@@ -215,6 +276,8 @@ final class SPXCommand: NSScriptCommand {
         case "detach menu":
             if !(menu.panel.isVisible) { menu.statusItemClicked() }
             menu.detach()
+        case "reattach menu":
+            if menu.detached { menu.hide(); menu.statusItemClicked() }
         default:
             return fail("Unknown command \(commandDescription.commandName).")
         }

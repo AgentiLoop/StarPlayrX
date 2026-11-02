@@ -86,6 +86,40 @@
             <property name="top visible channel" code="SPtv" type="text" access="r" description="Number of the channel row at the top of the scrolled list (empty when the list isn't on screen).">
                 <cocoa key="spTopVisibleChannel"/>
             </property>
+            <property name="version" code="SPvr" type="text" access="r" description="App version, e.g. &quot;1.1.13&quot; (&quot;1.1.13-dev&quot; in Debug builds).">
+                <cocoa key="spVersion"/>
+            </property>
+            <property name="channels loaded" code="SPcd" type="boolean" access="r" description="Whether every channel (Xtra included) has finished loading after sign in. Commands like play channel wait for this.">
+                <cocoa key="spChannelsLoaded"/>
+            </property>
+            <property name="audio started" code="SPau" type="boolean" access="r" description="Whether the current channel's player is really producing audio (not just buffering).">
+                <cocoa key="spAudioStarted"/>
+            </property>
+            <property name="current channel category" code="SPcg" type="text" access="r" description="Category (genre) of the current channel.">
+                <cocoa key="spCurrentChannelCategory"/>
+            </property>
+            <property name="categories" code="SPcs" access="r" description="Every channel category, in list order without repeats.">
+                <type type="text" list="yes"/>
+                <cocoa key="spCategories"/>
+            </property>
+            <property name="shown artwork" code="SPsw" type="text" access="r" description="URL of the artwork the menu shows for the current channel (album art, or the show's art if you chose it); empty when the channel logo is drawn.">
+                <cocoa key="spShownArtwork"/>
+            </property>
+            <property name="current channel logo" code="SPlg" type="text" access="r" description="URL of the current channel's logo tile.">
+                <cocoa key="spCurrentChannelLogo"/>
+            </property>
+            <property name="show art" code="SPwa" type="boolean" description="Whether the current channel shows the show's art instead of its logo when the song has no art (clicking the artwork switches it). Setting it to true does nothing on channels with no show art.">
+                <cocoa key="spShowArt"/>
+            </property>
+            <property name="bubble mode" code="SPbm" type="bubble mode" description="Bubbles in the equalizer bars (clicking the bars cycles bubbles → soft bubbles → no bubbles). Remembered.">
+                <cocoa key="spBubbleMode"/>
+            </property>
+            <property name="modern live" code="SPml" type="boolean" description="Whether live channels play through the modern SiriusXM API (the switch under the version number). Setting it retunes the current live channel. Always true after a modern sign in.">
+                <cocoa key="spModernLive"/>
+            </property>
+            <property name="modern sign in" code="SPmg" type="boolean" access="r" description="Whether the session was signed in through the modern API only (the sign-in screen checkbox). Pass &quot;modern&quot; to sign in to change it.">
+                <cocoa key="spModernSignIn"/>
+            </property>
         </class-extension>
 
         <!-- Referenced by the Standard Suite's save command; StarPlayrX has no documents to save. -->
@@ -97,6 +131,11 @@
             <enumerator name="upper right" code="SPUR"/>
             <enumerator name="lower left" code="SPLL"/>
             <enumerator name="lower right" code="SPLR"/>
+        </enumeration>
+        <enumeration name="bubble mode" code="SPbb">
+            <enumerator name="bubbles" code="SPB0" description="Full lava-lamp bubbles."/>
+            <enumerator name="soft bubbles" code="SPB1" description="Fainter bubbles (the default)."/>
+            <enumerator name="no bubbles" code="SPB2" description="Plain bars."/>
         </enumeration>
 
         <command name="select channel" code="SPrxSelc" description="Click a row in the channel list: plays it if the list is showing it (see search text) and waits until it is really playing, like play channel. Returns false otherwise.">
@@ -161,11 +200,22 @@
             <parameter name="password" code="SPpw" type="text" optional="yes" description="Password.">
                 <cocoa key="password"/>
             </parameter>
+            <parameter name="modern" code="SPmo" type="boolean" optional="yes" description="Sign in through the modern SiriusXM API only (the sign-in screen checkbox): no legacy session, every channel from the modern API. Remembered; omit to keep the last choice.">
+                <cocoa key="modern"/>
+            </parameter>
             <result type="boolean"/>
         </command>
 
         <command name="sign out" code="SPrxSgOt" description="Sign out and forget the Keychain credentials.">
             <cocoa class="SPXCommand"/>
+        </command>
+
+        <command name="wait until ready" code="SPrxWait" description="Wait until StarPlayrX is signed in with every channel loaded (e.g. right after launch while the Keychain sign in runs). Returns true; raises an error if that doesn't happen in time.">
+            <cocoa class="SPXCommand"/>
+            <parameter name="waiting up to" code="SPto" type="integer" optional="yes" description="Seconds to wait (default 60).">
+                <cocoa key="wait"/>
+            </parameter>
+            <result type="boolean"/>
         </command>
 
         <command name="refresh now playing" code="SPrxRfsh" description="Reload the PDT (what every channel is playing) now instead of waiting for the 15 second timer.">
@@ -182,6 +232,32 @@
             <cocoa class="SPXCommand"/>
             <direct-parameter type="text" description="Channel number."/>
             <result type="text"/>
+        </command>
+
+        <command name="channel name" code="SPrxName" description="Name of a channel. Empty when there is no such channel.">
+            <cocoa class="SPXCommand"/>
+            <direct-parameter type="text" description="Channel number."/>
+            <result type="text"/>
+        </command>
+
+        <command name="channel logo" code="SPrxLogo" description="URL of a channel's logo tile. Empty when there is no such channel.">
+            <cocoa class="SPXCommand"/>
+            <direct-parameter type="text" description="Channel number."/>
+            <result type="text"/>
+        </command>
+
+        <command name="artwork of" code="SPrxArtw" description="URL of the artwork the list shows for a channel (album art, or the show's art if you chose it for that channel). Empty when the channel logo is drawn.">
+            <cocoa class="SPXCommand"/>
+            <direct-parameter type="text" description="Channel number."/>
+            <result type="text"/>
+        </command>
+
+        <command name="channels in category" code="SPrxCatg" description="Numbers of the channels in a category (see categories), in list order.">
+            <cocoa class="SPXCommand"/>
+            <direct-parameter type="text" description="Category name, e.g. &quot;Rock&quot;."/>
+            <result>
+                <type type="text" list="yes"/>
+            </result>
         </command>
 
         <command name="search channels" code="SPrxSrch" description="Channel numbers matching the menu's search field logic (number, name, category, artist, song, &quot;Music Xtra&quot;).">
@@ -201,6 +277,26 @@
             <result type="text"/>
         </command>
 
+        <command name="next channel" code="SPrxNext" description="Play the next channel in the list (as the list is filtered by search text; wraps around). Waits until it really plays. Returns the new channel number, or empty if there is no current channel.">
+            <cocoa class="SPXCommand"/>
+            <result type="text"/>
+        </command>
+
+        <command name="previous channel" code="SPrxPrev" description="Play the previous channel in the list (as the list is filtered by search text; wraps around). Waits until it really plays. Returns the new channel number, or empty if there is no current channel.">
+            <cocoa class="SPXCommand"/>
+            <result type="text"/>
+        </command>
+
+        <command name="toggle show art" code="SPrxShAr" description="Click the artwork: switch the current channel between its logo and the show's art (only when the song has no art of its own). Returns false when there is nothing to switch to.">
+            <cocoa class="SPXCommand"/>
+            <result type="boolean"/>
+        </command>
+
+        <command name="toggle bubbles" code="SPrxBubl" description="Click the equalizer bars: bubbles → soft bubbles → no bubbles → bubbles. Returns the new bubble mode.">
+            <cocoa class="SPXCommand"/>
+            <result type="bubble mode"/>
+        </command>
+
         <command name="show menu" code="SPrxShow" description="Open the panel under the menu bar.">
             <cocoa class="SPXCommand"/>
         </command>
@@ -210,6 +306,10 @@
         </command>
 
         <command name="detach menu" code="SPrxDtch" description="Tear the panel off the menu bar (it stays where it is).">
+            <cocoa class="SPXCommand"/>
+        </command>
+
+        <command name="reattach menu" code="SPrxAtch" description="Put a torn-off panel back under the menu bar.">
             <cocoa class="SPXCommand"/>
         </command>
     </suite>
