@@ -15,7 +15,8 @@ final class SpectrumTimeline: @unchecked Sendable {
 
     private let lock = NSLock()
     private let queue = DispatchQueue(label: "StarPlayrX.spectrum", qos: .utility)
-    private var segmentDates = [String: Date]()   // live segment file name -> EXT-X-PROGRAM-DATE-TIME
+    private var segmentDates = [String: Date]()   // live segment file name -> start on the player's 10 s grid
+    private var realDates = [String: Date]()      // live segment file name -> real EXT-X-PROGRAM-DATE-TIME
     private var liveChannel = ""
     /// The player dates the stream from the first playlist it loads, counting every segment as its
     /// tagged 10 s, but segments really hold ~9.75 s, so its date drifts ~8 s ahead of the real PDT by
@@ -60,6 +61,7 @@ final class SpectrumTimeline: @unchecked Sendable {
                 segmentDates[name] = anchor.date.addingTimeInterval(Double(seq - anchor.sequence) * Self.nominal)
             }
         }
+        realDates = dates
         liveChannel = channel
         live.removeAll { $0.channel != channel }
         lock.unlock()
@@ -100,6 +102,18 @@ final class SpectrumTimeline: @unchecked Sendable {
             guard t >= 0, t < Self.nominal else { continue }
             let k = Int(t / Self.nominal * Double(c.frames.count))
             if k < c.frames.count { return c.frames[k] }
+        }
+        return nil
+    }
+
+    /// The real on-air time (stream PDT) of the player's current date, which runs ahead of it.
+    func realDate(at date: Date) -> Date? {
+        lock.lock()
+        defer { lock.unlock() }
+        for (name, start) in segmentDates {
+            let t = date.timeIntervalSince(start)
+            guard t >= 0, t < Self.nominal, let real = realDates[name] else { continue }
+            return real.addingTimeInterval(t * 0.975)   // a 10 s slot holds ~9.75 s of audio
         }
         return nil
     }

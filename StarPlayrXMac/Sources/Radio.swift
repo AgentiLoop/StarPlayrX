@@ -357,7 +357,13 @@ final class Radio: ObservableObject {
 
     func updatePDT() async {
         // One source for every live row, tuned or not: the newer API (lookAround).
-        if let live = try? await xtra.liveNowPlaying() {
+        // How far the audio runs behind on-air time: the stream's real PDT at the playing position.
+        // (The segments are only published ~5 s after air, and the player buffers a little more.)
+        if current?.xtraID == nil, player.timeControlStatus == .playing, let at = player.currentItem?.currentDate(),
+           let real = SpectrumTimeline.shared.realDate(at: at) {
+            streamLag = max(0, Date().timeIntervalSince(real))
+        }
+        if let live = try? await xtra.liveNowPlaying(behind: streamLag) {
             for (number, id) in liveIDs {
                 guard let la = live[id] else { continue }
                 lookAround[number] = Self.keepingArt(la, of: lookAround[number])
@@ -367,6 +373,7 @@ final class Radio: ObservableObject {
         updateNowPlayingInfo()
         Task { await refreshXtraNowPlaying() }
     }
+    private var streamLag: TimeInterval = 6   // measured above; ~6 s until the first measurement
     private var lookAround = [String: NowPlaying]()   // last lookAround cut per live channel number
 
     /// Xtra channels have no PDT feed, so ask each idle one what it would play if tuned now.
