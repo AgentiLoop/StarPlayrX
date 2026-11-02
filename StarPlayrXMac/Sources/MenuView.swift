@@ -27,6 +27,7 @@ extension Channel {
 struct MenuView: View {
     @EnvironmentObject var radio: Radio
     @ObservedObject private var menu = MenuController.shared
+    @State private var showModernSwitch = false
 
     private var filtered: [Channel] {
         Channel.filter(radio.channels, nowPlaying: radio.nowPlaying, search: menu.search)
@@ -216,6 +217,14 @@ struct MenuView: View {
         HStack {
             Text(Self.version).font(.caption).foregroundStyle(.tertiary)
                 .offset(y: 2)
+                .contentShape(Rectangle())
+                .onTapGesture { showModernSwitch.toggle() }
+                .popover(isPresented: $showModernSwitch, arrowEdge: .bottom) {
+                    Toggle("Modern API for live channels", isOn: Binding(
+                        get: { radio.modernLive }, set: { radio.setModernLive($0) }))
+                        .toggleStyle(.switch)
+                        .padding(12)
+                }
             Spacer()
             if radio.isLoggedIn {
                 Button("Sign Out") { radio.signOut() }

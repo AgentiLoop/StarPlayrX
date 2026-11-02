@@ -62,6 +62,8 @@ final class Radio: ObservableObject {
         return true
     }
     @Published var localeIsCA = UserDefaults.standard.bool(forKey: "localeIsCA")
+    /// Live channels through the modern API (as Xtra) instead of the legacy local server. Click the version number to switch.
+    @Published var modernLive = UserDefaults.standard.object(forKey: "modernLive") as? Bool ?? true
     /// True once sign-in has finished loading every channel, Xtra included (or Xtra failed).
     @Published var channelsLoaded = false
 
@@ -211,6 +213,11 @@ final class Radio: ObservableObject {
         status = "Not signed in"
     }
 
+    func setModernLive(_ on: Bool) {
+        modernLive = on
+        UserDefaults.standard.set(on, forKey: "modernLive")
+        if isPlaying, let current, current.xtraID == nil { play(current) }   // retune through the other path
+    }
     func setRegion(ca: Bool) {
         localeIsCA = ca
         UserDefaults.standard.set(ca, forKey: "localeIsCA")
@@ -236,8 +243,7 @@ final class Radio: ObservableObject {
             SpectrumTimeline.shared.resetLive()
             let item: AVPlayerItem
             // EXPERIMENT: tune live channels through the modern API (as Xtra does); legacy local server as fallback.
-            // `defaults write com.starplayrx.mac modernLive -bool NO` turns it off.
-            if UserDefaults.standard.object(forKey: "modernLive") as? Bool ?? true, let liveID = liveIDs[channel.id],
+            if modernLive, let liveID = liveIDs[channel.id],
                let live = try? await xtra.liveStream(channelID: liveID) {
                 // Playlists and the AES key go through LiveLoader; the signed segment URLs load directly.
                 let (asset, loader) = LiveLoader.asset(for: live.url, client: xtra)
