@@ -333,11 +333,15 @@ private struct ChannelRow: View, Equatable {
                     .scaledToFit()
                     .frame(width: 16, height: 16)
                     .foregroundStyle(Color.secondary)
-                    // On the selected row a solid star gets a thin white outline.
-                    .shadow(color: isCurrent && isStarred ? .white : .clear, radius: 0, x: 1, y: 0)
-                    .shadow(color: isCurrent && isStarred ? .white : .clear, radius: 0, x: -1, y: 0)
-                    .shadow(color: isCurrent && isStarred ? .white : .clear, radius: 0, x: 0, y: 1)
-                    .shadow(color: isCurrent && isStarred ? .white : .clear, radius: 0, x: 0, y: -1)
+                    // On the selected row a solid star gets a thin, pointy 50% gray outline (8 directions keeps the tips sharp).
+                    .shadow(color: isCurrent && isStarred ? Color.gray.opacity(0.5) : .clear, radius: 0, x: 1, y: 0)
+                    .shadow(color: isCurrent && isStarred ? Color.gray.opacity(0.5) : .clear, radius: 0, x: -1, y: 0)
+                    .shadow(color: isCurrent && isStarred ? Color.gray.opacity(0.5) : .clear, radius: 0, x: 0, y: 1)
+                    .shadow(color: isCurrent && isStarred ? Color.gray.opacity(0.5) : .clear, radius: 0, x: 0, y: -1)
+                    .shadow(color: isCurrent && isStarred ? Color.gray.opacity(0.5) : .clear, radius: 0, x: 1, y: 1)
+                    .shadow(color: isCurrent && isStarred ? Color.gray.opacity(0.5) : .clear, radius: 0, x: -1, y: 1)
+                    .shadow(color: isCurrent && isStarred ? Color.gray.opacity(0.5) : .clear, radius: 0, x: 1, y: -1)
+                    .shadow(color: isCurrent && isStarred ? Color.gray.opacity(0.5) : .clear, radius: 0, x: -1, y: -1)
             }
             .buttonStyle(.plain)
             .help(isStarred ? "Remove from stars" : "Add to stars")
