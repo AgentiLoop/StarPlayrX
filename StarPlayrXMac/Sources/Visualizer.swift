@@ -240,16 +240,14 @@ struct SpectrumView: View {
         .animation(.linear(duration: 1.0 / 60), value: viz.levels)
         .background(WallpaperProbe(luminance: $wallpaper))
         .overlay {
-            GeometryReader { geo in
+            GeometryReader { _ in
                 if let stageLabel {
-                    // The pointer's tip sits on the click (centred on it, nudged in at the ends so
-                    // it's never cut off); the bubble grows up from there.
-                    let half = ChatBubble.width(stageLabel) / 2
-                    let x = min(max(labelX, half), max(half, geo.size.width - half))
+                    // The pointer's tip sits exactly on the click; the bubble grows up from there
+                    // (it may run past the window's edge).
                     ChatBubble(text: stageLabel)
                         .fixedSize()
                         .frame(width: 0, height: 0, alignment: .bottom)
-                        .position(x: x, y: labelY)
+                        .position(x: labelX, y: labelY)
                         .transition(.opacity.combined(with: .scale(scale: 0.85)))
                 }
             }
@@ -278,11 +276,6 @@ struct SpectrumView: View {
 private struct ChatBubble: View {
     let text: String
 
-    static let font = NSFont.systemFont(ofSize: 11, weight: .semibold)
-    /// Width of the capsule for `text`, used to keep the bubble inside the bar row.
-    static func width(_ text: String) -> CGFloat {
-        ceil((text as NSString).size(withAttributes: [.font: font]).width) + 16
-    }
 
     var body: some View {
         VStack(spacing: 0) {
