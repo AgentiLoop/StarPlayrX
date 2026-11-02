@@ -324,6 +324,7 @@ private struct ChannelRow: View, Equatable {
         }
         .padding(.vertical, 4)
         .padding(.horizontal, 4)
+        .padding(.trailing, 2)   // a little more room between the star and the squircle's edge
         // The playing channel's row sits on a Liquid Glass squircle (translucent tint before macOS 26):
         // white-based in dark mode, light gray in light mode.
         .background {
@@ -340,7 +341,7 @@ private struct ChannelRow: View, Equatable {
         // extends 12pt past the clipped content area on the right (scroll bar at the window edge),
         // so the trailing inset has to cover that plus the same 4pt margin as the leading side.
         .padding(.leading, 4)
-        .padding(.trailing, 18)
+        .padding(.trailing, 16)
         .contentShape(Rectangle())
     }
 
