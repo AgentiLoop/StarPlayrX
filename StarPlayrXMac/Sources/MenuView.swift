@@ -88,7 +88,7 @@ struct MenuView: View {
             .accessibilityHidden(shaded)
         }
         .padding(12)
-        .frame(width: 340)
+        .frame(width: 360)   // room for the star beside the play button
     }
 
     @State private var dragMouseStart: NSPoint?
@@ -312,9 +312,15 @@ private struct ChannelRow: View, Equatable {
                 MarqueeText(text: line, font: .caption, secondary: true).id(line)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            if isStarred {
-                Image(systemName: "star.fill").font(.caption).foregroundStyle(.yellow)
+            // Click the star to put the channel in the presets or take it out (the row itself plays it).
+            Button { Radio.shared.togglePreset(channel.id) } label: {
+                Image(systemName: isStarred ? "star.fill" : "star")
+                    .font(.caption)
+                    .foregroundStyle(isStarred ? Color.yellow : Color.secondary)
             }
+            .buttonStyle(.plain)
+            .help(isStarred ? "Remove from stars" : "Add to stars")
+            .accessibilityLabel(isStarred ? "Preset On, Channel \(channel.name)" : "Preset Off, Channel \(channel.name)")
             if isPlaying {
                 Image(systemName: "speaker.wave.2.fill").foregroundStyle(.tint)
             }
