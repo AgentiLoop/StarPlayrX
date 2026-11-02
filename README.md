@@ -44,7 +44,15 @@ StarPlayrX was built for visually impaired listeners, a group of paying subscrib
   </tr>
 </table>
 
-- Lives in the menu bar (📻) with no Dock icon
+- Lives in the menu bar (📻) with no Dock icon. The icon shows whether something is playing:
+
+<table>
+  <tr>
+    <td align="center" valign="top"><img src="docs/menu-bar-icon-playing.png" width="43" alt="Menu bar icon while playing: radio waves"><br><b>Playing</b></td>
+    <td align="center" valign="top"><img src="docs/menu-bar-icon-not-playing.png" width="38" alt="Menu bar icon while not playing: radio"><br><b>Not playing</b></td>
+  </tr>
+</table>
+
 - **Tear-off window:** drag the panel off the menu bar and it becomes a floating window you can park anywhere. Click the 📻 icon to show or hide it
 - **Window shade:** double-click the header to roll the window up to just what's playing and the equalizer, and again to roll it back down. Moves between menu, tear-off and shade are animated
 - **Lava-lamp color equalizer:** 60 fps bars worked out from the audio as it's decoded, before it plays, so they stay in step with the music and need no "record system audio" permission. Works on macOS 13 Ventura and later (it used to need macOS 14.2). Drifting colors, a glow that pulses on the beat, and a darker glow on light backgrounds
