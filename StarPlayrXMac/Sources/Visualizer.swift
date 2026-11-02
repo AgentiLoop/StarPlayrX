@@ -184,10 +184,12 @@ struct SpectrumView: View {
                 let h = viz.hues[i]
                 let base = ContrastColor.color(hue: h, saturation: 0.9, against: bg)
                 let top = ContrastColor.color(hue: hue(h + 0.06 + 0.1 * level), saturation: 0.75, against: bg, minRatio: 4.5)
+                // A glow in the bar's own colour washes out on a light panel; there it's a deeper shade instead.
+                let glow = bg < 0.5 ? top : ContrastColor.color(hue: hue(h + 0.06 + 0.1 * level), saturation: 0.9, against: bg, minRatio: 8)
                 RoundedRectangle(cornerRadius: 1.5)
                     .fill(LinearGradient(colors: [base, top], startPoint: .bottom, endPoint: .top))
                     .frame(height: max(2, CGFloat(level) * 28))
-                    .shadow(color: top.opacity(0.4 + 0.6 * viz.pulse), radius: 1 + 4 * viz.pulse)
+                    .shadow(color: glow.opacity(0.4 + 0.6 * viz.pulse), radius: 1 + 4 * viz.pulse)
             }
         }
         .frame(height: 28, alignment: .bottom)
