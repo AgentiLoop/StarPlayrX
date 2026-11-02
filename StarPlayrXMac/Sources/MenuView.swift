@@ -199,6 +199,7 @@ struct MenuView: View {
     private var footer: some View {
         HStack {
             Text(Self.version).font(.caption).foregroundStyle(.tertiary)
+                .offset(y: 2)
             Spacer()
             if radio.isLoggedIn {
                 Button("Sign Out") { radio.signOut() }
