@@ -13,8 +13,6 @@
 		312CA9C059260AB50B9BA892 /* regionRoute.swift in Sources */ = {isa = PBXBuildFile; fileRef = C33EA5A4E6E1A3F183D504FC /* regionRoute.swift */; };
 		37638D976BF1CA68D7797CF7 /* pdtRoute.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8880040456C95E6B58847EDC /* pdtRoute.swift */; };
 		3C13956867A6E844274D6429 /* checkRoute.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95AD7205AAF671B4C0328808 /* checkRoute.swift */; };
-		5A11F7E2000000000000B001 /* SwifterLite in Frameworks */ = {isa = PBXBuildFile; productRef = 5A11F7E2000000000000B002 /* SwifterLite */; };
-		5F014C4728CD2D6500D4F682 /* StarPlayrRadioKit in Frameworks */ = {isa = PBXBuildFile; productRef = 5F014C4628CD2D6500D4F682 /* StarPlayrRadioKit */; };
 		5F381C17245F568E009BA91D /* Draw.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F381C16245F568E009BA91D /* Draw.swift */; };
 		5F5C5009244CBBD300A35D76 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F5C5008244CBBD300A35D76 /* AppDelegate.swift */; };
 		5F5C500B244CBBD300A35D76 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F5C500A244CBBD300A35D76 /* SceneDelegate.swift */; };
@@ -41,6 +39,44 @@
 		7F1D91473B94FCF0CC6EDC84 /* pingRoute.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0AFE5E2C752BEE24A34210F0 /* pingRoute.swift */; };
 		918E015A8E7BE70AC49E3603 /* playlistRoute.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A619D2FF527A54F6E7D41E5 /* playlistRoute.swift */; };
 		978DF6AC64B9D7D2A3A796EE /* audioRoute.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34EF23FBE366CA6BF8E98A76 /* audioRoute.swift */; };
+		9EB6FD798E17926FD7BD89D7 /* Data.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E9F14F977202E4ECCBF863A /* Data.swift */; };
+		4AF68834066999BEE27FB31E /* Get.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBA150FD54C6A10A856D9AA2 /* Get.swift */; };
+		EC5920B7287A0292BD58E0F5 /* Network.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09EBFBBAB57CCDDC44F2A751 /* Network.swift */; };
+		C13AD73C70B7F8532F6F3687 /* Post.swift in Sources */ = {isa = PBXBuildFile; fileRef = 649EDCC89C787DC1A6E1AC50 /* Post.swift */; };
+		2123807D4180DAE56EC730B9 /* Text.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC93428C5E519FECD4DEBB22 /* Text.swift */; };
+		5E1A0D2BD2B5AC2DE4040F9A /* Audio.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93A38D86AE37041434C90F3D /* Audio.swift */; };
+		86E9FDB055BC8D04F7434844 /* Fader.swift in Sources */ = {isa = PBXBuildFile; fileRef = C877722F8337C5AFA82338DA /* Fader.swift */; };
+		C7CBD38474CF63C84E3998AF /* Playlist.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E42E248D561A59F444097B6 /* Playlist.swift */; };
+		76964A4ED181973E1FAB5B72 /* Channels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D528E89F479543785F9AECF /* Channels.swift */; };
+		A95A531C107B374363D5AB63 /* Discover.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A68886FD6BC1FB20EFB90E3 /* Discover.swift */; };
+		DD0705EAE163525AEB5B0EB6 /* Krypto.swift in Sources */ = {isa = PBXBuildFile; fileRef = 767F39D3DD56D2C920ED895A /* Krypto.swift */; };
+		AEAA9BD56052600AE84E6D62 /* KryptoExtension.swift in Sources */ = {isa = PBXBuildFile; fileRef = 503BDBE5DC1C9867E88CE2B2 /* KryptoExtension.swift */; };
+		D2FFC0B972045ED3D155E70A /* Login.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA07D34703510582E60D0E7C /* Login.swift */; };
+		2FC12D067B6D629B849377AA /* Config.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB08473510A147569B5BFFFF /* Config.swift */; };
+		C33863E4EFBE8D1995D8BF73 /* Preflight.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AC69D9AE8AEA1304623F96D /* Preflight.swift */; };
+		9844CC2157F1ACEB91991EA8 /* RadioKitGlobal.swift in Sources */ = {isa = PBXBuildFile; fileRef = 723D4807650643C42F4FA1EC /* RadioKitGlobal.swift */; };
+		B41E2DF48EFC0D20B52C8F14 /* Session.swift in Sources */ = {isa = PBXBuildFile; fileRef = F054F80F9E53EA26C705E9ED /* Session.swift */; };
+		3B39DCBB956D807615ADE8A6 /* NowPlayingLive.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CFF32DCFF17B42FFF08BD16 /* NowPlayingLive.swift */; };
+		1CDC14FD5F2B073CF3191936 /* PDT.swift in Sources */ = {isa = PBXBuildFile; fileRef = 817DD2F25B2C04813129DE1D /* PDT.swift */; };
+		86DF42FFD4B3DD6814CF4CAC /* RadioKitExtensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2AD17553A01BF96FE66CE96 /* RadioKitExtensions.swift */; };
+		CA749032D497995CCE311A4E /* sha256.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AB14B946698693A35A68482 /* sha256.swift */; };
+		C6FEA3FB2361A70B05A2BBBA /* HttpParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F22F499CB7A3BF5FCD0D156 /* HttpParser.swift */; };
+		71AAF3C70BCCC1D381B902C4 /* HttpRequest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F5C1C443B3A3749A89EB9D4 /* HttpRequest.swift */; };
+		0FA9A1A5814F0C55914759E2 /* HttpRespBody.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0531EE31AC05D6D586E7455 /* HttpRespBody.swift */; };
+		923E435294FB3950D8422A56 /* HttpRespBodyWriter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C90C4362DAF21741F666BB3 /* HttpRespBodyWriter.swift */; };
+		01BB71229A648427B17E7061 /* HttpResponse.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9894AF992A3EB71324171574 /* HttpResponse.swift */; };
+		853B8C6D2639FDF8A0B0D8A6 /* HttpRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A7EF3AEF444CF6B503B83A1 /* HttpRouter.swift */; };
+		E49BD2916054262B21898FA0 /* HttpServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBB4A736F54E3263E51D2291 /* HttpServer.swift */; };
+		225D4A928AFA9CB19ECD9622 /* HttpServerIO.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69C543E411958F809FEE91FA /* HttpServerIO.swift */; };
+		5A777B150514CE7A47456488 /* MethodRoute.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95A90D963AD1130BB602D7C4 /* MethodRoute.swift */; };
+		1445D2E3C9C09FD07548D196 /* Socket.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96AF7C1CAB0814FC9F41EA50 /* Socket.swift */; };
+		A7D1EA36060D90D67628869C /* SocketClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 160636B542385B3731DC90F4 /* SocketClient.swift */; };
+		FDE52B9AC168E700EB570738 /* SocketError.swift in Sources */ = {isa = PBXBuildFile; fileRef = A852562DEA5C1798AB5A937D /* SocketError.swift */; };
+		BE2464D954A701E527A7CF4D /* SocketPort.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD709C3B3D6134BA49CB195C /* SocketPort.swift */; };
+		1A8BBCD32EEA835A9F7FE8A7 /* SocketRead.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03FE102F308991FD19BD2D50 /* SocketRead.swift */; };
+		132888D1E910106E68D2DACF /* SocketTcp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7785BEE2E2596DEC470D798 /* SocketTcp.swift */; };
+		F76D6B869A42D61E89AE8C10 /* SocketWrite.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4066A5561737068CEDA5D0E1 /* SocketWrite.swift */; };
+		7A925BB9C7A0FEC20075D897 /* TypeAliases.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4592680527F6414995C078F2 /* TypeAliases.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -82,6 +118,44 @@
 		A0EC681060A70CEFAB7E18CD /* loginRoute.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = loginRoute.swift; sourceTree = "<group>"; };
 		C33EA5A4E6E1A3F183D504FC /* regionRoute.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = regionRoute.swift; sourceTree = "<group>"; };
 		FC87A69F860B1BA9C174D7C4 /* XserverRoutes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XserverRoutes.swift; sourceTree = "<group>"; };
+		9E9F14F977202E4ECCBF863A /* Data.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = Data.swift; path = API/Data.swift; sourceTree = "<group>"; };
+		FBA150FD54C6A10A856D9AA2 /* Get.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = Get.swift; path = API/Get.swift; sourceTree = "<group>"; };
+		09EBFBBAB57CCDDC44F2A751 /* Network.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = Network.swift; path = API/Network.swift; sourceTree = "<group>"; };
+		649EDCC89C787DC1A6E1AC50 /* Post.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = Post.swift; path = API/Post.swift; sourceTree = "<group>"; };
+		EC93428C5E519FECD4DEBB22 /* Text.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = Text.swift; path = API/Text.swift; sourceTree = "<group>"; };
+		93A38D86AE37041434C90F3D /* Audio.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = Audio.swift; path = Audio/Audio.swift; sourceTree = "<group>"; };
+		C877722F8337C5AFA82338DA /* Fader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = Fader.swift; path = Audio/Fader.swift; sourceTree = "<group>"; };
+		7E42E248D561A59F444097B6 /* Playlist.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = Playlist.swift; path = Audio/Playlist.swift; sourceTree = "<group>"; };
+		9D528E89F479543785F9AECF /* Channels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = Channels.swift; path = Channels/Channels.swift; sourceTree = "<group>"; };
+		8A68886FD6BC1FB20EFB90E3 /* Discover.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = Discover.swift; path = Channels/Discover.swift; sourceTree = "<group>"; };
+		767F39D3DD56D2C920ED895A /* Krypto.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = Krypto.swift; path = Krpyto/Krypto.swift; sourceTree = "<group>"; };
+		503BDBE5DC1C9867E88CE2B2 /* KryptoExtension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = KryptoExtension.swift; path = Krpyto/KryptoExtension.swift; sourceTree = "<group>"; };
+		DA07D34703510582E60D0E7C /* Login.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = Login.swift; path = Login/Login.swift; sourceTree = "<group>"; };
+		EB08473510A147569B5BFFFF /* Config.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = Config.swift; path = Setup/Config.swift; sourceTree = "<group>"; };
+		7AC69D9AE8AEA1304623F96D /* Preflight.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = Preflight.swift; path = Setup/Preflight.swift; sourceTree = "<group>"; };
+		723D4807650643C42F4FA1EC /* RadioKitGlobal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RadioKitGlobal.swift; path = Setup/RadioKitGlobal.swift; sourceTree = "<group>"; };
+		F054F80F9E53EA26C705E9ED /* Session.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = Session.swift; path = Setup/Session.swift; sourceTree = "<group>"; };
+		4CFF32DCFF17B42FFF08BD16 /* NowPlayingLive.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = NowPlayingLive.swift; path = Turf/NowPlayingLive.swift; sourceTree = "<group>"; };
+		817DD2F25B2C04813129DE1D /* PDT.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = PDT.swift; path = Turf/PDT.swift; sourceTree = "<group>"; };
+		F2AD17553A01BF96FE66CE96 /* RadioKitExtensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RadioKitExtensions.swift; path = Turf/RadioKitExtensions.swift; sourceTree = "<group>"; };
+		7AB14B946698693A35A68482 /* sha256.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = sha256.swift; path = Turf/sha256.swift; sourceTree = "<group>"; };
+		7F22F499CB7A3BF5FCD0D156 /* HttpParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HttpParser.swift; sourceTree = "<group>"; };
+		4F5C1C443B3A3749A89EB9D4 /* HttpRequest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HttpRequest.swift; sourceTree = "<group>"; };
+		A0531EE31AC05D6D586E7455 /* HttpRespBody.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HttpRespBody.swift; sourceTree = "<group>"; };
+		3C90C4362DAF21741F666BB3 /* HttpRespBodyWriter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HttpRespBodyWriter.swift; sourceTree = "<group>"; };
+		9894AF992A3EB71324171574 /* HttpResponse.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HttpResponse.swift; sourceTree = "<group>"; };
+		0A7EF3AEF444CF6B503B83A1 /* HttpRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HttpRouter.swift; sourceTree = "<group>"; };
+		FBB4A736F54E3263E51D2291 /* HttpServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HttpServer.swift; sourceTree = "<group>"; };
+		69C543E411958F809FEE91FA /* HttpServerIO.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HttpServerIO.swift; sourceTree = "<group>"; };
+		95A90D963AD1130BB602D7C4 /* MethodRoute.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MethodRoute.swift; sourceTree = "<group>"; };
+		96AF7C1CAB0814FC9F41EA50 /* Socket.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Socket.swift; sourceTree = "<group>"; };
+		160636B542385B3731DC90F4 /* SocketClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SocketClient.swift; sourceTree = "<group>"; };
+		A852562DEA5C1798AB5A937D /* SocketError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SocketError.swift; sourceTree = "<group>"; };
+		FD709C3B3D6134BA49CB195C /* SocketPort.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SocketPort.swift; sourceTree = "<group>"; };
+		03FE102F308991FD19BD2D50 /* SocketRead.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SocketRead.swift; sourceTree = "<group>"; };
+		A7785BEE2E2596DEC470D798 /* SocketTcp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SocketTcp.swift; sourceTree = "<group>"; };
+		4066A5561737068CEDA5D0E1 /* SocketWrite.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SocketWrite.swift; sourceTree = "<group>"; };
+		4592680527F6414995C078F2 /* TypeAliases.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TypeAliases.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -89,8 +163,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				5F014C4728CD2D6500D4F682 /* StarPlayrRadioKit in Frameworks */,
-				5A11F7E2000000000000B001 /* SwifterLite in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -118,6 +190,8 @@
 			isa = PBXGroup;
 			children = (
 				BE696AE9BE9B5477B1ED0D2C /* Routes */,
+				4FD9CA6E82CC30D4E35670B2 /* StarPlayrRadioKit */,
+				B02F94E751E63E6DDAB5A06F /* SwifterLite */,
 				5F5C5034244CC15E00A35D76 /* Delegate */,
 				5F5C5046244CC24D00A35D76 /* Model */,
 				5FFF9DAF244D398700D795DA /* View */,
@@ -221,6 +295,58 @@
 			path = Routes;
 			sourceTree = "<group>";
 		};
+		4FD9CA6E82CC30D4E35670B2 /* StarPlayrRadioKit */ = {
+			isa = PBXGroup;
+			children = (
+				9E9F14F977202E4ECCBF863A /* Data.swift */,
+				FBA150FD54C6A10A856D9AA2 /* Get.swift */,
+				09EBFBBAB57CCDDC44F2A751 /* Network.swift */,
+				649EDCC89C787DC1A6E1AC50 /* Post.swift */,
+				EC93428C5E519FECD4DEBB22 /* Text.swift */,
+				93A38D86AE37041434C90F3D /* Audio.swift */,
+				C877722F8337C5AFA82338DA /* Fader.swift */,
+				7E42E248D561A59F444097B6 /* Playlist.swift */,
+				9D528E89F479543785F9AECF /* Channels.swift */,
+				8A68886FD6BC1FB20EFB90E3 /* Discover.swift */,
+				767F39D3DD56D2C920ED895A /* Krypto.swift */,
+				503BDBE5DC1C9867E88CE2B2 /* KryptoExtension.swift */,
+				DA07D34703510582E60D0E7C /* Login.swift */,
+				EB08473510A147569B5BFFFF /* Config.swift */,
+				7AC69D9AE8AEA1304623F96D /* Preflight.swift */,
+				723D4807650643C42F4FA1EC /* RadioKitGlobal.swift */,
+				F054F80F9E53EA26C705E9ED /* Session.swift */,
+				4CFF32DCFF17B42FFF08BD16 /* NowPlayingLive.swift */,
+				817DD2F25B2C04813129DE1D /* PDT.swift */,
+				F2AD17553A01BF96FE66CE96 /* RadioKitExtensions.swift */,
+				7AB14B946698693A35A68482 /* sha256.swift */,
+			);
+			path = StarPlayrRadioKit;
+			sourceTree = "<group>";
+		};
+		B02F94E751E63E6DDAB5A06F /* SwifterLite */ = {
+			isa = PBXGroup;
+			children = (
+				7F22F499CB7A3BF5FCD0D156 /* HttpParser.swift */,
+				4F5C1C443B3A3749A89EB9D4 /* HttpRequest.swift */,
+				A0531EE31AC05D6D586E7455 /* HttpRespBody.swift */,
+				3C90C4362DAF21741F666BB3 /* HttpRespBodyWriter.swift */,
+				9894AF992A3EB71324171574 /* HttpResponse.swift */,
+				0A7EF3AEF444CF6B503B83A1 /* HttpRouter.swift */,
+				FBB4A736F54E3263E51D2291 /* HttpServer.swift */,
+				69C543E411958F809FEE91FA /* HttpServerIO.swift */,
+				95A90D963AD1130BB602D7C4 /* MethodRoute.swift */,
+				96AF7C1CAB0814FC9F41EA50 /* Socket.swift */,
+				160636B542385B3731DC90F4 /* SocketClient.swift */,
+				A852562DEA5C1798AB5A937D /* SocketError.swift */,
+				FD709C3B3D6134BA49CB195C /* SocketPort.swift */,
+				03FE102F308991FD19BD2D50 /* SocketRead.swift */,
+				A7785BEE2E2596DEC470D798 /* SocketTcp.swift */,
+				4066A5561737068CEDA5D0E1 /* SocketWrite.swift */,
+				4592680527F6414995C078F2 /* TypeAliases.swift */,
+			);
+			path = SwifterLite;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -238,8 +364,6 @@
 			);
 			name = StarPlayrX;
 			packageProductDependencies = (
-				5F014C4628CD2D6500D4F682 /* StarPlayrRadioKit */,
-				5A11F7E2000000000000B002 /* SwifterLite */,
 			);
 			productName = StarPlayrX;
 			productReference = 5F5C5005244CBBD300A35D76 /* StarPlayrX.app */;
@@ -271,10 +395,6 @@
 				Base,
 			);
 			mainGroup = 5F5C4FFC244CBBD300A35D76;
-			packageReferences = (
-				5F014C4528CD2D6500D4F682 /* XCRemoteSwiftPackageReference "StarPlayrRadioKit" */,
-				5A11F7E2000000000000B003 /* XCRemoteSwiftPackageReference "SwifterLite" */,
-			);
 			productRefGroup = 5F5C5006244CBBD300A35D76 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -303,6 +423,44 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				9EB6FD798E17926FD7BD89D7 /* Data.swift in Sources */,
+				4AF68834066999BEE27FB31E /* Get.swift in Sources */,
+				EC5920B7287A0292BD58E0F5 /* Network.swift in Sources */,
+				C13AD73C70B7F8532F6F3687 /* Post.swift in Sources */,
+				2123807D4180DAE56EC730B9 /* Text.swift in Sources */,
+				5E1A0D2BD2B5AC2DE4040F9A /* Audio.swift in Sources */,
+				86E9FDB055BC8D04F7434844 /* Fader.swift in Sources */,
+				C7CBD38474CF63C84E3998AF /* Playlist.swift in Sources */,
+				76964A4ED181973E1FAB5B72 /* Channels.swift in Sources */,
+				A95A531C107B374363D5AB63 /* Discover.swift in Sources */,
+				DD0705EAE163525AEB5B0EB6 /* Krypto.swift in Sources */,
+				AEAA9BD56052600AE84E6D62 /* KryptoExtension.swift in Sources */,
+				D2FFC0B972045ED3D155E70A /* Login.swift in Sources */,
+				2FC12D067B6D629B849377AA /* Config.swift in Sources */,
+				C33863E4EFBE8D1995D8BF73 /* Preflight.swift in Sources */,
+				9844CC2157F1ACEB91991EA8 /* RadioKitGlobal.swift in Sources */,
+				B41E2DF48EFC0D20B52C8F14 /* Session.swift in Sources */,
+				3B39DCBB956D807615ADE8A6 /* NowPlayingLive.swift in Sources */,
+				1CDC14FD5F2B073CF3191936 /* PDT.swift in Sources */,
+				86DF42FFD4B3DD6814CF4CAC /* RadioKitExtensions.swift in Sources */,
+				CA749032D497995CCE311A4E /* sha256.swift in Sources */,
+				C6FEA3FB2361A70B05A2BBBA /* HttpParser.swift in Sources */,
+				71AAF3C70BCCC1D381B902C4 /* HttpRequest.swift in Sources */,
+				0FA9A1A5814F0C55914759E2 /* HttpRespBody.swift in Sources */,
+				923E435294FB3950D8422A56 /* HttpRespBodyWriter.swift in Sources */,
+				01BB71229A648427B17E7061 /* HttpResponse.swift in Sources */,
+				853B8C6D2639FDF8A0B0D8A6 /* HttpRouter.swift in Sources */,
+				E49BD2916054262B21898FA0 /* HttpServer.swift in Sources */,
+				225D4A928AFA9CB19ECD9622 /* HttpServerIO.swift in Sources */,
+				5A777B150514CE7A47456488 /* MethodRoute.swift in Sources */,
+				1445D2E3C9C09FD07548D196 /* Socket.swift in Sources */,
+				A7D1EA36060D90D67628869C /* SocketClient.swift in Sources */,
+				FDE52B9AC168E700EB570738 /* SocketError.swift in Sources */,
+				BE2464D954A701E527A7CF4D /* SocketPort.swift in Sources */,
+				1A8BBCD32EEA835A9F7FE8A7 /* SocketRead.swift in Sources */,
+				132888D1E910106E68D2DACF /* SocketTcp.swift in Sources */,
+				F76D6B869A42D61E89AE8C10 /* SocketWrite.swift in Sources */,
+				7A925BB9C7A0FEC20075D897 /* TypeAliases.swift in Sources */,
 				10C8A2C7F0ED9273E9D774D2 /* XserverRoutes.swift in Sources */,
 				978DF6AC64B9D7D2A3A796EE /* audioRoute.swift in Sources */,
 				1E4CC0CC3173AB90D7264238 /* channelsRoute.swift in Sources */,
@@ -578,37 +736,7 @@
 		};
 /* End XCConfigurationList section */
 
-/* Begin XCRemoteSwiftPackageReference section */
-		5A11F7E2000000000000B003 /* XCRemoteSwiftPackageReference "SwifterLite" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/AgentiLoop/SwifterLite";
-			requirement = {
-				branch = mustang;
-				kind = branch;
-			};
-		};
-		5F014C4528CD2D6500D4F682 /* XCRemoteSwiftPackageReference "StarPlayrRadioKit" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/AgentiLoop/StarPlayrRadioKit";
-			requirement = {
-				branch = mustang;
-				kind = branch;
-			};
-		};
-/* End XCRemoteSwiftPackageReference section */
 
-/* Begin XCSwiftPackageProductDependency section */
-		5A11F7E2000000000000B002 /* SwifterLite */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 5A11F7E2000000000000B003 /* XCRemoteSwiftPackageReference "SwifterLite" */;
-			productName = SwifterLite;
-		};
-		5F014C4628CD2D6500D4F682 /* StarPlayrRadioKit */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 5F014C4528CD2D6500D4F682 /* XCRemoteSwiftPackageReference "StarPlayrRadioKit" */;
-			productName = StarPlayrRadioKit;
-		};
-/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 5F5C4FFD244CBBD300A35D76 /* Project object */;
 }
