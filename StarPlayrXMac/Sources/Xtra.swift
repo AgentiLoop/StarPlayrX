@@ -1,5 +1,6 @@
 import Foundation
 import CommonCrypto
+import AVFoundation
 
 /// SiriusXM Xtra channels. They exist only in SiriusXM's current API (api.edge-gateway.siriusxm.com),
 /// not the legacy player API that StarPlayrRadioKit uses, so they are fetched and played here.
@@ -215,6 +216,16 @@ actor XtraClient {
         return (url, auth)
     }
 
+    /// The raw 16-byte AES key for a key id (the endpoint answers JSON with the key in base64).
+    func key(id: String) async throws -> Data {
+        let keyJSON = try await json("GET", "/playback/key/v1/\(id)", body: nil, bearer: try await bearer())
+        guard let b64 = keyJSON["key"] as? String, let key = Data(base64Encoded: b64), key.count == 16
+        else { throw XtraError.badResponse("key") }
+        return key
+    }
+
+    func fetchText(_ url: URL) async throws -> String { try await text(url) }
+
     /// The track an Xtra channel would start with if tuned now, without downloading anything.
     func peek(channelID: String) async throws -> XtraTrack? {
         try await tune(channelID: channelID).tracks.first
@@ -418,5 +429,67 @@ extension Data {
             i = j
         }
         self.init(bytes)
+    }
+}
+
+// MARK: Live (modern API) playback — EXPERIMENT
+
+/// Serves a modern-API live stream to AVPlayer. The playlists are fetched here (scheme `sxmlive`) so the key URI
+/// can be pointed at `sxmkey`, which answers with the raw AES key (the real endpoint needs a bearer and returns JSON).
+/// Segments stay plain https URLs that AVPlayer loads itself.
+final class LiveLoader: NSObject, AVAssetResourceLoaderDelegate {
+    let client: XtraClient
+    init(client: XtraClient) { self.client = client }
+
+    static func asset(for url: URL, client: XtraClient) -> (AVURLAsset, LiveLoader) {
+        var c = URLComponents(url: url, resolvingAgainstBaseURL: false)!
+        c.scheme = "sxmlive"
+        let asset = AVURLAsset(url: c.url!)
+        let loader = LiveLoader(client: client)
+        asset.resourceLoader.setDelegate(loader, queue: .global(qos: .userInitiated))
+        return (asset, loader)
+    }
+
+    func resourceLoader(_ resourceLoader: AVAssetResourceLoader,
+                        shouldWaitForLoadingOfRequestedResource req: AVAssetResourceLoadingRequest) -> Bool {
+        guard let url = req.request.url, let scheme = url.scheme else { return false }
+        Task {
+            do {
+                if scheme == "sxmkey" {
+                    let key = try await client.key(id: url.lastPathComponent)
+                    req.contentInformationRequest?.contentType = "public.data"   // raw key bytes
+                    req.contentInformationRequest?.contentLength = Int64(key.count)
+                    req.contentInformationRequest?.isByteRangeAccessSupported = false
+                    req.dataRequest?.respond(with: key)
+                } else {
+                    var c = URLComponents(url: url, resolvingAgainstBaseURL: false)!
+                    c.scheme = "https"
+                    let real = c.url!
+                    let body = try await client.fetchText(real)
+                    let out = body.split(separator: "\n", omittingEmptySubsequences: false).map { raw -> String in
+                        let line = String(raw).trimmingCharacters(in: .whitespacesAndNewlines)
+                        if line.hasPrefix("#EXT-X-KEY"), let r = line.range(of: "https://") {
+                            return line.replacingCharacters(in: r, with: "sxmkey://")
+                        }
+                        guard !line.isEmpty, !line.hasPrefix("#"), let abs = URL(string: line, relativeTo: real)?.absoluteURL
+                        else { return line }
+                        // Nested playlists come back through here; media segments go straight to the CDN.
+                        if abs.pathExtension == "m3u8", var n = URLComponents(url: abs, resolvingAgainstBaseURL: false) {
+                            n.scheme = "sxmlive"
+                            return n.url?.absoluteString ?? line
+                        }
+                        return abs.absoluteString
+                    }.joined(separator: "\n")
+                    req.contentInformationRequest?.contentType = "public.m3u-playlist"
+                    req.contentInformationRequest?.contentLength = Int64(out.utf8.count)
+                    req.contentInformationRequest?.isByteRangeAccessSupported = false
+                    req.dataRequest?.respond(with: Data(out.utf8))
+                }
+                req.finishLoading()
+            } catch {
+                req.finishLoading(with: error)
+            }
+        }
+        return true
     }
 }
