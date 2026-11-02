@@ -211,8 +211,8 @@ actor XtraClient {
     /// unauthenticated call: the "lookAround" feed the web player polls for its channel grid.
     /// Talk and sports channels fall back to the current show's art when the cut has none.
     /// Done the way the web player does it (its remote config: lookaround pollingMs 45000,
-    /// livePointIntervalMs 60000): the feed is refetched at most every 45 s. Cuts are dated in on-air
-    /// time, but the stream reaches us `behind` seconds later, so read the feed that far back.
+    /// livePointIntervalMs 60000): the feed is refetched at most every 45 s. The music reaches the
+    /// speakers `behind` seconds after the feed's clock says it aired, so read the feed that far back.
     func liveNowPlaying(behind: TimeInterval) async throws -> [String: NowPlaying] {
         if Date().timeIntervalSince(lookAroundFetched) > 45 {
             let (data, resp) = try await session.data(from: URL(string: Self.lookAround)!)
