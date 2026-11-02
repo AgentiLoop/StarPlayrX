@@ -34,7 +34,7 @@
 
 /* Begin PBXFileReference section */
 		086EB200A51E929484F0F0B7 /* SpectrumTimeline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpectrumTimeline.swift; sourceTree = "<group>"; };
-		1DF942F978B6D6B616311D33 /* StarPlayrXMac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = StarPlayrXMac.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		1DF942F978B6D6B616311D33 /* StarPlayrXMac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; name = StarPlayrXMac.app; path = StarPlayrX.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		2110CDF4A0912E48922BDC87 /* StarPlayrXMacTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = StarPlayrXMacTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		24B9C2880FFCDCA06B056FF3 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		40AD17AD1A89E96BF1D207E3 /* Xtra.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Xtra.swift; sourceTree = "<group>"; };
@@ -42,7 +42,8 @@
 		5AACB58C22D23FF75DF15D1A /* StarPlayrXMacTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StarPlayrXMacTests.swift; sourceTree = "<group>"; };
 		6E4311F836AD4A7A0120E737 /* Scripting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Scripting.swift; sourceTree = "<group>"; };
 		6E8F68BA0D44926EF37BBB62 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		9AE9931B956CB2DA3D48715B /* StarPlayrX.sdef */ = {isa = PBXFileReference; path = StarPlayrX.sdef; sourceTree = "<group>"; };
+		8597FCE01D54FAA77BEF60A4 /* StarPlayrX.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = StarPlayrX.entitlements; sourceTree = "<group>"; };
+		9AE9931B956CB2DA3D48715B /* StarPlayrX.sdef */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = StarPlayrX.sdef; sourceTree = "<group>"; };
 		9CF5EC7805BCA42169AF4ECE /* MenuView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuView.swift; sourceTree = "<group>"; };
 		A828F86C0FE74B3D990CC160 /* Radio.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Radio.swift; sourceTree = "<group>"; };
 		B180FAFDD06BBA9CCCECBA5D /* Visualizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Visualizer.swift; sourceTree = "<group>"; };
@@ -81,6 +82,7 @@
 				A828F86C0FE74B3D990CC160 /* Radio.swift */,
 				6E4311F836AD4A7A0120E737 /* Scripting.swift */,
 				086EB200A51E929484F0F0B7 /* SpectrumTimeline.swift */,
+				8597FCE01D54FAA77BEF60A4 /* StarPlayrX.entitlements */,
 				9AE9931B956CB2DA3D48715B /* StarPlayrX.sdef */,
 				47D0341DA36FCC82C2C684B6 /* StarPlayrXMacApp.swift */,
 				B180FAFDD06BBA9CCCECBA5D /* Visualizer.swift */,
@@ -306,6 +308,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Sources/StarPlayrX.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
@@ -433,6 +436,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Sources/StarPlayrX.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;

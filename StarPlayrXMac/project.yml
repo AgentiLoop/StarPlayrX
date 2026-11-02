@@ -21,6 +21,11 @@ targets:
       environmentVariables:
         OS_ACTIVITY_MODE: disable
         OS_ACTIVITY_DT_MODE: "NO"
+    entitlements:
+      path: Sources/StarPlayrX.entitlements
+      properties:
+        keychain-access-groups:
+          - "$(AppIdentifierPrefix)com.starplayrx.mac"
     info:
       path: Sources/Info.plist
       properties:
