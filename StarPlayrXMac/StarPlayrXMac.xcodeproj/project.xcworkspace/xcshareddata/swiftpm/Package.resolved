@@ -1,14 +1,24 @@
 {
+  "originHash" : "11100ac92d7bce07b06c5fa885206abcbea42f37b0692ffe0f2e5f4a78ac268a",
   "pins" : [
+    {
+      "identity" : "starplayrradiokit",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/AgentiLoop/StarPlayrRadioKit",
+      "state" : {
+        "branch" : "mustang",
+        "revision" : "0f326b16dd3237057f6f5a906ccf13e46f161f54"
+      }
+    },
     {
       "identity" : "swifterlite",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/StarPlayrX/SwifterLite",
       "state" : {
         "branch" : "mustang",
-        "revision" : "57035d98af8c54d07da71ccb62b4faebd090662e"
+        "revision" : "47866b6080d883e07be725b706efdb65ab21058f"
       }
     }
   ],
-  "version" : 2
+  "version" : 3
 }

@@ -5,7 +5,8 @@ options:
     macOS: "13.0"
 packages:
   StarPlayrRadioKit:
-    path: ../StarPlayrRadioKit
+    url: https://github.com/AgentiLoop/StarPlayrRadioKit
+    branch: mustang
 targets:
   StarPlayrXMac:
     type: application

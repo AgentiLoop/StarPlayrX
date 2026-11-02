@@ -129,10 +129,4 @@
          </Group>
       </Group>
    </Group>
-   <FileRef
-      location = "group:StarPlayrRadioKit">
-   </FileRef>
-   <FileRef
-      location = "group:SwifterLite">
-   </FileRef>
 </Workspace>

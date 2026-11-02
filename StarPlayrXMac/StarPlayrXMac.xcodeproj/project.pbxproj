@@ -46,7 +46,6 @@
 		9CF5EC7805BCA42169AF4ECE /* MenuView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuView.swift; sourceTree = "<group>"; };
 		A828F86C0FE74B3D990CC160 /* Radio.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Radio.swift; sourceTree = "<group>"; };
 		B180FAFDD06BBA9CCCECBA5D /* Visualizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Visualizer.swift; sourceTree = "<group>"; };
-		B2CA3E577EDD3F8E2AC46C50 /* StarPlayrRadioKit */ = {isa = PBXFileReference; lastKnownFileType = folder; name = StarPlayrRadioKit; path = ../StarPlayrRadioKit; sourceTree = SOURCE_ROOT; };
 		B4362792013A115602196217 /* Keychain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Keychain.swift; sourceTree = "<group>"; };
 		F780CB7683BB43494DE45275 /* ScriptedTour.applescript */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.applescript; path = ScriptedTour.applescript; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -66,7 +65,6 @@
 		233824657115644477750423 = {
 			isa = PBXGroup;
 			children = (
-				52D0A5D9C7BC6DCF2A346BDB /* Packages */,
 				3CCD99341C1648777CB8A56C /* Sources */,
 				62EC089FFE9B3C52C3F3580B /* Tests */,
 				88BAFE35EFC8150A92E4C1D3 /* Products */,
@@ -89,14 +87,6 @@
 				40AD17AD1A89E96BF1D207E3 /* Xtra.swift */,
 			);
 			path = Sources;
-			sourceTree = "<group>";
-		};
-		52D0A5D9C7BC6DCF2A346BDB /* Packages */ = {
-			isa = PBXGroup;
-			children = (
-				B2CA3E577EDD3F8E2AC46C50 /* StarPlayrRadioKit */,
-			);
-			name = Packages;
 			sourceTree = "<group>";
 		};
 		62EC089FFE9B3C52C3F3580B /* Tests */ = {
@@ -188,7 +178,7 @@
 			mainGroup = 233824657115644477750423;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				0DBE35E8B57F3EA3F53F3FAB /* XCLocalSwiftPackageReference "../StarPlayrRadioKit" */,
+				6895B7D7E1FF95CA3038004C /* XCRemoteSwiftPackageReference "StarPlayrRadioKit" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 88BAFE35EFC8150A92E4C1D3 /* Products */;
@@ -493,16 +483,21 @@
 		};
 /* End XCConfigurationList section */
 
-/* Begin XCLocalSwiftPackageReference section */
-		0DBE35E8B57F3EA3F53F3FAB /* XCLocalSwiftPackageReference "../StarPlayrRadioKit" */ = {
-			isa = XCLocalSwiftPackageReference;
-			relativePath = ../StarPlayrRadioKit;
+/* Begin XCRemoteSwiftPackageReference section */
+		6895B7D7E1FF95CA3038004C /* XCRemoteSwiftPackageReference "StarPlayrRadioKit" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/AgentiLoop/StarPlayrRadioKit";
+			requirement = {
+				branch = mustang;
+				kind = branch;
+			};
 		};
-/* End XCLocalSwiftPackageReference section */
+/* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
 		AEC40F5BDDF2C049FE7182D5 /* StarPlayrRadioKit */ = {
 			isa = XCSwiftPackageProductDependency;
+			package = 6895B7D7E1FF95CA3038004C /* XCRemoteSwiftPackageReference "StarPlayrRadioKit" */;
 			productName = StarPlayrRadioKit;
 		};
 /* End XCSwiftPackageProductDependency section */
