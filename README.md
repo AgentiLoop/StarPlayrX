@@ -74,12 +74,12 @@ StarPlayrX was built for visually impaired listeners, a group of paying subscrib
 - Xtra channels (1000+), searchable with "xtra" or "music"; tuning in plays the song the list shows
 - Play/pause from the keyboard media keys and Control Center, with the album art or channel art showing there too
 - Picks up where you left off: the last channel you played starts again when StarPlayrX opens
-- US and Canada channel lineups
+- US and Canada channel lineups (pick Canada on the sign-in screen)
 - Your password is stored only in the macOS Keychain
 
 **Requirements:** macOS 13 Ventura or later, Apple Silicon or Intel, and an active SiriusXM subscription.
 
-**Download:** [StarPlayrX for Mac 1.1.8](https://github.com/AgentiLoop/StarPlayrX/releases/tag/mac-1.1.8) (signed and notarized). All builds are on the [Releases](https://github.com/AgentiLoop/StarPlayrX/releases) page.
+**Download:** [StarPlayrX for Mac 1.1.9](https://github.com/AgentiLoop/StarPlayrX/releases/tag/mac-1.1.9) (signed and notarized). All builds are on the [Releases](https://github.com/AgentiLoop/StarPlayrX/releases) page.
 
 ### 📜 AppleScript
 
@@ -158,7 +158,7 @@ More details: [How to fix popping sounds on macOS 26](https://medium.com/tech-bl
 
 ## 🌐 More from us
 
-We're now focused on AgentiLoop projects:
+StarPlayrX for Mac is in active development. Check out our other AgentiLoop projects too:
 [agentiloop.ai](https://agentiloop.ai) · [superbox64.com](https://superbox64.com) · [inkpen.io](https://inkpen.io) · [starplayrx.com](https://starplayrx.com)
 
 *Don't be a slacker, be a Star Player.* ⭐
