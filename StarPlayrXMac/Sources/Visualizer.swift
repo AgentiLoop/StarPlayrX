@@ -194,6 +194,12 @@ struct SpectrumView: View {
                 let glow = bg < 0.5 ? top : ContrastColor.color(hue: hue(h + 0.06 + 0.1 * level), saturation: 0.9, against: bg, minRatio: 8)
                 RoundedRectangle(cornerRadius: 1.5)
                     .fill(LinearGradient(colors: [base, top], startPoint: .bottom, endPoint: .top))
+                    // On a light panel a thin dark edge keeps pale bars from melting into it.
+                    .overlay {
+                        if bg >= 0.5 {
+                            RoundedRectangle(cornerRadius: 1.5).strokeBorder(.black.opacity(0.25), lineWidth: 0.5)
+                        }
+                    }
                     .frame(height: max(2, CGFloat(level) * 28))
                     .shadow(color: glow.opacity(0.4 + 0.6 * viz.pulse), radius: 1 + 4 * viz.pulse)
             }
