@@ -190,10 +190,11 @@ struct SpectrumView: View {
                 let h = viz.hues[i]
                 let base = ContrastColor.color(hue: h, saturation: 0.9, against: fixed)
                 let top = ContrastColor.color(hue: hue(h + 0.06 + 0.1 * level), saturation: 0.75, against: fixed, minRatio: 4.5)
-                // A glow in the bar's own colour washes out on a light panel; there it's the darkest shade
-                // of the bar's hue instead, and stronger, so the bars stand off the background.
-                let light = bg >= 0.5
-                let glow = light ? ContrastColor.color(hue: hue(h + 0.06 + 0.1 * level), saturation: 0.9, against: bg, minRatio: 14) : top
+                // A glow in the bar's own colour washes out on a light background; there it's the darkest shade
+                // of the bar's hue instead, and stronger, so the bars stand off it. The panel is translucent, so a
+                // bright wallpaper makes it light in Dark Mode too: decide from the wallpaper, not just the scheme.
+                let light = bg >= 0.5 || (wallpaper ?? 0) >= 0.35
+                let glow = light ? ContrastColor.color(hue: hue(h + 0.06 + 0.1 * level), saturation: 0.9, against: max(bg, 0.84), minRatio: 14) : top
                 RoundedRectangle(cornerRadius: 1.5)
                     .fill(LinearGradient(colors: [base, top], startPoint: .bottom, endPoint: .top))
                     // On a light panel a thin dark edge keeps pale bars from melting into it.
