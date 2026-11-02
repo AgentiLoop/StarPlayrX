@@ -15,6 +15,9 @@ struct NowPlaying: Equatable {
     var artist = ""
     var song = ""
     var image = ""
+    /// The show's artwork (often a text title card), shown instead of the channel logo only when the
+    /// user picks it for that channel; see `Radio.displayed(_:)`.
+    var showImage = ""
 }
 
 @MainActor
@@ -28,6 +31,27 @@ final class Radio: ObservableObject {
     @Published var channels = [Channel]()
     @Published var current: Channel?
     @Published var nowPlaying = [String: NowPlaying]()
+    /// Channels where the user clicked the artwork to see the show's art instead of the channel logo.
+    /// Logo is the default; the choice is per channel and remembered.
+    @Published private(set) var showArtChannels = Set(UserDefaults.standard.stringArray(forKey: "showArtChannels") ?? [])
+
+    /// Now playing as shown: song art if any, else the show's art on channels where the user chose it,
+    /// else no image (the channel logo is drawn).
+    func displayed(_ id: String) -> NowPlaying? {
+        guard var np = nowPlaying[id] else { return nil }
+        if np.image.isEmpty, showArtChannels.contains(id) { np.image = np.showImage }
+        return np
+    }
+
+    /// Clicking the artwork switches between the channel logo and the show's art, for that channel only.
+    /// Returns false when there is nothing to switch to (song art, or no show art).
+    @discardableResult
+    func toggleShowArt(_ id: String) -> Bool {
+        guard let np = nowPlaying[id], np.image.isEmpty, !np.showImage.isEmpty else { return false }
+        if showArtChannels.contains(id) { showArtChannels.remove(id) } else { showArtChannels.insert(id) }
+        UserDefaults.standard.set(Array(showArtChannels).sorted(), forKey: "showArtChannels")
+        return true
+    }
     @Published var localeIsCA = UserDefaults.standard.bool(forKey: "localeIsCA")
     /// True once sign-in has finished loading every channel, Xtra included (or Xtra failed).
     @Published var channelsLoaded = false
