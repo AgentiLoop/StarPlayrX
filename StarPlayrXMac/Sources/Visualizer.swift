@@ -187,7 +187,7 @@ struct SpectrumView: View {
     /// Clicking the bars steps the bubbles: full → half strength → off → full. Starts on the default
     /// look and fades out one step at a time, so a click always does something visible; remembered.
     @AppStorage("bubbleStage") private var bubbleStage = 0
-    private var bubbleStrength: Double { [0.95, 0.5, 0][bubbleStage % 3] }
+    private var bubbleStrength: Double { [0.90, 0.5, 0][bubbleStage % 3] }
     /// Names the new stage in a little chat bubble over the bars for a moment after each click.
     @State private var stageLabel: String?
     @State private var labelID = 0
