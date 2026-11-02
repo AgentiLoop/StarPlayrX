@@ -34,6 +34,10 @@ final class SpectrumTimeline: @unchecked Sendable {
         liveSegmentObserver = { [unowned self] name, data, key in queue.async { self.segment(name, data, key) } }
     }
 
+    /// The same feed for live channels tuned through the modern API (LiveLoader), which skip the local server.
+    func livePlaylist(_ text: String) { playlist(text) }
+    func liveSegment(_ name: String, _ data: Data, _ key: Data?) { queue.async { self.segment(name, data, key) } }
+
     // MARK: Live
 
     private func playlist(_ text: String) {

@@ -226,6 +226,12 @@ actor XtraClient {
 
     func fetchText(_ url: URL) async throws -> String { try await text(url) }
 
+    func fetchData(_ url: URL) async throws -> Data {
+        let (data, resp) = try await session.data(from: url)
+        if let code = (resp as? HTTPURLResponse)?.statusCode, code >= 400 { throw XtraError.http(code, url.lastPathComponent) }
+        return data
+    }
+
     /// The track an Xtra channel would start with if tuned now, without downloading anything.
     func peek(channelID: String) async throws -> XtraTrack? {
         try await tune(channelID: channelID).tracks.first
@@ -436,10 +442,15 @@ extension Data {
 
 /// Serves a modern-API live stream to AVPlayer. The playlists are fetched here (scheme `sxmlive`) so the key URI
 /// can be pointed at `sxmkey`, which answers with the raw AES key (the real endpoint needs a bearer and returns JSON).
-/// Segments stay plain https URLs that AVPlayer loads itself.
+/// Segments stay plain https URLs that AVPlayer loads itself; the newest ones are also fetched here for the EQ,
+/// which the legacy local server used to feed (SpectrumTimeline.observeServer).
 final class LiveLoader: NSObject, AVAssetResourceLoaderDelegate {
     let client: XtraClient
     init(client: XtraClient) { self.client = client }
+
+    private let lock = NSLock()
+    private var analyzed = Set<String>()   // segment names already handed to the EQ
+    private var keys = [String: Data]()
 
     static func asset(for url: URL, client: XtraClient) -> (AVURLAsset, LiveLoader) {
         var c = URLComponents(url: url, resolvingAgainstBaseURL: false)!
@@ -450,13 +461,46 @@ final class LiveLoader: NSObject, AVAssetResourceLoaderDelegate {
         return (asset, loader)
     }
 
+    private func key(id: String) async throws -> Data {
+        lock.lock(); let cached = keys[id]; lock.unlock()
+        if let cached { return cached }
+        let key = try await client.key(id: id)
+        lock.lock(); keys[id] = key; lock.unlock()
+        return key
+    }
+
+    /// Hands the media playlist and its newest segments (where the player starts and keeps playing) to the EQ.
+    private func feedSpectrum(_ body: String, base: URL) {
+        SpectrumTimeline.shared.livePlaylist(body)
+        var keyID: String?
+        var segments = [URL]()
+        for raw in body.split(whereSeparator: \.isNewline) {
+            let line = raw.trimmingCharacters(in: .whitespaces)
+            if line.hasPrefix("#EXT-X-KEY"), let r = line.range(of: "URI=\"") {
+                keyID = line[r.upperBound...].split(separator: "\"").first.flatMap { $0.split(separator: "/").last }.map(String.init)
+            } else if !line.isEmpty, !line.hasPrefix("#"), let u = URL(string: line, relativeTo: base)?.absoluteURL {
+                segments.append(u)
+            }
+        }
+        guard let keyID else { return }
+        lock.lock()
+        let fresh = segments.suffix(4).filter { analyzed.insert($0.lastPathComponent).inserted }
+        lock.unlock()
+        for url in fresh {
+            Task {
+                guard let data = try? await client.fetchData(url), let key = try? await key(id: keyID) else { return }
+                SpectrumTimeline.shared.liveSegment(url.lastPathComponent, data, key)
+            }
+        }
+    }
+
     func resourceLoader(_ resourceLoader: AVAssetResourceLoader,
                         shouldWaitForLoadingOfRequestedResource req: AVAssetResourceLoadingRequest) -> Bool {
         guard let url = req.request.url, let scheme = url.scheme else { return false }
         Task {
             do {
                 if scheme == "sxmkey" {
-                    let key = try await client.key(id: url.lastPathComponent)
+                    let key = try await key(id: url.lastPathComponent)
                     req.contentInformationRequest?.contentType = "public.data"   // raw key bytes
                     req.contentInformationRequest?.contentLength = Int64(key.count)
                     req.contentInformationRequest?.isByteRangeAccessSupported = false
@@ -480,6 +524,7 @@ final class LiveLoader: NSObject, AVAssetResourceLoaderDelegate {
                         }
                         return abs.absoluteString
                     }.joined(separator: "\n")
+                    if body.contains("#EXTINF") { feedSpectrum(body, base: real) }
                     req.contentInformationRequest?.contentType = "public.m3u-playlist"
                     req.contentInformationRequest?.contentLength = Int64(out.utf8.count)
                     req.contentInformationRequest?.isByteRangeAccessSupported = false
