@@ -389,13 +389,13 @@ final class SpectrumRenderer: NSObject, MTKViewDelegate {
         let blobX = viz.previous.blobX + (viz.blobX - viz.previous.blobX) * Double(f)
         // The "lava": a blurred blob of the colour opposite the middle bar's, swelling on the beat.
         var blob = blobColour
-        blob.w = Float(0.04 + 0.085 * pulse)   // about half the old 0.075 + 0.175 × pulse: a softer glow behind the bars
+        blob.w = Float(0.075 + 0.175 * pulse)
         var globals = Globals(
             view: [Float(view.bounds.width) - 2 * Self.pad, Self.barHeight, Float(view.drawableSize.width / view.bounds.width), Self.pad],
             state: [Float(pulse), light ? 1 : 0, Float(bubbles), Float(Date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 3600))],
             bubble: light ? [0, 0, 0, 0.7] : [1, 1, 1, 1],   // dark bubbles at 70% strength, so they stay soft
             blob: blob,
-            blobShape: [Float(80 * blobX), Float(0.6 + 0.3 * sin(viz.phase * 2 * .pi * 2)), Float(0.6 + 0.5 * pulse), 0],
+            blobShape: [Float(80 * blobX), Float(0.6 + 0.3 * sin(viz.phase * 2 * .pi * 2)), Float(0.6 + 0.5 * pulse), 5],   // last: glow moved 5 pt down
             glowStyle: [Float(light ? 0.75 + 0.25 * pulse : 0.7 + 0.3 * pulse), Float(1 + 4 * pulse), f, 0])
         encoder.setRenderPipelineState(pipeline)
         encoder.setFragmentBytes(&globals, length: MemoryLayout<Globals>.stride, index: 0)
@@ -417,7 +417,7 @@ final class SpectrumRenderer: NSObject, MTKViewDelegate {
         float4 state;      // pulse, light panel, bubble strength, seconds
         float4 bubble;     // bubble colour, alpha
         float4 blob;       // blob colour, opacity
-        float4 blobShape;  // x offset (pt), x scale, y scale
+        float4 blobShape;  // x offset (pt), x scale, y scale, y offset (pt, down)
         float4 glowStyle;  // glow opacity, glow radius (pt), tween 0...1 from the previous step
     };
 
@@ -487,7 +487,7 @@ final class SpectrumRenderer: NSObject, MTKViewDelegate {
 
         // Blurred blob behind the bars.
         float2 br = max(float2(W / 2 * g.blobShape.y, H / 2 * g.blobShape.z), 0.5);
-        float bsd = ellipse(p - float2(W / 2 + g.blobShape.x, H / 2), br);
+        float bsd = ellipse(p - float2(W / 2 + g.blobShape.x, H / 2 + g.blobShape.w), br);
         out = over(out, g.blob.rgb, g.blob.a * (1 - smoothstep(-14.0, 14.0, bsd)));
 
         float bw = (W - 2 * (BANDS - 1)) / BANDS;
