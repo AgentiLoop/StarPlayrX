@@ -97,6 +97,19 @@ tell application "StarPlayrX"
 end tell
 ```
 
+### 🔌 Modern API and modern sign-in
+
+StarPlayrX for Mac can talk to SiriusXM two ways:
+
+- **Legacy player API** (the original path): `StarPlayrRadioKit` runs a tiny local HTTP server inside the app, signs in to the old `player.siriusxm.com` API, and serves live channels to the player as rewritten HLS playlists. It handles the AES keys and feeds the equalizer as each segment goes by. Xtra channels don't exist in that API, so after a legacy sign-in the app also signs in to the modern API in the background to list and play them.
+- **Modern API** (`api.edge-gateway.siriusxm.com`): the API the [SiriusXM web player](https://www.siriusxm.com/player/home) uses. Sign-in is a short chain (register a device → anonymous session → password → authenticated session) that yields a bearer token. Channels come from the same "All channels" grouping the web player shows, and a channel is tuned with one `tuneSource` call that returns signed HLS URLs. Xtra channels are played track by track (each track is an encrypted clip with its own key); live channels are an ordinary AES-128 HLS stream with about five hours of rewind.
+
+**Modern API for live channels** (on by default) tunes live channels through the modern API instead of the local server. The playlists and the key request still go through the app (`LiveLoader`), because the key endpoint needs the bearer token and answers JSON rather than raw key bytes; the audio segments themselves are plain signed URLs the player fetches directly. The newest segments are also fetched and decoded in the background so the equalizer keeps working exactly as it does on the legacy path. Live channels tune in well under a second this way. Click the version number at the bottom of the panel to switch it off; the current channel retunes through the other path right away.
+
+**Modern API sign-in** is a checkbox on the sign-in screen. With it on, the app never starts the local server or touches the legacy API: it signs in to the modern API once, builds the whole channel list (live and Xtra) from it, and plays live channels through it. The version-number switch is hidden in that mode, since there's no legacy session to switch back to. With it off (the default) sign-in works the way it always has, and the version-number switch picks how live channels play.
+
+Both choices are remembered. Either way your username and password are kept only in the macOS Keychain, and what's-playing info for every live channel comes from the modern API's unauthenticated "look around" feed.
+
 ## 🛠️ Building
 
 You need Xcode 16 or later.
