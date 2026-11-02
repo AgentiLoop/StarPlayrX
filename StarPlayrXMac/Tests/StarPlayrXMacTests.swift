@@ -90,7 +90,7 @@ final class PanelTests: XCTestCase {
         RunLoop.main.run(until: Date().addingTimeInterval(seconds))
     }
 
-    private var visibleFrame: NSRect { (panel.screen ?? NSScreen.main)!.visibleFrame }
+    private var visibleFrame: NSRect { (panel.screen ?? NSScreen.main)?.visibleFrame ?? .zero }
 
     /// Runs one of our AppleScript commands through the sdef's command description, as an Apple Event would.
     private func script(_ event: String, _ direct: Any? = nil, _ args: [String: Any] = [:]) -> Any? {

@@ -444,7 +444,7 @@ private struct WallpaperProbe: NSViewRepresentable {
             let crop = CGRect(x: x, y: y, width: max(1, rect.width * scale), height: max(1, rect.height * scale)).integral
             guard let part = image.cropping(to: crop) else { return nil }
             guard let ctx = CGContext(data: nil, width: 1, height: 1, bitsPerComponent: 8, bytesPerRow: 4,
-                                      space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                                      space: CGColorSpace(name: CGColorSpace.sRGB) ?? CGColorSpaceCreateDeviceRGB(),
                                       bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return nil }
             ctx.interpolationQuality = .medium
             ctx.draw(part, in: CGRect(x: 0, y: 0, width: 1, height: 1))

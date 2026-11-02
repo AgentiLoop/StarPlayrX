@@ -130,7 +130,7 @@ actor XtraClient {
     }
 
     private func channelPage(offset: Int, bearer: String) async throws -> [[String: Any]] {
-        var c = URLComponents(string: Self.api + "/relationship/v1/container/all-channels")!
+        guard var c = URLComponents(string: Self.api + "/relationship/v1/container/all-channels") else { throw XtraError.badResponse("all-channels") }
         c.queryItems = [
             .init(name: "entityId", value: Self.allChannelsEntity),
             .init(name: "entityType", value: "curated-grouping"),
@@ -145,7 +145,8 @@ actor XtraClient {
             .init(name: "preferredImageVariant", value: "default"),
             .init(name: "setResponseStructure", value: "default"),
         ]
-        let page = try await json("GET", c.url!.absoluteString, body: nil, bearer: bearer)
+        guard let url = c.url else { throw XtraError.badResponse("all-channels") }
+        let page = try await json("GET", url.absoluteString, body: nil, bearer: bearer)
         let sets = (page["container"] as? [String: Any])?["sets"] as? [[String: Any]] ?? []
         return sets.flatMap { $0["items"] as? [[String: Any]] ?? [] }
     }
@@ -217,7 +218,8 @@ actor XtraClient {
         // 3 times a minute. Checked on the 5 s PDT tick and stamped after the download finishes, so the
         // 4th tick sees ~19.7 s; "> 20" waited for the 5th tick (every 25 s). "> 18" lands on the 4th.
         if Date().timeIntervalSince(lookAroundFetched) > 18 {
-            let (data, resp) = try await session.data(from: URL(string: Self.lookAround)!)
+            guard let url = URL(string: Self.lookAround) else { throw XtraError.badResponse("lookAround") }
+            let (data, resp) = try await session.data(from: url)
             if let code = (resp as? HTTPURLResponse)?.statusCode, code >= 400 { throw XtraError.http(code, "lookAround") }
             lookAroundChannels = ((try? JSONSerialization.jsonObject(with: data)) as? [String: Any])?["channels"] as? [String: [String: Any]] ?? [:]
             lookAroundFetched = Date()
@@ -286,7 +288,10 @@ actor XtraClient {
         }
 
         var audio = Data()
-        for i in segments.indices { audio.append(parts[i]!) }
+        for i in segments.indices {
+            guard let part = parts[i] else { throw XtraError.badResponse("segment") }
+            audio.append(part)
+        }
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         let file = folder.appendingPathComponent("\(track.id).aac")
         try audio.write(to: file)

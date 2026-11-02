@@ -388,15 +388,16 @@ final class Radio: ObservableObject {
         let idle = channels.filter { $0.xtraID != nil && !isPlayingXtra($0.id) }
         let unpeeked = idle.filter { xtraPeekedAt[$0.id] == nil }
         let batch = !unpeeked.isEmpty ? unpeeked : Array(idle
-            .filter { xtraPeekedAt[$0.id]! < stale }
-            .sorted { xtraPeekedAt[$0.id]! < xtraPeekedAt[$1.id]! }
+            .filter { (xtraPeekedAt[$0.id] ?? .distantPast) < stale }
+            .sorted { (xtraPeekedAt[$0.id] ?? .distantPast) < (xtraPeekedAt[$1.id] ?? .distantPast) }
             .prefix(30))
         guard !batch.isEmpty else { return }
         let client = xtra
         await withTaskGroup(of: (String, XtraTrack?).self) { group in
             for (i, ch) in batch.enumerated() {
+                guard let xtraID = ch.xtraID else { continue }
                 if i >= 12, let r = await group.next() { applyXtraPeek(r.0, r.1) }
-                group.addTask { (ch.id, try? await client.peek(channelID: ch.xtraID!)) }
+                group.addTask { (ch.id, try? await client.peek(channelID: xtraID)) }
             }
             for await r in group { applyXtraPeek(r.0, r.1) }
         }
@@ -485,7 +486,7 @@ final class Radio: ObservableObject {
             MPNowPlayingInfoPropertyIsLiveStream: true
         ]
         // Same art as the menu's Now Playing tile: album art when there is some, else the channel logo.
-        let url = np?.image.isEmpty == false ? np!.image : current.imageURL
+        let url = (np?.image).flatMap { $0.isEmpty ? nil : $0 } ?? current.imageURL
         if url == artworkURL, let artwork { info[MPMediaItemPropertyArtwork] = artwork }
         center.nowPlayingInfo = info
         center.playbackState = isPlaying ? .playing : .paused

@@ -103,8 +103,9 @@ final class SpectrumTimeline: @unchecked Sendable {
         lock.lock()
         defer { lock.unlock() }
         guard let anchor, time >= 0 else { return nil }
-        if startSlot == nil { startSlot = Int(time / Self.nominal) }
-        var slot = startSlot!
+        let start = startSlot ?? Int(time / Self.nominal)
+        startSlot = start
+        var slot = start
         var t = time - Double(slot) * Self.nominal
         if t < 0 {   // before where playback started (a seek back): still on the tagged 10 s grid
             slot = Int(time / Self.nominal)
@@ -168,7 +169,7 @@ final class SpectrumTimeline: @unchecked Sendable {
                     tracks[file] = Track(hop: hop, first: index, frames: [])
                 }
                 guard tracks[file] != nil else { return false }   // forgotten meanwhile
-                tracks[file]!.frames += frames
+                tracks[file]?.frames += frames
                 return true
             }
         }
@@ -233,11 +234,11 @@ final class SpectrumTimeline: @unchecked Sendable {
 
     /// FFT of one 1024-sample block into `Visualizer.bandCount` bar heights (0...1).
     private final class Bands {
-        private let fft = vDSP_create_fftsetup(10, FFTRadix(kFFTRadix2))!
+        private let fft = vDSP_create_fftsetup(10, FFTRadix(kFFTRadix2))
         private var window = [Float](repeating: 0, count: SpectrumTimeline.n)
 
         init() { vDSP_hann_window(&window, vDSP_Length(SpectrumTimeline.n), Int32(vDSP_HANN_NORM)) }
-        deinit { vDSP_destroy_fftsetup(fft) }
+        deinit { if let fft { vDSP_destroy_fftsetup(fft) } }
 
         func levels(_ block: ArraySlice<Float>) -> [Float] {
             let n = SpectrumTimeline.n
@@ -248,9 +249,10 @@ final class SpectrumTimeline: @unchecked Sendable {
             var mags = [Float](repeating: 0, count: half)
             real.withUnsafeMutableBufferPointer { rp in
                 imag.withUnsafeMutableBufferPointer { ip in
-                    var split = DSPSplitComplex(realp: rp.baseAddress!, imagp: ip.baseAddress!)
+                    guard let fft, let realp = rp.baseAddress, let imagp = ip.baseAddress else { return }
+                    var split = DSPSplitComplex(realp: realp, imagp: imagp)
                     windowed.withUnsafeBufferPointer { wp in
-                        wp.baseAddress!.withMemoryRebound(to: DSPComplex.self, capacity: half) {
+                        wp.baseAddress?.withMemoryRebound(to: DSPComplex.self, capacity: half) {
                             vDSP_ctoz($0, 2, &split, 1, vDSP_Length(half))
                         }
                     }

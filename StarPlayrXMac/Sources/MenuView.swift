@@ -182,7 +182,7 @@ struct MenuView: View {
     private func prefetchArt(around index: Int, in list: [Channel]) {
         for ch in list[max(0, index - 10)..<min(list.count, index + 11)] {
             let np = radio.nowPlaying[ch.id]
-            ArtCache.shared.prefetch(np?.image.isEmpty == false ? np!.image : ch.imageURL, pixels: ArtCache.pixels(32))
+            ArtCache.shared.prefetch((np?.image).flatMap { $0.isEmpty ? nil : $0 } ?? ch.imageURL, pixels: ArtCache.pixels(32))
         }
     }
 
@@ -262,15 +262,14 @@ final class MenuController: NSObject, ObservableObject {
 
     @Published private(set) var detached = false
     @Published var shaded = false
-    private(set) var panel: MenuPanel!
-    private var statusItem: NSStatusItem!
+    private(set) lazy var panel = MenuPanel.make()
+    private lazy var statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
     private var outsideClick: Any?
     private var glide: Timer?
     private var playing: AnyCancellable?
 
     func install() {
-        panel = MenuPanel.make()
-        statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
+        _ = panel
         statusItem.button?.target = self
         statusItem.button?.action = #selector(statusItemClicked)
         playing = Radio.shared.$isPlaying.sink { [weak self] on in
@@ -546,8 +545,9 @@ final class MenuPanel: NSPanel {
         }
         // A hosting controller sizes the panel to the view (and follows it when the
         // spectrum appears); a bare hosting view in a .zero rect leaves it 0×0 and invisible.
-        panel.contentViewController = NSHostingController(rootView: root)
-        panel.setContentSize(panel.contentViewController!.view.fittingSize)
+        let host = NSHostingController(rootView: root)
+        panel.contentViewController = host
+        panel.setContentSize(host.view.fittingSize)
         return panel
     }
 }

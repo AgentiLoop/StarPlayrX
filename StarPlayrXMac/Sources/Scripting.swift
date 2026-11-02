@@ -47,7 +47,7 @@ extension AppDelegate {
     @objc var spLiveChannelNumbers: [String] { radio.channels.filter { $0.xtraID == nil }.map(\.id) }
 
     @objc var spMenuVisible: Bool {
-        get { menu.panel?.isVisible ?? false }
+        get { menu.panel.isVisible }
         set { if newValue != spMenuVisible { newValue ? menu.statusItemClicked() : menu.hide() } }
     }
 
@@ -200,11 +200,11 @@ final class SPXCommand: NSScriptCommand {
                 return "\(played == shown ? "MATCH" : "MISMATCH")\t\(channel.id)\t\(shown)\t\(played)"
             }
         case "show menu":
-            if !(menu.panel?.isVisible ?? false) || menu.detached { menu.statusItemClicked() }
+            if !(menu.panel.isVisible) || menu.detached { menu.statusItemClicked() }
         case "hide menu":
             menu.hide()
         case "detach menu":
-            if !(menu.panel?.isVisible ?? false) { menu.statusItemClicked() }
+            if !(menu.panel.isVisible) { menu.statusItemClicked() }
             menu.detach()
         default:
             return fail("Unknown command \(commandDescription.commandName).")
