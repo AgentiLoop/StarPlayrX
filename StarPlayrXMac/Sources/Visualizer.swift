@@ -408,7 +408,7 @@ final class SpectrumRenderer: NSObject, MTKViewDelegate {
             float sd = roundedRect(p, centre, hs, 1.5);
             if (sd > 3 * sigma + 1) continue;
             float d = max(sd, 0.0);
-            out = over(out, b.glow.rgb, g.glowStyle.x * exp(-d * d / (2 * sigma * sigma)));
+            // out = over(out, b.glow.rgb, g.glowStyle.x * exp(-d * d / (2 * sigma * sigma)));
             float c = cover(sd, px);
             if (c <= 0) continue;
             float2 lp = p - (centre - hs);
