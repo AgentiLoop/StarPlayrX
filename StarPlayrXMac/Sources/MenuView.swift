@@ -333,6 +333,8 @@ private struct ChannelRow: View, Equatable {
                     .scaledToFit()
                     .frame(width: 16, height: 16)
                     .foregroundStyle(Color.secondary)
+                    // On the selected row a solid star is 10% darker.
+                    .brightness(isCurrent && isStarred ? -0.1 : 0)
             }
             .buttonStyle(.plain)
             .help(isStarred ? "Remove from stars" : "Add to stars")
