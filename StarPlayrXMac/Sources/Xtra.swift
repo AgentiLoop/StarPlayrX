@@ -214,7 +214,9 @@ actor XtraClient {
     /// livePointIntervalMs 60000): the web player refetches the feed every 45 s; we do every 20 s. The music reaches the
     /// speakers `behind` seconds after the feed's clock says it aired, so read the feed that far back.
     func liveNowPlaying(behind: TimeInterval) async throws -> [String: NowPlaying] {
-        if Date().timeIntervalSince(lookAroundFetched) > 20 {
+        // 3 times a minute. Checked on the 5 s PDT tick and stamped after the download finishes, so the
+        // 4th tick sees ~19.7 s; "> 20" waited for the 5th tick (every 25 s). "> 18" lands on the 4th.
+        if Date().timeIntervalSince(lookAroundFetched) > 18 {
             let (data, resp) = try await session.data(from: URL(string: Self.lookAround)!)
             if let code = (resp as? HTTPURLResponse)?.statusCode, code >= 400 { throw XtraError.http(code, "lookAround") }
             lookAroundChannels = ((try? JSONSerialization.jsonObject(with: data)) as? [String: Any])?["channels"] as? [String: [String: Any]] ?? [:]
