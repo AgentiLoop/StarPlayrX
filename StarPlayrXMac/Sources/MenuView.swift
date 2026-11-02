@@ -31,9 +31,11 @@ struct MenuView: View {
             VStack(alignment: .leading, spacing: 10) {
                 if radio.isLoggedIn {
                     // Tear-off / drag area: artwork, titles and the spectrum.
-                    VStack(alignment: .leading, spacing: 10) {
+                    VStack(alignment: .leading, spacing: 0) {
                         nowPlaying
-                        if radio.isPlaying { SpectrumView() }
+                        // Tucked up under the artwork: the bar area is 40 pt tall but mostly empty when the
+                        // music is quiet, so a full gap above it left a big hole. Loud bars may rise beside the art.
+                        if radio.isPlaying { SpectrumView().padding(.top, -6) }
                     }
                     .contentShape(Rectangle())
                     .gesture(tearOff)
