@@ -13,7 +13,9 @@ import ImageIO
 
 extension Channel {
     /// The search field's matching: number, name, category, "Music Xtra", artist and song.
-    static func filter(_ channels: [Channel], nowPlaying: [String: NowPlaying], search: String) -> [Channel] {
+    /// With `stars` the list is only those channels first (the "All Stars" filter).
+    static func filter(_ channels: [Channel], nowPlaying: [String: NowPlaying], search: String, stars: Set<String>? = nil) -> [Channel] {
+        let channels = stars.map { stars in channels.filter { stars.contains($0.id) } } ?? channels
         guard !search.isEmpty else { return channels }
         return channels.filter { ch in
             let np = nowPlaying[ch.id]
@@ -29,7 +31,8 @@ struct MenuView: View {
     @ObservedObject private var menu = MenuController.shared
 
     private var filtered: [Channel] {
-        Channel.filter(radio.channels, nowPlaying: radio.nowPlaying, search: menu.search)
+        Channel.filter(radio.channels, nowPlaying: radio.nowPlaying, search: menu.search,
+                       stars: menu.starsOnly ? radio.presets : nil)
     }
 
     /// Double-click the tear-off area to roll the panel up to just that area (under the menu bar or torn off).
@@ -61,7 +64,17 @@ struct MenuView: View {
             // list on unshade blocked the main thread and froze the equalizer.
             VStack(alignment: .leading, spacing: 10) {
                 if radio.isLoggedIn {
-                    SearchField(text: $menu.search, placeholder: "Search channels, artists, songs")
+                    HStack(spacing: 6) {
+                        SearchField(text: $menu.search, placeholder: "Search channels, artists, songs")
+                        // "All Stars" (as on iOS): the list shows only the starred channels.
+                        Button { menu.starsOnly.toggle() } label: {
+                            Image(systemName: menu.starsOnly ? "star.fill" : "star")
+                                .foregroundStyle(menu.starsOnly ? Color.yellow : Color.secondary)
+                        }
+                        .buttonStyle(.plain)
+                        .help(menu.starsOnly ? "Show every channel" : "Show only starred channels")
+                        .accessibilityLabel(menu.starsOnly ? "All Stars On" : "All Stars Off")
+                    }
                     channelList
                 }
                 Divider()
@@ -149,6 +162,18 @@ struct MenuView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .contentShape(Rectangle())
             .simultaneousGesture(TapGesture().onEnded { revealCurrent() })
+            // The star (as the iOS "All Star" button): the current channel in or out of the presets.
+            if let ch = radio.current {
+                let starred = radio.presets.contains(ch.id)
+                Button { radio.togglePreset(ch.id) } label: {
+                    Image(systemName: starred ? "star.fill" : "star")
+                        .font(.system(size: 16))
+                        .foregroundStyle(starred ? Color.yellow : Color.secondary)
+                }
+                .buttonStyle(.plain)
+                .help(starred ? "Remove from stars" : "Add to stars")
+                .accessibilityLabel(starred ? "Preset On, Channel \(ch.name)" : "Preset Off")
+            }
             Button {
                 radio.togglePlayPause()
             } label: {
@@ -178,7 +203,8 @@ struct MenuView: View {
                         } label: {
                             ChannelRow(channel: ch, nowPlaying: radio.displayed(ch.id),
                                        isCurrent: ch == radio.current,
-                                       isPlaying: ch == radio.current && radio.isPlaying)
+                                       isPlaying: ch == radio.current && radio.isPlaying,
+                                       isStarred: radio.presets.contains(ch.id))
                                 .equatable()
                         }
                         .buttonStyle(.plain)
@@ -249,6 +275,7 @@ private struct ChannelRow: View, Equatable {
     let nowPlaying: NowPlaying?
     let isCurrent: Bool
     let isPlaying: Bool
+    let isStarred: Bool
 
     var body: some View {
         HStack {
@@ -285,6 +312,9 @@ private struct ChannelRow: View, Equatable {
                 MarqueeText(text: line, font: .caption, secondary: true).id(line)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+            if isStarred {
+                Image(systemName: "star.fill").font(.caption).foregroundStyle(.yellow)
+            }
             if isPlaying {
                 Image(systemName: "speaker.wave.2.fill").foregroundStyle(.tint)
             }
@@ -471,10 +501,13 @@ final class MenuController: NSObject, ObservableObject {
     // MARK: Channel list (search and scrolling)
 
     @Published var search = ""
+    /// The star beside the search field: only the starred channels are listed.
+    @Published var starsOnly = false
 
-    /// The channels the list shows right now (after the search field).
+    /// The channels the list shows right now (after the search field and the stars filter).
     var visibleChannels: [Channel] {
-        Channel.filter(Radio.shared.channels, nowPlaying: Radio.shared.nowPlaying, search: search)
+        Channel.filter(Radio.shared.channels, nowPlaying: Radio.shared.nowPlaying, search: search,
+                       stars: starsOnly ? Radio.shared.presets : nil)
     }
 
     /// The channel list's NSScrollView (the SwiftUI ScrollView's backing view): the one with the tallest content.

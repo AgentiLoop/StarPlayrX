@@ -62,6 +62,15 @@ final class Radio: ObservableObject {
         UserDefaults.standard.set(Array(showArtChannels).sorted(), forKey: "showArtChannels")
         return true
     }
+    /// Starred channels ("presets" on iOS; same key and starting set as the iOS app). Kept on this
+    /// Mac only, not on the SiriusXM account.
+    @Published private(set) var presets = Set(UserDefaults.standard.stringArray(forKey: "SPXPresets") ?? ["2", "3", "4"])
+
+    /// The star: adds the channel to the presets, or takes it out. Remembered.
+    func togglePreset(_ id: String) {
+        if presets.contains(id) { presets.remove(id) } else { presets.insert(id) }
+        UserDefaults.standard.set(Array(presets).sorted { Int($0) ?? 0 < Int($1) ?? 0 }, forKey: "SPXPresets")
+    }
     @Published var localeIsCA = UserDefaults.standard.bool(forKey: "localeIsCA")
     /// Live channels through the modern API (as Xtra) instead of the legacy local server. Click the version number to switch.
     @Published var modernLive = UserDefaults.standard.object(forKey: "modernLive") as? Bool ?? true
