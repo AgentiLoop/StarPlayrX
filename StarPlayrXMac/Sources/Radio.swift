@@ -64,6 +64,8 @@ final class Radio: ObservableObject {
     @Published var localeIsCA = UserDefaults.standard.bool(forKey: "localeIsCA")
     /// Live channels through the modern API (as Xtra) instead of the legacy local server. Click the version number to switch.
     @Published var modernLive = UserDefaults.standard.object(forKey: "modernLive") as? Bool ?? true
+    /// Signed in through the modern API only (no legacy session): live channels must play through it.
+    @Published var modernLogin = UserDefaults.standard.bool(forKey: "modernLogin")
     /// True once sign-in has finished loading every channel, Xtra included (or Xtra failed).
     @Published var channelsLoaded = false
 
@@ -116,10 +118,15 @@ final class Radio: ObservableObject {
 
     // MARK: Login
 
-    func login(user: String, pass: String) async -> Bool {
+    func login(user: String, pass: String, modern: Bool? = nil) async -> Bool {
         isBusy = true
         channelsLoaded = false
         defer { isBusy = false }
+        if let modern {
+            modernLogin = modern
+            UserDefaults.standard.set(modern, forKey: "modernLogin")
+        }
+        if modernLogin { return await loginModern(user: user, pass: pass) }
         status = "Starting…"
         await startServerIfNeeded()
         _ = await text(localeIsCA ? "ca" : "us")
@@ -168,6 +175,38 @@ final class Radio: ObservableObject {
         return true
     }
 
+    /// Sign in through the modern API only: no local server, every channel (live and Xtra) from
+    /// XtraClient.channels(), live playback forced through LiveLoader.
+    private func loginModern(user: String, pass: String) async -> Bool {
+        status = "Signing in…"
+        UserDefaults.standard.removeObject(forKey: "pass")
+        let all: [XtraChannel]
+        do {
+            try await xtra.signIn(user: user, pass: pass)
+            status = "Loading channels…"
+            all = try await xtra.channels()
+        } catch {
+            status = error.localizedDescription
+            return false
+        }
+        guard !all.isEmpty else { status = "Error reading channels."; return false }
+        Keychain.save(user: user, pass: pass)
+        liveIDs = Dictionary(all.filter { !$0.isXtra }.map { ($0.number, $0.id) }) { first, _ in first }
+        channels = all.map {
+            Channel(id: $0.number, name: $0.name, category: $0.genre, imageURL: $0.imageURL, xtraID: $0.isXtra ? $0.id : nil)
+        }
+        .sorted { $0.id.localizedStandardCompare($1.id) == .orderedAscending }
+        isLoggedIn = true
+        channelsLoaded = true
+        status = "Signed in"
+        if let last = UserDefaults.standard.string(forKey: "lastChannel") {
+            current = channels.first { $0.id == last }
+            if let current, !isPlaying { play(current) }
+        }
+        await updatePDT()
+        startPDTTimer()
+        return true
+    }
     /// Xtra channels come from SiriusXM's newer API; if that fails the live channels still work.
     private func loadXtraChannels(user: String, pass: String) async {
         defer { if isLoggedIn { channelsLoaded = true } }
@@ -243,7 +282,7 @@ final class Radio: ObservableObject {
             SpectrumTimeline.shared.resetLive()
             let item: AVPlayerItem
             // EXPERIMENT: tune live channels through the modern API (as Xtra does); legacy local server as fallback.
-            if modernLive, let liveID = liveIDs[channel.id],
+            if modernLive || modernLogin, let liveID = liveIDs[channel.id],
                let live = try? await xtra.liveStream(channelID: liveID) {
                 // Playlists and the AES key go through LiveLoader; the signed segment URLs load directly.
                 let (asset, loader) = LiveLoader.asset(for: live.url, client: xtra)
