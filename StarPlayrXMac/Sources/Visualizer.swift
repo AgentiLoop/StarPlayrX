@@ -188,6 +188,9 @@ struct SpectrumView: View {
     /// look and fades out one step at a time, so a click always does something visible; remembered.
     @AppStorage("bubbleStage") private var bubbleStage = 0
     private var bubbleStrength: Double { [1, 0.5, 0][bubbleStage % 3] }
+    /// Names the new stage in a little chat bubble over the bars for a moment after each click.
+    @State private var stageLabel: String?
+    @State private var labelID = 0
 
     private func hue(_ x: Double) -> Double { (x.truncatingRemainder(dividingBy: 1) + 1).truncatingRemainder(dividingBy: 1) }
 
@@ -234,11 +237,55 @@ struct SpectrumView: View {
         }
         .animation(.linear(duration: 1.0 / 60), value: viz.levels)
         .background(WallpaperProbe(luminance: $wallpaper))
+        .overlay {
+            if let stageLabel {
+                ChatBubble(text: stageLabel).transition(.opacity.combined(with: .scale(scale: 0.85)))
+            }
+        }
         .contentShape(Rectangle())
-        .onTapGesture { bubbleStage = (bubbleStage + 1) % 3 }
+        .onTapGesture {
+            bubbleStage = (bubbleStage + 1) % 3
+            labelID += 1
+            let id = labelID
+            withAnimation(.easeOut(duration: 0.15)) { stageLabel = ["Bubbles", "Soft Bubbles", "No Bubbles"][bubbleStage] }
+            Task {
+                try? await Task.sleep(for: .seconds(1.2))
+                guard labelID == id else { return }   // a newer click keeps its own label up
+                withAnimation(.easeIn(duration: 0.3)) { stageLabel = nil }
+            }
+        }
         .help("Click to change the bubbles: full, soft, off")
         .onAppear { viz.start() }
         .onDisappear { viz.stop() }
+    }
+}
+
+/// A small speech bubble (capsule with a tail pointing down at the bars) that fits within the bar row.
+private struct ChatBubble: View {
+    let text: String
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Text(text)
+                .font(.system(size: 11, weight: .semibold))
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
+                .background(.regularMaterial, in: Capsule())
+            Tail().fill(.regularMaterial).frame(width: 8, height: 4)
+        }
+        .shadow(color: .black.opacity(0.25), radius: 2, y: 1)
+        .allowsHitTesting(false)
+    }
+
+    private struct Tail: Shape {
+        func path(in r: CGRect) -> Path {
+            Path { p in
+                p.move(to: CGPoint(x: r.minX, y: r.minY))
+                p.addLine(to: CGPoint(x: r.maxX, y: r.minY))
+                p.addLine(to: CGPoint(x: r.midX, y: r.maxY))
+                p.closeSubpath()
+            }
+        }
     }
 }
 
