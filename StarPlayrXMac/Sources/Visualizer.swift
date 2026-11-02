@@ -210,7 +210,8 @@ struct SpectrumView: View {
                             RoundedRectangle(cornerRadius: 1.5).strokeBorder(.black.opacity(0.25), lineWidth: 0.5)
                         }
                     }
-                    .overlay { LavaBubbles(rise: viz.rise[i], seed: Double(i), color: light ? .black : .white) }
+                    .overlay { LavaBubbles(rise: viz.rise[i], seed: Double(i), color: light ? .black.opacity(0.7) : .white,   // dark bubbles at 70% strength, so they stay soft
+                                                  shade: Color(hue: h, saturation: 0.9, brightness: 1)) }   // the bar's pure colour, not contrast-darkened
                     .clipShape(RoundedRectangle(cornerRadius: 1.5))
                     .frame(height: max(2, CGFloat(level) * 28))
                     .shadow(color: glow.opacity(light ? 0.75 + 0.25 * viz.pulse : 0.4 + 0.6 * viz.pulse), radius: 1 + 4 * viz.pulse)
@@ -233,24 +234,55 @@ struct SpectrumView: View {
     }
 }
 
-/// Three soft blobs rising through a bar, each a step behind the last. They wobble side to side,
-/// stretch as they climb, swell in the middle and fade near the top; a blur melts touching blobs together.
+/// Lava-lamp blobs rising through a bar: 3 or 4 per bar, unevenly spaced, each with its own size.
+/// They slowly stretch tall and squash wide as they climb, sway, and fade in at the bottom and out at the top.
 private struct LavaBubbles: View {
     let rise: Double
     let seed: Double
     let color: Color
+    let shade: Color   // the bar's own colour, for the bubbles that cast a shadow
 
     var body: some View {
         Canvas { ctx, size in
-            guard size.height > 6 else { return }
-            ctx.addFilter(.blur(radius: 1))
-            for k in 0..<3 {
-                let p = (rise + Double(k) / 3 + seed * 0.137).truncatingRemainder(dividingBy: 1)
-                let d = size.width * (0.45 + 0.25 * sin(p * .pi))            // grow mid-way, shrink at the ends
-                let x = size.width / 2 + size.width * 0.18 * sin(p * 9 + seed * 2 + Double(k))
-                let y = size.height * (1.1 - 1.2 * p)                         // from just below the bar to just above
-                let rect = CGRect(x: x - d / 2, y: y - d * 0.65, width: d, height: d * 1.3)
-                ctx.fill(Path(ellipseIn: rect), with: .color(color.opacity(0.32 * sin(p * .pi))))
+            guard size.height > 8 else { return }
+            let count = 3 + Int(seed) % 2
+            // Wall-clock time for the swelling; the canvas redraws every frame while the bubbles rise.
+            let now = Date.timeIntervalSinceReferenceDate
+            for k in 0..<count {
+                // Fixed per bar and slot (so nothing flickers): size, spacing jitter, sway and wobble rate.
+                func hash(_ salt: Double) -> Double {
+                    abs(sin(seed * 12.9898 + Double(k) * 78.233 + salt) * 43758.5453).truncatingRemainder(dividingBy: 1)
+                }
+                // Uneven spacing so blobs bunch up and drift apart instead of marching in step.
+                let slot = (Double(k) + 0.6 * hash(1)) / Double(count)
+                let p = (rise + slot + seed * 0.137).truncatingRemainder(dividingBy: 1)
+                // 20...85% of the bar's width, swelling a little as it rises, like warm wax.
+                // Each one slowly swells and shrinks (about 60...140%) on its own 3-6 s breath, never in step.
+                let period = 3 + 3 * hash(5)
+                let breath = 1 + 0.4 * sin(2 * .pi * (now / period + hash(6)))
+                let d = min(size.width * (0.2 + 0.65 * hash(0)), size.height * 0.35) * breath
+                // Only a slight stretch and squash, so they stay round.
+                let wobble = 0.06 * sin(p * 2 * .pi * (1.5 + hash(2)) + Double(k))
+                let w = d * (1 - wobble), h = d * (1 + wobble)
+                let x = size.width / 2 + size.width * 0.12 * sin(p * (4 + 3 * hash(3)) + seed * 2 + Double(k))
+                let y = size.height + h / 2 - (size.height + h) * p           // in from the bottom, out the top
+                let fade = min(1, sin(p * .pi) * 2)
+                let rect = CGRect(x: x - w / 2, y: y - h / 2, width: w, height: h)
+                // About a third of the bubbles cast a soft shadow down and right, another third glow.
+                let look = hash(4)
+                if look < 0.33 {
+                    // The bar's own colour, solid, 1 pt down and right: a shadow you only just notice.
+                    ctx.fill(Path(ellipseIn: rect.offsetBy(dx: 1, dy: 1)), with: .color(shade.opacity(fade)))
+                } else if look > 0.67 {
+                    let halo = rect.insetBy(dx: -w * 0.4, dy: -h * 0.4)
+                    ctx.fill(Path(ellipseIn: halo), with: .radialGradient(
+                        Gradient(colors: [Color.white.opacity(0.22 * fade), Color.white.opacity(0)]),
+                        center: CGPoint(x: halo.midX, y: halo.midY), startRadius: 0, endRadius: max(halo.width, halo.height) * 0.5))
+                }
+                // Soft: fades from a gentle centre to nothing at the edge, with no hard rim or highlight.
+                ctx.fill(Path(ellipseIn: rect), with: .radialGradient(
+                    Gradient(colors: [color.opacity(0.3 * fade), color.opacity(0.14 * fade), color.opacity(0)]),
+                    center: CGPoint(x: rect.midX - w * 0.1, y: rect.midY - h * 0.1), startRadius: 0, endRadius: max(w, h) * 0.6))
             }
         }
         .allowsHitTesting(false)

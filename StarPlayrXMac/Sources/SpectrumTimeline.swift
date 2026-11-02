@@ -10,7 +10,7 @@ import StarPlayrRadioKit
 final class SpectrumTimeline: @unchecked Sendable {
     static let shared = SpectrumTimeline()
 
-    private struct Chunk { let channel: String; let start: Date; let hop: Double; let frames: [[Float]] }
+    private struct Chunk { let channel: String; let start: Date; let sequence: Int; let hop: Double; let duration: Double; let frames: [[Float]] }
     private struct Track { let hop: Double; let first: Int; var frames: [[Float]] }
 
     private let lock = NSLock()
@@ -22,6 +22,7 @@ final class SpectrumTimeline: @unchecked Sendable {
     /// tagged 10 s, but segments really hold ~9.75 s, so its date drifts ~8 s ahead of the real PDT by
     /// the live edge. Segments are placed on that same 10 s grid so the bars match the player exactly.
     private var anchor: (sequence: Int, date: Date)?
+    private var startSlot: Int?   // the segment slot playback started on, in the item's timeline
     private static let nominal = 10.0
     private var live = [Chunk]()
     private var tracks = [URL: Track]()
@@ -50,7 +51,7 @@ final class SpectrumTimeline: @unchecked Sendable {
         }
         guard let channel = dates.keys.first.map(Self.channel) else { return }
         lock.lock()
-        if channel != liveChannel { anchor = nil }
+        if channel != liveChannel { anchor = nil; startSlot = nil }
         if anchor == nil, let first = dates.min(by: { $0.value < $1.value }), let seq = Self.sequence(first.key) {
             anchor = (seq, first.value)
         }
@@ -85,23 +86,43 @@ final class SpectrumTimeline: @unchecked Sendable {
         var hop = 0.0
         var frames = [[Float]]()
         Self.decode(file) { h, _, f in hop = h; frames += f; return true }
-        guard !frames.isEmpty else { return }
+        guard !frames.isEmpty, let audio = try? AVAudioFile(forReading: file) else { return }
+        let duration = Double(audio.length) / audio.processingFormat.sampleRate   // ~9.75 s, not the tagged 10
         lock.lock()
         live.removeAll { $0.start == start }
-        live.append(Chunk(channel: Self.channel(name), start: start, hop: hop, frames: frames))
+        live.append(Chunk(channel: Self.channel(name), start: start, sequence: sequence, hop: hop, duration: duration, frames: frames))
         if live.count > 30 { live.removeFirst(live.count - 30) }
         lock.unlock()
     }
 
-    /// Bars for the live stream at the player's current date (AVPlayerItem.currentDate()).
-    func levels(at date: Date) -> [Float]? {
+    /// Bars for the live stream at the player item's current time. The item places the segment it
+    /// starts on at its tagged position (10 s per segment before it), but from there on its clock runs
+    /// on the audio itself, ~9.75 s per segment. Assuming 10 s put the bars 0.25 s further behind with
+    /// every segment (1 s after 40 s, 2 s after 80 s), so walk the real decoded durations instead.
+    func levels(time: Double) -> [Float]? {
         lock.lock()
         defer { lock.unlock() }
-        for c in live where c.channel == liveChannel {
-            let t = date.timeIntervalSince(c.start)
-            guard t >= 0, t < Self.nominal else { continue }
-            let k = Int(t / Self.nominal * Double(c.frames.count))
-            if k < c.frames.count { return c.frames[k] }
+        guard let anchor, time >= 0 else { return nil }
+        if startSlot == nil { startSlot = Int(time / Self.nominal) }
+        var slot = startSlot!
+        var t = time - Double(slot) * Self.nominal
+        if t < 0 {   // before where playback started (a seek back): still on the tagged 10 s grid
+            slot = Int(time / Self.nominal)
+            t = time - Double(slot) * Self.nominal
+        }
+        var sequence = anchor.sequence + slot
+        var lastDuration = 9.75
+        for _ in 0..<60 {
+            let c = live.first { $0.channel == liveChannel && $0.sequence == sequence }
+            let duration = c?.duration ?? lastDuration
+            if t < duration {
+                guard let c, let last = c.frames.last else { return nil }
+                let k = Int(t / c.hop)
+                return k < c.frames.count ? c.frames[k] : last
+            }
+            t -= duration
+            lastDuration = duration
+            sequence += 1
         }
         return nil
     }
@@ -122,6 +143,7 @@ final class SpectrumTimeline: @unchecked Sendable {
     func resetLive() {
         lock.lock()
         anchor = nil
+        startSlot = nil
         live.removeAll()
         lock.unlock()
     }
@@ -250,4 +272,6 @@ final class SpectrumTimeline: @unchecked Sendable {
         }
     }
 }
+
+
 

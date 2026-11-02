@@ -462,8 +462,9 @@ final class Radio: ObservableObject {
                   let file = (item.asset as? AVURLAsset)?.url else { return nil }
             return SpectrumTimeline.shared.levels(track: file, at: item.currentTime().seconds)
         }
-        guard player.timeControlStatus == .playing, let date = player.currentItem?.currentDate() else { return nil }
-        return SpectrumTimeline.shared.levels(at: date)
+        // The item's own timeline, not its date: the date jumps back each time the playlist window slides.
+        guard player.timeControlStatus == .playing, let time = player.currentItem?.currentTime().seconds else { return nil }
+        return SpectrumTimeline.shared.levels(time: time)
     }
 
     private func isPlayingXtra(_ id: String) -> Bool {
@@ -563,3 +564,4 @@ final class Radio: ObservableObject {
         return bound != -1 && listen(fd, SOMAXCONN) != -1
     }
 }
+
