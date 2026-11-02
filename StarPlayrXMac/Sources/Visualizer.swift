@@ -184,9 +184,9 @@ struct SpectrumView: View {
     @Environment(\.colorScheme) private var scheme
     /// Luminance of the wallpaper behind the panel (it shows through the translucent material).
     @State private var wallpaper: Double?
-    /// Clicking the bars steps the bubbles: full → half strength → off → full. Starts on the default
-    /// look and fades out one step at a time, so a click always does something visible; remembered.
-    @AppStorage("bubbleStage") private var bubbleStage = 0
+    /// Clicking the bars steps the bubbles: full → half strength → off → full. Defaults to soft; each click
+    /// fades out one step at a time, so a click always does something visible; remembered.
+    @AppStorage("bubbleStage") private var bubbleStage = 1   // UserDefaults; Soft Bubbles until the user picks
     private var bubbleStrength: Double { [0.90, 0.5, 0][bubbleStage % 3] }
     /// Names the new stage in a little chat bubble over the bars for a moment after each click.
     @State private var stageLabel: String?
