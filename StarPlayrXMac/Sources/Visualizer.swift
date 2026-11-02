@@ -188,11 +188,6 @@ struct SpectrumView: View {
     /// fades out one step at a time, so a click always does something visible; remembered.
     @AppStorage("bubbleStage") private var bubbleStage = 1   // UserDefaults; Soft Bubbles until the user picks
     private var bubbleStrength: Double { [0.90, 0.5, 0][bubbleStage % 3] }
-    /// Names the new stage in a little chat bubble over the bars for a moment after each click.
-    @State private var stageLabel: String?
-    @State private var labelID = 0
-    @State private var labelX: CGFloat = 0   // where the user clicked: the bubble's pointer tip goes there
-    @State private var labelY: CGFloat = 0
 
     private func hue(_ x: Double) -> Double { (x.truncatingRemainder(dividingBy: 1) + 1).truncatingRemainder(dividingBy: 1) }
 
@@ -239,32 +234,11 @@ struct SpectrumView: View {
         }
         .animation(.linear(duration: 1.0 / 60), value: viz.levels)
         .background(WallpaperProbe(luminance: $wallpaper))
-        .overlay {
-            GeometryReader { _ in
-                if let stageLabel {
-                    // The pointer's tip sits exactly on the click; the bubble grows up from there
-                    // (it may run past the window's edge).
-                    ChatBubble(text: stageLabel)
-                        .fixedSize()
-                        .frame(width: 0, height: 0, alignment: .bottom)
-                        .position(x: labelX, y: labelY)
-                        .transition(.opacity.combined(with: .scale(scale: 0.85)))
-                }
-            }
-        }
         .contentShape(Rectangle())
-        .onTapGesture(coordinateSpace: .local) { location in
-            labelX = location.x
-            labelY = location.y
+        .onTapGesture {
             bubbleStage = (bubbleStage + 1) % 3
-            labelID += 1
-            let id = labelID
-            withAnimation(.easeOut(duration: 0.15)) { stageLabel = ["Bubbles", "Soft Bubbles", "No Bubbles"][bubbleStage] }
-            Task {
-                try? await Task.sleep(for: .seconds(1.2))
-                guard labelID == id else { return }   // a newer click keeps its own label up
-                withAnimation(.easeIn(duration: 0.3)) { stageLabel = nil }
-            }
+            // Names the new stage in a chat bubble whose pointer tip is on the mouse.
+            BubblePopup.shared.show(["Bubbles", "Soft Bubbles", "No Bubbles"][bubbleStage], at: NSEvent.mouseLocation)
         }
         .help("Click to change the bubbles: full, soft, off")
         .onAppear { viz.start() }
@@ -272,7 +246,45 @@ struct SpectrumView: View {
     }
 }
 
-/// A small speech bubble (capsule with a tail pointing down at the bars) that fits within the bar row.
+/// Shows a `ChatBubble` for a moment in its own small floating window, so it is never cropped by the
+/// panel's edge. The bottom of the pointer sits exactly on the given screen point.
+@MainActor
+private final class BubblePopup {
+    static let shared = BubblePopup()
+    private let pad: CGFloat = 4   // room for the bubble's shadow inside its window
+    private var window: NSPanel?
+    private var shown = 0
+
+    func show(_ text: String, at point: NSPoint) {
+        let host = NSHostingView(rootView: ChatBubble(text: text).padding(pad))
+        let size = host.fittingSize
+        let panel = window ?? {
+            let p = NSPanel(contentRect: .zero, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: true)
+            p.isOpaque = false
+            p.backgroundColor = .clear
+            p.hasShadow = false
+            p.ignoresMouseEvents = true
+            p.level = .popUpMenu
+            p.collectionBehavior = [.canJoinAllSpaces, .transient, .ignoresCycle]
+            window = p
+            return p
+        }()
+        panel.contentView = host
+        panel.setFrame(NSRect(x: point.x - size.width / 2, y: point.y - pad, width: size.width, height: size.height), display: true)
+        panel.alphaValue = 1
+        panel.orderFrontRegardless()
+        shown += 1
+        let id = shown
+        Task {
+            try? await Task.sleep(for: .seconds(1.2))
+            guard shown == id else { return }   // a newer click keeps its own label up
+            await NSAnimationContext.runAnimationGroup { $0.duration = 0.3; panel.animator().alphaValue = 0 }
+            if shown == id { panel.orderOut(nil) }
+        }
+    }
+}
+
+/// A small speech bubble: a capsule with a tail pointing down.
 private struct ChatBubble: View {
     let text: String
 
