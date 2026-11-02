@@ -323,15 +323,23 @@ final class SpectrumRenderer: NSObject, MTKViewDelegate {
     struct Bar { var base, top, glow, shade, misc, curve: SIMD4<Float> }   // misc: level, rise, previous level, previous rise; curve: last four levels
     struct Globals { var view, state, bubble, blob, blobShape, glowStyle: SIMD4<Float> }
 
-    let device = MTLCreateSystemDefaultDevice()!
-    private lazy var queue = device.makeCommandQueue()!
-    private lazy var pipeline: MTLRenderPipelineState = {
-        let library = try! device.makeLibrary(source: Self.shader, options: nil)
-        let desc = MTLRenderPipelineDescriptor()
-        desc.vertexFunction = library.makeFunction(name: "spectrumVertex")
-        desc.fragmentFunction = library.makeFunction(name: "spectrumFragment")
-        desc.colorAttachments[0].pixelFormat = .bgra8Unorm
-        return try! device.makeRenderPipelineState(descriptor: desc)
+    /// No Metal device or a shader that fails to build leaves these nil: the bars just don't draw,
+    /// instead of crashing the app.
+    let device = MTLCreateSystemDefaultDevice()
+    private lazy var queue = device?.makeCommandQueue()
+    private lazy var pipeline: MTLRenderPipelineState? = {
+        guard let device else { return nil }
+        do {
+            let library = try device.makeLibrary(source: Self.shader, options: nil)
+            let desc = MTLRenderPipelineDescriptor()
+            desc.vertexFunction = library.makeFunction(name: "spectrumVertex")
+            desc.fragmentFunction = library.makeFunction(name: "spectrumFragment")
+            desc.colorAttachments[0].pixelFormat = .bgra8Unorm
+            return try device.makeRenderPipelineState(descriptor: desc)
+        } catch {
+            NSLog("StarPlayrX spectrum shader failed: \(error)")
+            return nil
+        }
     }()
     var fixed = 0.025, bg = 0.025, light = false, bubbles = 0.5
     private var bars = [Bar]()
@@ -349,7 +357,7 @@ final class SpectrumRenderer: NSObject, MTKViewDelegate {
         guard view.bounds.width > 0, view.bounds.height > 0, let window = view.window,
               window.isVisible, window.occlusionState.contains(.visible),
               let pass = view.currentRenderPassDescriptor, let drawable = view.currentDrawable,
-              let commands = queue.makeCommandBuffer(), let encoder = commands.makeRenderCommandEncoder(descriptor: pass) else { return }
+              let pipeline, let commands = queue?.makeCommandBuffer(), let encoder = commands.makeRenderCommandEncoder(descriptor: pass) else { return }
         let viz = Visualizer.shared
         let f = viz.tick(now: CACurrentMediaTime())
         let style = [fixed, bg, light ? 1 : 0]
@@ -484,9 +492,9 @@ final class SpectrumRenderer: NSObject, MTKViewDelegate {
             // Height: a Catmull-Rom curve through the last four steps, drawn between the middle two.
             // Speed changes smoothly from one step to the next instead of jumping at every step,
             // so the bars glide up and down rather than moving in straight segments.
-            float4 c = b.curve;
-            b.misc.x = saturate(0.5 * (2 * c.y + (c.z - c.x) * t + (2 * c.x - 5 * c.y + 4 * c.z - c.w) * t * t
-                                       + (3 * c.y - c.x - 3 * c.z + c.w) * t * t * t));
+            float4 k = b.curve;
+            b.misc.x = saturate(0.5 * (2 * k.y + (k.z - k.x) * t + (2 * k.x - 5 * k.y + 4 * k.z - k.w) * t * t
+                                       + (3 * k.y - k.x - 3 * k.z + k.w) * t * t * t));
             float r1 = b.misc.y < b.misc.w ? b.misc.y + 1 : b.misc.y;
             b.misc.y = fract(mix(b.misc.w, r1, t));
             float hb = max(2.0, b.misc.x * H);
