@@ -23,7 +23,8 @@ extension AppDelegate {
         "spMenuPosition", "spMenuSize", "spSearchText", "spVisibleChannelNumbers",
         "spScrollPosition", "spTopVisibleChannel",
         "spVersion", "spChannelsLoaded", "spAudioStarted", "spCurrentChannelCategory", "spCategories",
-        "spShownArtwork", "spCurrentChannelLogo", "spShowArt", "spBubbleMode", "spModernLive", "spModernSignIn"]
+        "spShownArtwork", "spCurrentChannelLogo", "spShowArt", "spBubbleMode", "spModernLive", "spModernSignIn",
+        "spPreset", "spPresetChannelNumbers", "spStarsOnly"]
 
     func application(_ sender: NSApplication, delegateHandlesKey key: String) -> Bool {
         Self.scriptingKeys.contains(key)
@@ -140,6 +141,15 @@ extension AppDelegate {
         set { if !radio.modernLogin, newValue != radio.modernLive { radio.setModernLive(newValue) } }
     }
     @objc var spModernSignIn: Bool { radio.modernLogin }
+    @objc var spPreset: Bool {
+        get { radio.current.map { radio.presets.contains($0.id) } ?? false }
+        set { if let id = radio.current?.id, newValue != spPreset { radio.togglePreset(id) } }
+    }
+    @objc var spPresetChannelNumbers: [String] { radio.channels.filter { radio.presets.contains($0.id) }.map(\.id) }
+    @objc var spStarsOnly: Bool {
+        get { menu.starsOnly }
+        set { menu.starsOnly = newValue }
+    }
 }
 
 /// A script error with a message (raised to AppleScript as error -10000).
@@ -212,7 +222,8 @@ final class SPXCommand: NSScriptCommand {
         case "next channel", "previous channel":
             // Step through the list as the panel shows it (search text applied), wrapping at the ends.
             let step = commandDescription.commandName == "next channel" ? 1 : -1
-            let list = Channel.filter(radio.channels, nowPlaying: radio.nowPlaying, search: menu.search)
+            let list = Channel.filter(radio.channels, nowPlaying: radio.nowPlaying, search: menu.search,
+                                      stars: menu.starsOnly ? radio.presets : nil)
             guard let current = radio.current, let i = list.firstIndex(where: { $0.id == current.id }), !list.isEmpty else { return "" }
             let target = list[(i + step + list.count) % list.count]
             return later {
@@ -223,6 +234,13 @@ final class SPXCommand: NSScriptCommand {
         case "toggle show art":
             guard let id = radio.current?.id else { return false }
             return radio.toggleShowArt(id)
+        case "toggle preset":
+            // The star: the channel given, or the current one, in or out of the presets.
+            guard let id = arg.isEmpty ? radio.current?.id : radio.channels.first(where: { $0.id == arg })?.id else {
+                return fail(arg.isEmpty ? "No current channel." : "No channel \(arg).")
+            }
+            radio.togglePreset(id)
+            return radio.presets.contains(id)
         case "toggle bubbles":
             AppDelegate.bubbleStage = (AppDelegate.bubbleStage + 1) % 3
             return NSNumber(value: Self.code("SPB\(AppDelegate.bubbleStage)"))

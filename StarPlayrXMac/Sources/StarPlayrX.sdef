@@ -120,6 +120,16 @@
             <property name="modern sign in" code="SPmg" type="boolean" access="r" description="Whether the session was signed in through the modern API only (the sign-in screen checkbox). Pass &quot;modern&quot; to sign in to change it.">
                 <cocoa key="spModernSignIn"/>
             </property>
+            <property name="preset" code="SPpr" type="boolean" description="Whether the current channel is starred (the star beside the play button). Presets are kept on this Mac, under the same key as the iOS app.">
+                <cocoa key="spPreset"/>
+            </property>
+            <property name="preset channel numbers" code="SPpc" access="r" description="Numbers of the starred channels, in list order.">
+                <type type="text" list="yes"/>
+                <cocoa key="spPresetChannelNumbers"/>
+            </property>
+            <property name="stars only" code="SPso" type="boolean" description="Whether the list shows only the starred channels (the star beside the search field, &quot;All Stars&quot; on iOS).">
+                <cocoa key="spStarsOnly"/>
+            </property>
         </class-extension>
 
         <!-- Referenced by the Standard Suite's save command; StarPlayrX has no documents to save. -->
@@ -170,6 +180,14 @@
 
         <command name="toggle shade" code="SPrxShad" description="Double-click on the header: roll the panel up or down. Returns whether it is now shaded.">
             <cocoa class="SPXCommand"/>
+            <result type="boolean"/>
+        </command>
+
+
+
+        <command name="toggle preset" code="SPrxStar" description="Click the star: add a channel to the presets or take it out. Returns whether it is starred now.">
+            <cocoa class="SPXCommand"/>
+            <direct-parameter type="text" optional="yes" description="Channel number; the current channel when left out."/>
             <result type="boolean"/>
         </command>
 
