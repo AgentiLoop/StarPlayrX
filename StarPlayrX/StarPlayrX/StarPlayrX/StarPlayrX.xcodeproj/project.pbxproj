@@ -7,8 +7,14 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		5F014C4728CD2D6500D4F682 /* StarPlayrRadioKit in Frameworks */ = {isa = PBXBuildFile; productRef = 5F014C4628CD2D6500D4F682 /* StarPlayrRadioKit */; };
+		10C8A2C7F0ED9273E9D774D2 /* XserverRoutes.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC87A69F860B1BA9C174D7C4 /* XserverRoutes.swift */; };
+		11C5EB36421CBE98B0DE07CE /* keyOneRoute.swift in Sources */ = {isa = PBXBuildFile; fileRef = 231802A3ECB7C97242E8A334 /* keyOneRoute.swift */; };
+		1E4CC0CC3173AB90D7264238 /* channelsRoute.swift in Sources */ = {isa = PBXBuildFile; fileRef = 67DD254C7D3187F5903CD26E /* channelsRoute.swift */; };
+		312CA9C059260AB50B9BA892 /* regionRoute.swift in Sources */ = {isa = PBXBuildFile; fileRef = C33EA5A4E6E1A3F183D504FC /* regionRoute.swift */; };
+		37638D976BF1CA68D7797CF7 /* pdtRoute.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8880040456C95E6B58847EDC /* pdtRoute.swift */; };
+		3C13956867A6E844274D6429 /* checkRoute.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95AD7205AAF671B4C0328808 /* checkRoute.swift */; };
 		5A11F7E2000000000000B001 /* SwifterLite in Frameworks */ = {isa = PBXBuildFile; productRef = 5A11F7E2000000000000B002 /* SwifterLite */; };
+		5F014C4728CD2D6500D4F682 /* StarPlayrRadioKit in Frameworks */ = {isa = PBXBuildFile; productRef = 5F014C4628CD2D6500D4F682 /* StarPlayrRadioKit */; };
 		5F381C17245F568E009BA91D /* Draw.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F381C16245F568E009BA91D /* Draw.swift */; };
 		5F5C5009244CBBD300A35D76 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F5C5008244CBBD300A35D76 /* AppDelegate.swift */; };
 		5F5C500B244CBBD300A35D76 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F5C500A244CBBD300A35D76 /* SceneDelegate.swift */; };
@@ -30,20 +36,19 @@
 		5FDAD9BA2464EFBA008E38A8 /* Async.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FDAD9B92464EFBA008E38A8 /* Async.swift */; };
 		6F72C69A25E0C7B600B2374C /* GTSodaPop.m in Sources */ = {isa = PBXBuildFile; fileRef = 6F72C69625E0C7B600B2374C /* GTSodaPop.m */; };
 		6F72C69B25E0C7B600B2374C /* GTCola.m in Sources */ = {isa = PBXBuildFile; fileRef = 6F72C69825E0C7B600B2374C /* GTCola.m */; };
-		10C8A2C7F0ED9273E9D774D2 /* XserverRoutes.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC87A69F860B1BA9C174D7C4 /* XserverRoutes.swift */; };
-		978DF6AC64B9D7D2A3A796EE /* audioRoute.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34EF23FBE366CA6BF8E98A76 /* audioRoute.swift */; };
-		1E4CC0CC3173AB90D7264238 /* channelsRoute.swift in Sources */ = {isa = PBXBuildFile; fileRef = 67DD254C7D3187F5903CD26E /* channelsRoute.swift */; };
-		3C13956867A6E844274D6429 /* checkRoute.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95AD7205AAF671B4C0328808 /* checkRoute.swift */; };
-		11C5EB36421CBE98B0DE07CE /* keyOneRoute.swift in Sources */ = {isa = PBXBuildFile; fileRef = 231802A3ECB7C97242E8A334 /* keyOneRoute.swift */; };
 		73480D065D7DE1F9C1D2C959 /* loginRoute.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0EC681060A70CEFAB7E18CD /* loginRoute.swift */; };
-		37638D976BF1CA68D7797CF7 /* pdtRoute.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8880040456C95E6B58847EDC /* pdtRoute.swift */; };
+		796199A896F783A11A03C6FB /* sessionRoute.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FA447367DDEC851458B4489 /* sessionRoute.swift */; };
 		7F1D91473B94FCF0CC6EDC84 /* pingRoute.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0AFE5E2C752BEE24A34210F0 /* pingRoute.swift */; };
 		918E015A8E7BE70AC49E3603 /* playlistRoute.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A619D2FF527A54F6E7D41E5 /* playlistRoute.swift */; };
-		312CA9C059260AB50B9BA892 /* regionRoute.swift in Sources */ = {isa = PBXBuildFile; fileRef = C33EA5A4E6E1A3F183D504FC /* regionRoute.swift */; };
-		796199A896F783A11A03C6FB /* sessionRoute.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FA447367DDEC851458B4489 /* sessionRoute.swift */; };
+		978DF6AC64B9D7D2A3A796EE /* audioRoute.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34EF23FBE366CA6BF8E98A76 /* audioRoute.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		0AFE5E2C752BEE24A34210F0 /* pingRoute.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = pingRoute.swift; sourceTree = "<group>"; };
+		0FA447367DDEC851458B4489 /* sessionRoute.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = sessionRoute.swift; sourceTree = "<group>"; };
+		231802A3ECB7C97242E8A334 /* keyOneRoute.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = keyOneRoute.swift; sourceTree = "<group>"; };
+		34EF23FBE366CA6BF8E98A76 /* audioRoute.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = audioRoute.swift; sourceTree = "<group>"; };
+		5A619D2FF527A54F6E7D41E5 /* playlistRoute.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = playlistRoute.swift; sourceTree = "<group>"; };
 		5F381C16245F568E009BA91D /* Draw.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Draw.swift; sourceTree = "<group>"; };
 		5F5C5005244CBBD300A35D76 /* StarPlayrX.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = StarPlayrX.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		5F5C5008244CBBD300A35D76 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
@@ -66,22 +71,17 @@
 		5F5C5057244CC26000A35D76 /* Networkabilty.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Networkabilty.swift; sourceTree = "<group>"; };
 		5F5C5088244CCAB900A35D76 /* StarPlayrX.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = StarPlayrX.entitlements; sourceTree = "<group>"; };
 		5FDAD9B92464EFBA008E38A8 /* Async.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = Async.swift; path = StarPlayrX/Model/Async.swift; sourceTree = SOURCE_ROOT; };
+		67DD254C7D3187F5903CD26E /* channelsRoute.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = channelsRoute.swift; sourceTree = "<group>"; };
 		6F72C69525E0C7B600B2374C /* StarPlayrX-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "StarPlayrX-Bridging-Header.h"; sourceTree = "<group>"; };
 		6F72C69625E0C7B600B2374C /* GTSodaPop.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = GTSodaPop.m; sourceTree = "<group>"; };
 		6F72C69725E0C7B600B2374C /* GTSodaPop.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = GTSodaPop.h; sourceTree = "<group>"; };
 		6F72C69825E0C7B600B2374C /* GTCola.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = GTCola.m; sourceTree = "<group>"; };
 		6F72C69925E0C7B600B2374C /* GTCola.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = GTCola.h; sourceTree = "<group>"; };
-		FC87A69F860B1BA9C174D7C4 /* XserverRoutes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XserverRoutes.swift; sourceTree = "<group>"; };
-		34EF23FBE366CA6BF8E98A76 /* audioRoute.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = audioRoute.swift; sourceTree = "<group>"; };
-		67DD254C7D3187F5903CD26E /* channelsRoute.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = channelsRoute.swift; sourceTree = "<group>"; };
-		95AD7205AAF671B4C0328808 /* checkRoute.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = checkRoute.swift; sourceTree = "<group>"; };
-		231802A3ECB7C97242E8A334 /* keyOneRoute.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = keyOneRoute.swift; sourceTree = "<group>"; };
-		A0EC681060A70CEFAB7E18CD /* loginRoute.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = loginRoute.swift; sourceTree = "<group>"; };
 		8880040456C95E6B58847EDC /* pdtRoute.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = pdtRoute.swift; sourceTree = "<group>"; };
-		0AFE5E2C752BEE24A34210F0 /* pingRoute.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = pingRoute.swift; sourceTree = "<group>"; };
-		5A619D2FF527A54F6E7D41E5 /* playlistRoute.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = playlistRoute.swift; sourceTree = "<group>"; };
+		95AD7205AAF671B4C0328808 /* checkRoute.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = checkRoute.swift; sourceTree = "<group>"; };
+		A0EC681060A70CEFAB7E18CD /* loginRoute.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = loginRoute.swift; sourceTree = "<group>"; };
 		C33EA5A4E6E1A3F183D504FC /* regionRoute.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = regionRoute.swift; sourceTree = "<group>"; };
-		0FA447367DDEC851458B4489 /* sessionRoute.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = sessionRoute.swift; sourceTree = "<group>"; };
+		FC87A69F860B1BA9C174D7C4 /* XserverRoutes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XserverRoutes.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -579,14 +579,6 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
-		5F014C4528CD2D6500D4F682 /* XCRemoteSwiftPackageReference "StarPlayrRadioKit" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/AgentiLoop/StarPlayrRadioKit";
-			requirement = {
-				branch = mustang;
-				kind = branch;
-			};
-		};
 		5A11F7E2000000000000B003 /* XCRemoteSwiftPackageReference "SwifterLite" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/AgentiLoop/SwifterLite";
@@ -595,18 +587,26 @@
 				kind = branch;
 			};
 		};
+		5F014C4528CD2D6500D4F682 /* XCRemoteSwiftPackageReference "StarPlayrRadioKit" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/AgentiLoop/StarPlayrRadioKit";
+			requirement = {
+				branch = mustang;
+				kind = branch;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		5F014C4628CD2D6500D4F682 /* StarPlayrRadioKit */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 5F014C4528CD2D6500D4F682 /* XCRemoteSwiftPackageReference "StarPlayrRadioKit" */;
-			productName = StarPlayrRadioKit;
-		};
 		5A11F7E2000000000000B002 /* SwifterLite */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 5A11F7E2000000000000B003 /* XCRemoteSwiftPackageReference "SwifterLite" */;
 			productName = SwifterLite;
+		};
+		5F014C4628CD2D6500D4F682 /* StarPlayrRadioKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 5F014C4528CD2D6500D4F682 /* XCRemoteSwiftPackageReference "StarPlayrRadioKit" */;
+			productName = StarPlayrRadioKit;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

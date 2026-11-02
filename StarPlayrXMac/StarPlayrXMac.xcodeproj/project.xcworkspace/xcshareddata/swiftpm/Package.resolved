@@ -1,5 +1,5 @@
 {
-  "originHash" : "11100ac92d7bce07b06c5fa885206abcbea42f37b0692ffe0f2e5f4a78ac268a",
+  "originHash" : "dc33487032bac89cf4b28e71e8719263dbbee5d8679bbca77d52538bd7cb5acd",
   "pins" : [
     {
       "identity" : "starplayrradiokit",
@@ -7,7 +7,7 @@
       "location" : "https://github.com/AgentiLoop/StarPlayrRadioKit",
       "state" : {
         "branch" : "mustang",
-        "revision" : "b476ec1bbd79917af1fcb85c976677db44f9cc3e"
+        "revision" : "11f7aa7610f7ea905692ef817e8d8e2b05dae880"
       }
     },
     {
@@ -16,7 +16,7 @@
       "location" : "https://github.com/AgentiLoop/SwifterLite",
       "state" : {
         "branch" : "mustang",
-        "revision" : "f32f90001fd51177cb04c1ceba83c7c517842da3"
+        "revision" : "bcdcbd226516139d1f84002070e4d8a0fa957be8"
       }
     }
   ],
