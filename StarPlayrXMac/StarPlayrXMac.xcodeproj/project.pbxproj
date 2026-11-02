@@ -21,6 +21,17 @@
 		C1BBBCF52CBE121D9E31AE22 /* StarPlayrXMacApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47D0341DA36FCC82C2C684B6 /* StarPlayrXMacApp.swift */; };
 		D70FE6A0684BA95A37B9141F /* Keychain.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4362792013A115602196217 /* Keychain.swift */; };
 		F9A9498FC10093CAB657AD06 /* Radio.swift in Sources */ = {isa = PBXBuildFile; fileRef = A828F86C0FE74B3D990CC160 /* Radio.swift */; };
+		FC7682DCC56DF99DB6375A78 /* XserverRoutes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23BAB2085BF3ED720F34505E /* XserverRoutes.swift */; };
+		51B1D45E2B3E6556487A0DD2 /* audioRoute.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46D02559A44B2DCAA08A2DB0 /* audioRoute.swift */; };
+		978488CFC05EAA95AD9F9D3A /* channelsRoute.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B161653CAE28799ABBA2056 /* channelsRoute.swift */; };
+		BACEDBAA44E3D5A307CFBBAA /* checkRoute.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6441A3C5466759AA6046B782 /* checkRoute.swift */; };
+		5E36B36602E551F18A69B1DC /* keyOneRoute.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF6E6D0D169F7E978ED6FC27 /* keyOneRoute.swift */; };
+		44EBAF760CAD9DED0008E273 /* loginRoute.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4CFA9131E4AAE428CF85D3A /* loginRoute.swift */; };
+		F7648D3030D03E7F9687D6BE /* pdtRoute.swift in Sources */ = {isa = PBXBuildFile; fileRef = 428797F432E44240B6E67D40 /* pdtRoute.swift */; };
+		F42F397312E4EC2F2FD20B79 /* pingRoute.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A33512A5B8BAA541E55DC84 /* pingRoute.swift */; };
+		B966FBC327C988E5A479C1EF /* playlistRoute.swift in Sources */ = {isa = PBXBuildFile; fileRef = 049E7FFA638C01C0D3B3B0C9 /* playlistRoute.swift */; };
+		E815B0FCCDDFE122324FB48D /* regionRoute.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3C5ACD63F75A21549C5605E /* regionRoute.swift */; };
+		DC6F5B544718479517D27DBA /* sessionRoute.swift in Sources */ = {isa = PBXBuildFile; fileRef = 619F75D8507B2B9FF1E9C645 /* sessionRoute.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -50,6 +61,17 @@
 		B180FAFDD06BBA9CCCECBA5D /* Visualizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Visualizer.swift; sourceTree = "<group>"; };
 		B4362792013A115602196217 /* Keychain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Keychain.swift; sourceTree = "<group>"; };
 		F780CB7683BB43494DE45275 /* ScriptedTour.applescript */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.applescript; path = ScriptedTour.applescript; sourceTree = "<group>"; };
+		23BAB2085BF3ED720F34505E /* XserverRoutes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XserverRoutes.swift; sourceTree = "<group>"; };
+		46D02559A44B2DCAA08A2DB0 /* audioRoute.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = audioRoute.swift; sourceTree = "<group>"; };
+		3B161653CAE28799ABBA2056 /* channelsRoute.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = channelsRoute.swift; sourceTree = "<group>"; };
+		6441A3C5466759AA6046B782 /* checkRoute.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = checkRoute.swift; sourceTree = "<group>"; };
+		DF6E6D0D169F7E978ED6FC27 /* keyOneRoute.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = keyOneRoute.swift; sourceTree = "<group>"; };
+		D4CFA9131E4AAE428CF85D3A /* loginRoute.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = loginRoute.swift; sourceTree = "<group>"; };
+		428797F432E44240B6E67D40 /* pdtRoute.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = pdtRoute.swift; sourceTree = "<group>"; };
+		1A33512A5B8BAA541E55DC84 /* pingRoute.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = pingRoute.swift; sourceTree = "<group>"; };
+		049E7FFA638C01C0D3B3B0C9 /* playlistRoute.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = playlistRoute.swift; sourceTree = "<group>"; };
+		B3C5ACD63F75A21549C5605E /* regionRoute.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = regionRoute.swift; sourceTree = "<group>"; };
+		619F75D8507B2B9FF1E9C645 /* sessionRoute.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = sessionRoute.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -77,6 +99,7 @@
 		3CCD99341C1648777CB8A56C /* Sources */ = {
 			isa = PBXGroup;
 			children = (
+				128B69F97EA8074FCD3E01E4 /* Routes */,
 				6E8F68BA0D44926EF37BBB62 /* Assets.xcassets */,
 				24B9C2880FFCDCA06B056FF3 /* Info.plist */,
 				B4362792013A115602196217 /* Keychain.swift */,
@@ -109,6 +132,24 @@
 				2110CDF4A0912E48922BDC87 /* StarPlayrXMacTests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		128B69F97EA8074FCD3E01E4 /* Routes */ = {
+			isa = PBXGroup;
+			children = (
+				23BAB2085BF3ED720F34505E /* XserverRoutes.swift */,
+				46D02559A44B2DCAA08A2DB0 /* audioRoute.swift */,
+				3B161653CAE28799ABBA2056 /* channelsRoute.swift */,
+				6441A3C5466759AA6046B782 /* checkRoute.swift */,
+				DF6E6D0D169F7E978ED6FC27 /* keyOneRoute.swift */,
+				D4CFA9131E4AAE428CF85D3A /* loginRoute.swift */,
+				428797F432E44240B6E67D40 /* pdtRoute.swift */,
+				1A33512A5B8BAA541E55DC84 /* pingRoute.swift */,
+				049E7FFA638C01C0D3B3B0C9 /* playlistRoute.swift */,
+				B3C5ACD63F75A21549C5605E /* regionRoute.swift */,
+				619F75D8507B2B9FF1E9C645 /* sessionRoute.swift */,
+			);
+			path = Routes;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -222,6 +263,17 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				FC7682DCC56DF99DB6375A78 /* XserverRoutes.swift in Sources */,
+				51B1D45E2B3E6556487A0DD2 /* audioRoute.swift in Sources */,
+				978488CFC05EAA95AD9F9D3A /* channelsRoute.swift in Sources */,
+				BACEDBAA44E3D5A307CFBBAA /* checkRoute.swift in Sources */,
+				5E36B36602E551F18A69B1DC /* keyOneRoute.swift in Sources */,
+				44EBAF760CAD9DED0008E273 /* loginRoute.swift in Sources */,
+				F7648D3030D03E7F9687D6BE /* pdtRoute.swift in Sources */,
+				F42F397312E4EC2F2FD20B79 /* pingRoute.swift in Sources */,
+				B966FBC327C988E5A479C1EF /* playlistRoute.swift in Sources */,
+				E815B0FCCDDFE122324FB48D /* regionRoute.swift in Sources */,
+				DC6F5B544718479517D27DBA /* sessionRoute.swift in Sources */,
 				D70FE6A0684BA95A37B9141F /* Keychain.swift in Sources */,
 				97E3C433757ED71D95CB2524 /* MenuView.swift in Sources */,
 				F9A9498FC10093CAB657AD06 /* Radio.swift in Sources */,

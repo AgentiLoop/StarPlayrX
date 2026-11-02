@@ -30,6 +30,17 @@
 		5FDAD9BA2464EFBA008E38A8 /* Async.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FDAD9B92464EFBA008E38A8 /* Async.swift */; };
 		6F72C69A25E0C7B600B2374C /* GTSodaPop.m in Sources */ = {isa = PBXBuildFile; fileRef = 6F72C69625E0C7B600B2374C /* GTSodaPop.m */; };
 		6F72C69B25E0C7B600B2374C /* GTCola.m in Sources */ = {isa = PBXBuildFile; fileRef = 6F72C69825E0C7B600B2374C /* GTCola.m */; };
+		10C8A2C7F0ED9273E9D774D2 /* XserverRoutes.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC87A69F860B1BA9C174D7C4 /* XserverRoutes.swift */; };
+		978DF6AC64B9D7D2A3A796EE /* audioRoute.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34EF23FBE366CA6BF8E98A76 /* audioRoute.swift */; };
+		1E4CC0CC3173AB90D7264238 /* channelsRoute.swift in Sources */ = {isa = PBXBuildFile; fileRef = 67DD254C7D3187F5903CD26E /* channelsRoute.swift */; };
+		3C13956867A6E844274D6429 /* checkRoute.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95AD7205AAF671B4C0328808 /* checkRoute.swift */; };
+		11C5EB36421CBE98B0DE07CE /* keyOneRoute.swift in Sources */ = {isa = PBXBuildFile; fileRef = 231802A3ECB7C97242E8A334 /* keyOneRoute.swift */; };
+		73480D065D7DE1F9C1D2C959 /* loginRoute.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0EC681060A70CEFAB7E18CD /* loginRoute.swift */; };
+		37638D976BF1CA68D7797CF7 /* pdtRoute.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8880040456C95E6B58847EDC /* pdtRoute.swift */; };
+		7F1D91473B94FCF0CC6EDC84 /* pingRoute.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0AFE5E2C752BEE24A34210F0 /* pingRoute.swift */; };
+		918E015A8E7BE70AC49E3603 /* playlistRoute.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A619D2FF527A54F6E7D41E5 /* playlistRoute.swift */; };
+		312CA9C059260AB50B9BA892 /* regionRoute.swift in Sources */ = {isa = PBXBuildFile; fileRef = C33EA5A4E6E1A3F183D504FC /* regionRoute.swift */; };
+		796199A896F783A11A03C6FB /* sessionRoute.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FA447367DDEC851458B4489 /* sessionRoute.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -60,6 +71,17 @@
 		6F72C69725E0C7B600B2374C /* GTSodaPop.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = GTSodaPop.h; sourceTree = "<group>"; };
 		6F72C69825E0C7B600B2374C /* GTCola.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = GTCola.m; sourceTree = "<group>"; };
 		6F72C69925E0C7B600B2374C /* GTCola.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = GTCola.h; sourceTree = "<group>"; };
+		FC87A69F860B1BA9C174D7C4 /* XserverRoutes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XserverRoutes.swift; sourceTree = "<group>"; };
+		34EF23FBE366CA6BF8E98A76 /* audioRoute.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = audioRoute.swift; sourceTree = "<group>"; };
+		67DD254C7D3187F5903CD26E /* channelsRoute.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = channelsRoute.swift; sourceTree = "<group>"; };
+		95AD7205AAF671B4C0328808 /* checkRoute.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = checkRoute.swift; sourceTree = "<group>"; };
+		231802A3ECB7C97242E8A334 /* keyOneRoute.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = keyOneRoute.swift; sourceTree = "<group>"; };
+		A0EC681060A70CEFAB7E18CD /* loginRoute.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = loginRoute.swift; sourceTree = "<group>"; };
+		8880040456C95E6B58847EDC /* pdtRoute.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = pdtRoute.swift; sourceTree = "<group>"; };
+		0AFE5E2C752BEE24A34210F0 /* pingRoute.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = pingRoute.swift; sourceTree = "<group>"; };
+		5A619D2FF527A54F6E7D41E5 /* playlistRoute.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = playlistRoute.swift; sourceTree = "<group>"; };
+		C33EA5A4E6E1A3F183D504FC /* regionRoute.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = regionRoute.swift; sourceTree = "<group>"; };
+		0FA447367DDEC851458B4489 /* sessionRoute.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = sessionRoute.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -95,6 +117,7 @@
 		5F5C5007244CBBD300A35D76 /* StarPlayrX */ = {
 			isa = PBXGroup;
 			children = (
+				BE696AE9BE9B5477B1ED0D2C /* Routes */,
 				5F5C5034244CC15E00A35D76 /* Delegate */,
 				5F5C5046244CC24D00A35D76 /* Model */,
 				5FFF9DAF244D398700D795DA /* View */,
@@ -180,6 +203,24 @@
 			path = GTCola;
 			sourceTree = "<group>";
 		};
+		BE696AE9BE9B5477B1ED0D2C /* Routes */ = {
+			isa = PBXGroup;
+			children = (
+				FC87A69F860B1BA9C174D7C4 /* XserverRoutes.swift */,
+				34EF23FBE366CA6BF8E98A76 /* audioRoute.swift */,
+				67DD254C7D3187F5903CD26E /* channelsRoute.swift */,
+				95AD7205AAF671B4C0328808 /* checkRoute.swift */,
+				231802A3ECB7C97242E8A334 /* keyOneRoute.swift */,
+				A0EC681060A70CEFAB7E18CD /* loginRoute.swift */,
+				8880040456C95E6B58847EDC /* pdtRoute.swift */,
+				0AFE5E2C752BEE24A34210F0 /* pingRoute.swift */,
+				5A619D2FF527A54F6E7D41E5 /* playlistRoute.swift */,
+				C33EA5A4E6E1A3F183D504FC /* regionRoute.swift */,
+				0FA447367DDEC851458B4489 /* sessionRoute.swift */,
+			);
+			path = Routes;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -262,6 +303,17 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				10C8A2C7F0ED9273E9D774D2 /* XserverRoutes.swift in Sources */,
+				978DF6AC64B9D7D2A3A796EE /* audioRoute.swift in Sources */,
+				1E4CC0CC3173AB90D7264238 /* channelsRoute.swift in Sources */,
+				3C13956867A6E844274D6429 /* checkRoute.swift in Sources */,
+				11C5EB36421CBE98B0DE07CE /* keyOneRoute.swift in Sources */,
+				73480D065D7DE1F9C1D2C959 /* loginRoute.swift in Sources */,
+				37638D976BF1CA68D7797CF7 /* pdtRoute.swift in Sources */,
+				7F1D91473B94FCF0CC6EDC84 /* pingRoute.swift in Sources */,
+				918E015A8E7BE70AC49E3603 /* playlistRoute.swift in Sources */,
+				312CA9C059260AB50B9BA892 /* regionRoute.swift in Sources */,
+				796199A896F783A11A03C6FB /* sessionRoute.swift in Sources */,
 				5F5C5062244CC26000A35D76 /* Extensions.swift in Sources */,
 				5F5C505B244CC26000A35D76 /* Player.swift in Sources */,
 				5F5C5028244CBCD500A35D76 /* ChannelsViewController.swift in Sources */,
