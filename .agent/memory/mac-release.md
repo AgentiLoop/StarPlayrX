@@ -17,3 +17,5 @@ mac-1.1.8 (build 13) shipped 2026-11-02 (EQ from pre-decoded audio, no capture p
 - Mac tags use `mac-X.Y` to keep them apart from the old Catalyst/iOS tags (1.3.1).
 
 mac-1.1.9 (build 14) shipped 2026-11-02. Signing changed: the app now has keychain-access-groups entitlement (data-protection keychain), so it NEEDS a Developer ID provisioning profile. build.sh now does `xcodebuild archive ENABLE_HARDENED_RUNTIME=YES -allowProvisioningUpdates` + `-exportArchive` (method developer-id, automatic) — no manual codesign re-sign (that would strip the profile). If export says "PLA Update available", the user must accept the new agreement at developer.apple.com/account. Forgetting ENABLE_HARDENED_RUNTIME=YES makes notarization Invalid.
+
+mac-1.1.10 (build 15) shipped 2026-11-02 (GPU Metal visualizer, CPU 55%→15%, glow off, EQ 10-min fix). Log /tmp/spx-rel-1110.log; screenshots reused from 1.1.9 via `gh release download -p "*.png"`.
