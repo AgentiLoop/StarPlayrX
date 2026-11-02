@@ -1,0 +1,4 @@
+== /Users/toddbruss/Documents/GitHub/StarPlayrX
+ M .agent/tool_outcomes.json
+ M StarPlayrXMac/StarPlayrXMac.xcodeproj/xcshareddata/xcschemes/StarPlayrXMac.xcscheme
+== /Users/toddbruss/Documents/GitHub/starplayrx.com

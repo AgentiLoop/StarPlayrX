@@ -1,0 +1,30 @@
+zsh:1: no matches found: StarPlayrXMac/*.md
+3:**A lightweight, fully accessible SiriusXM player for Mac, built for people who use VoiceOver.**
+7:🤖 Built by the makers of **[Agent!](https://github.com/AgentiLoop/Agent)**, an autonomous macOS agent.
+15:| [`StarPlayrXMac/`](StarPlayrXMac) | **New:** a native SwiftUI menu bar app for macOS |
+16:| [`StarPlayrX/`](StarPlayrX) | The original Mac Catalyst / iOS / iPadOS app (UIKit, Swift with some Objective-C) |
+21:## 🎛️ StarPlayrX for Mac (menu bar app)
+24:  <img src="docs/starplayrx-mac-demo.gif" width="400" alt="StarPlayrX playing BPM: the panel is torn off the menu bar into its own window, then rolled up like a window shade to just what's playing and the equalizer">
+30:      <img src="docs/screenshot-mac.png" width="260" alt="StarPlayrX menu bar panel with the color equalizer under the now-playing header and a searchable channel list showing what's playing on each channel"><br>
+32:      Now playing, the lava-lamp equalizer and a searchable list of every channel with what's on it right now
+35:      <img src="docs/screenshot-mac-torn-off.png" width="260" alt="StarPlayrX panel torn off the menu bar and parked as its own floating window"><br>
+40:      <img src="docs/screenshot-mac-shade.png" width="260" alt="StarPlayrX window rolled up like a window shade, showing only what's playing and the equalizer"><br>
+42:      Double-click the header to roll the window up to just what's playing and the equalizer
+49:- **Window shade:** double-click the header to roll the window up to just what's playing and the equalizer, and again to roll it back down. Moves between menu, tear-off and shade are animated
+50:- **Lava-lamp color equalizer:** live bars driven by the app's own audio (Core Audio process tap + FFT), with drifting colors and a glow that pulses on the beat. Needs macOS 14.2 or later
+51:- **Liquid Glass** look on macOS 26 and later
+60:- Your password is stored only in the macOS Keychain
+62:**Requirements:** macOS 13 Ventura or later, Apple Silicon or Intel, and an active SiriusXM subscription.
+64:**Download:** [StarPlayrX for Mac 1.1.7](https://github.com/AgentiLoop/StarPlayrX/releases/tag/mac-1.1.7) (signed and notarized). All builds are on the [Releases](https://github.com/AgentiLoop/StarPlayrX/releases) page.
+82:### Mac menu bar app
+85:1. Open `StarPlayrXMac/StarPlayrXMac.xcodeproj`
+87:3. Pick the `StarPlayrXMac` scheme and press **⌘R**
+94:cd StarPlayrXMac
+95:xcodebuild -project StarPlayrXMac.xcodeproj -scheme StarPlayrXMac \
+101:**Regenerating the project (optional):** the Xcode project is generated from `StarPlayrXMac/project.yml` with [XcodeGen](https://github.com/yonaskolb/XcodeGen).
+104:cd StarPlayrXMac && xcodegen generate
+120:ditto -c -k --keepParent "$APP" StarPlayrX-Mac.zip
+127:**Static, hissing or popping on macOS 26:** while audio is playing, run this in Terminal:
+131:More details: [How to fix popping sounds on macOS 26](https://medium.com/tech-blog-today/how-to-fix-popping-sounds-on-macos-26-c2846fc65ad0)
+138:- The StarPlayr trademark is owned by NiceMac LLC and licensed exclusively to StarPlayrX.com.
+140:- NiceMac LLC is not affiliated with SiriusXM or its subsidiaries.

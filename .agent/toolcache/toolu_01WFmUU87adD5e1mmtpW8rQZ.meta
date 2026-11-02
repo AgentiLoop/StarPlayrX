@@ -1,0 +1,1 @@
+{"input":{"command":"pgrep -lf \"Debug\/StarPlayrX.app\" | cut -c1-30; ls -t ~\/Library\/Logs\/DiagnosticReports\/ | grep -i starplayr | head -2; cd \/Users\/toddbruss\/Documents\/GitHub\/StarPlayrX\/StarPlayrXMac\/Sources && grep -n \"final class BubblePopup\" -A45 Visualizer.swift"},"spilled":1793633236.1973991,"tool":"user_shell"}

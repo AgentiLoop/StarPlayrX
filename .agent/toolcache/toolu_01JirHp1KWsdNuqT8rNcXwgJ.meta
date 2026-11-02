@@ -1,0 +1,1 @@
+{"tool":"user_shell","spilled":1793633236.1962309,"input":{"command":"cd \/Users\/toddbruss\/Documents\/GitHub\/StarPlayrX\/StarPlayrXMac\/Sources && grep -n \"stageLabel\\|labelX\\|labelY\\|labelID\" Visualizer.swift; sed -n 241,275p Visualizer.swift"}}

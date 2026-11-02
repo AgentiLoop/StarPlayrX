@@ -1,0 +1,1 @@
+{"input":{"command":"grep -E \" seg | miss\" \/tmp\/spectrum.log | awk '$5==\"seg\"{print} $5==\"miss\"&&!s[$7]++{print}' | head -30"},"tool":"user_shell","spilled":1793633236.124146}

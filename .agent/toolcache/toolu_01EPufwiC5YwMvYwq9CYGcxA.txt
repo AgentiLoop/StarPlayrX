@@ -1,0 +1,4 @@
+282:                // Soft: fades from a gentle centre to nothing at the edge, with no hard rim or highlight.
+283-                ctx.fill(Path(ellipseIn: rect), with: .radialGradient(
+284-                    Gradient(colors: [color.opacity(0.3 * fade), color.opacity(0.14 * fade), color.opacity(0)]),
+285-                    center: CGPoint(x: rect.midX - w * 0.1, y: rect.midY - h * 0.1), startRadius: 0, endRadius: max(w, h) * 0.6))

@@ -1,0 +1,1 @@
+{"tool":"user_shell","input":{"command":"cd \/Users\/toddbruss\/Documents\/GitHub\/StarPlayrX\/StarPlayrXMac\/Sources && sed -i '' '243s\/GeometryReader { geo in\/GeometryReader { _ in\/' Visualizer.swift && sed -n 240,256p Visualizer.swift"},"spilled":1793633236.1938229}

@@ -1,0 +1,153 @@
+230	            let show = current("shows")
+231	            let art = ((cut["image"] ?? show?["image"]) as? [String: Any])?["url"] as? String
+232	            // Talk cuts have no artist; the web player shows the show's name in its place.
+233	            let artist = cut["artistName"] as? String ?? ""
+234	            result[id] = NowPlaying(artist: artist.isEmpty ? show?["name"] as? String ?? "" : artist,
+235	                                    song: cut["name"] as? String ?? "",
+236	                                    image: art.map { Self.imageURL(key: $0, size: 450) } ?? "")
+237	        }
+238	        return result
+239	    }
+240	
+241	    // MARK: Download
+242	
+243	    /// Downloads and decrypts one track into a playable ADTS AAC file.
+244	    func download(_ track: XtraTrack, into folder: URL) async throws -> URL {
+245	        guard let masterURL = URL(string: track.url) else { throw XtraError.badResponse("track url") }
+246	        let master = try await text(masterURL)
+247	        let variants = master.split(whereSeparator: \.isNewline).map(String.init).filter { !$0.isEmpty && !$0.hasPrefix("#") }
+248	        guard let variant = variants.first(where: { $0.contains("_256k_") }) ?? variants.first,
+249	              let variantURL = URL(string: variant, relativeTo: masterURL)?.absoluteURL
+250	        else { throw XtraError.badResponse("no variant playlist") }
+251	
+252	        var sequence = 0
+253	        var iv: Data?
+254	        var segments = [URL]()
+255	        for line in try await text(variantURL).split(whereSeparator: \.isNewline).map(String.init) {
+256	            if line.hasPrefix("#EXT-X-MEDIA-SEQUENCE:") {
+257	                sequence = Int(line.dropFirst("#EXT-X-MEDIA-SEQUENCE:".count)) ?? 0
+258	            } else if line.hasPrefix("#EXT-X-KEY"), let r = line.range(of: "IV=0x") {
+259	                iv = Data(hex: String(line[r.upperBound...].prefix(32)))
+260	            } else if !line.isEmpty, !line.hasPrefix("#"), let u = URL(string: line, relativeTo: variantURL)?.absoluteURL {
+261	                segments.append(u)
+262	            }
+263	        }
+264	        guard !segments.isEmpty else { throw XtraError.badResponse("empty playlist") }
+265	
+266	        let keyJSON = try await json("GET", "/playback/key/v1/\(track.keyID)", body: nil, bearer: try await bearer())
+267	        guard let keyB64 = keyJSON["key"] as? String, let key = Data(base64Encoded: keyB64), key.count == 16
+268	        else { throw XtraError.badResponse("key") }
+269	
+270	        let parts = try await withThrowingTaskGroup(of: (Int, Data).self) { group in
+271	            for (i, url) in segments.enumerated() {
+272	                group.addTask {
+273	                    let (data, resp) = try await self.session.data(from: url)
+274	                    if let code = (resp as? HTTPURLResponse)?.statusCode, code >= 400 { throw XtraError.http(code, "segment") }
+275	                    // Without an explicit IV, HLS uses the segment's media sequence number.
+276	                    let segIV = iv ?? Data(sequenceIV: sequence + i)
+277	                    guard let plain = aes128Decrypt(data, key: key, iv: segIV) else { throw XtraError.badResponse("decrypt") }
+278	                    return (i, stripID3(plain))
+279	                }
+280	            }
+281	            var parts = [Int: Data]()
+282	            for try await (i, data) in group { parts[i] = data }
+283	            return parts
+284	        }
+285	
+286	        var audio = Data()
+287	        for i in segments.indices { audio.append(parts[i]!) }
+288	        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+289	        let file = folder.appendingPathComponent("\(track.id).aac")
+290	        try audio.write(to: file)
+291	        return file
+292	    }
+293	
+294	    // MARK: HTTP
+295	
+296	    private func text(_ url: URL) async throws -> String {
+297	        let (data, resp) = try await session.data(from: url)
+298	        if let code = (resp as? HTTPURLResponse)?.statusCode, code >= 400 { throw XtraError.http(code, url.lastPathComponent) }
+299	        return String(decoding: data, as: UTF8.self)
+300	    }
+301	
+302	    private func json(_ method: String, _ path: String, body: Any?, bearer: String?) async throws -> [String: Any] {
+303	        guard let url = URL(string: path.hasPrefix("https://") ? path : Self.api + path) else { throw XtraError.badResponse(path) }
+304	        var req = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalAndRemoteCacheData, timeoutInterval: 30)
+305	        req.httpMethod = method
+306	        for (k, v) in ["Accept": "application/json; charset=utf-8", "Content-Type": "application/json; charset=UTF-8",
+307	                       "Origin": "https://www.siriusxm.com", "Referer": "https://www.siriusxm.com/",
+308	                       "User-Agent": Self.userAgent, "X-Sxm-Platform": "browser", "X-Sxm-Tenant": "sxm",
+309	                       "X-Sxm-Clock": "[0,0]"] {
+310	            req.setValue(v, forHTTPHeaderField: k)
+311	        }
+312	        if let bearer { req.setValue("Bearer \(bearer)", forHTTPHeaderField: "Authorization") }
+313	        if let body { req.httpBody = try JSONSerialization.data(withJSONObject: body, options: .fragmentsAllowed) }
+314	
+315	        let (data, resp) = try await session.data(for: req)
+316	        let code = (resp as? HTTPURLResponse)?.statusCode ?? 0
+317	        if code >= 400 { throw XtraError.http(code, url.path) }
+318	        return (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] ?? [:]
+319	    }
+320	
+321	    private static func date(_ s: String?) -> Date? {
+322	        guard let s else { return nil }
+323	        let f = ISO8601DateFormatter()
+324	        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+325	        if let d = f.date(from: s) { return d }
+326	        f.formatOptions = [.withInternetDateTime]
+327	        return f.date(from: s)
+328	    }
+329	}
+330	
+331	// MARK: Decryption helpers
+332	
+333	private func aes128Decrypt(_ data: Data, key: Data, iv: Data) -> Data? {
+334	    var out = Data(count: data.count + kCCBlockSizeAES128)
+335	    var moved = 0
+336	    let outCount = out.count
+337	    let status = out.withUnsafeMutableBytes { o in
+338	        data.withUnsafeBytes { d in
+339	            key.withUnsafeBytes { k in
+340	                iv.withUnsafeBytes { v in
+341	                    CCCrypt(CCOperation(kCCDecrypt), CCAlgorithm(kCCAlgorithmAES), CCOptions(kCCOptionPKCS7Padding),
+342	                            k.baseAddress, key.count, v.baseAddress, d.baseAddress, data.count,
+343	                            o.baseAddress, outCount, &moved)
+344	                }
+345	            }
+346	        }
+347	    }
+348	    guard status == kCCSuccess else { return nil }
+349	    return out.prefix(moved)
+350	}
+351	
+352	/// Each HLS audio segment starts with an ID3 timestamp tag; drop it so the segments join into one clean AAC stream.
+353	private func stripID3(_ data: Data) -> Data {
+354	    let b = [UInt8](data.prefix(10))
+355	    guard b.count == 10, b[0] == 0x49, b[1] == 0x44, b[2] == 0x33 else { return data }
+356	    let size = Int(b[6] & 0x7f) << 21 | Int(b[7] & 0x7f) << 14 | Int(b[8] & 0x7f) << 7 | Int(b[9] & 0x7f)
+357	    let header = 10 + size + (b[5] & 0x10 != 0 ? 10 : 0)
+358	    return header < data.count ? data.subdata(in: data.startIndex + header ..< data.endIndex) : data
+359	}
+360	
+361	private extension Data {
+362	    init(sequenceIV n: Int) {
+363	        var bytes = [UInt8](repeating: 0, count: 16)
+364	        var v = UInt64(n)
+365	        for i in (8..<16).reversed() { bytes[i] = UInt8(v & 0xff); v >>= 8 }
+366	        self.init(bytes)
+367	    }
+368	
+369	    init?(hex: String) {
+370	        guard hex.count == 32 else { return nil }
+371	        var bytes = [UInt8]()
+372	        var i = hex.startIndex
+373	        while i < hex.endIndex {
+374	            let j = hex.index(i, offsetBy: 2)
+375	            guard let b = UInt8(hex[i..<j], radix: 16) else { return nil }
+376	            bytes.append(b)
+377	            i = j
+378	        }
+379	        self.init(bytes)
+380	    }
+381	}
+382	

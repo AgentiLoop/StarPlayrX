@@ -1,0 +1,31 @@
+178	    /// Luminance of the wallpaper behind the panel (it shows through the translucent material).
+179	    @State private var wallpaper: Double?
+180	
+181	    private func hue(_ x: Double) -> Double { (x.truncatingRemainder(dividingBy: 1) + 1).truncatingRemainder(dividingBy: 1) }
+182	
+183	    var body: some View {
+184	        let fixed = ContrastColor.background(scheme)
+185	        // The material mostly hides the wallpaper; let a bright or dark desktop pull the guess part way.
+186	        let bg = wallpaper.map { fixed * 0.7 + $0 * 0.3 } ?? fixed
+187	        HStack(alignment: .bottom, spacing: 2) {
+188	            ForEach(viz.levels.indices, id: \.self) { i in
+189	                let level = Double(viz.levels[i])
+190	                let h = viz.hues[i]
+191	                let base = ContrastColor.color(hue: h, saturation: 0.9, against: fixed)
+192	                let top = ContrastColor.color(hue: hue(h + 0.06 + 0.1 * level), saturation: 0.75, against: fixed, minRatio: 4.5)
+193	                // A glow in the bar's own colour washes out on a light panel; there it's the darkest shade
+194	                // of the bar's hue instead, and stronger, so the bars stand off the background.
+195	                let light = bg >= 0.5
+196	                let glow = light ? ContrastColor.color(hue: hue(h + 0.06 + 0.1 * level), saturation: 0.9, against: bg, minRatio: 14) : top
+197	                RoundedRectangle(cornerRadius: 1.5)
+198	                    .fill(LinearGradient(colors: [base, top], startPoint: .bottom, endPoint: .top))
+199	                    // On a light panel a thin dark edge keeps pale bars from melting into it.
+200	                    .overlay {
+201	                        if light {
+202	                            RoundedRectangle(cornerRadius: 1.5).strokeBorder(.black.opacity(0.25), lineWidth: 0.5)
+203	                        }
+204	                    }
+205	                    .frame(height: max(2, CGFloat(level) * 28))
+206	                    .shadow(color: glow.opacity(light ? 0.75 + 0.25 * viz.pulse : 0.4 + 0.6 * viz.pulse), radius: 1 + 4 * viz.pulse)
+207	            }
+... (85 more lines)

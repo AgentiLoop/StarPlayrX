@@ -1,0 +1,3 @@
+365:            streamLag = max(0, at.timeIntervalSince(real))
+367:        if let live = try? await xtra.liveNowPlaying(behind: streamLag) {
+377:    private var streamLag: TimeInterval = 8   // measured above; ~8 s until the first measurement

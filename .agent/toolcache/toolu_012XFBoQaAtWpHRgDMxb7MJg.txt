@@ -1,0 +1,5 @@
+⚙️  Writing project...
+Created project at /Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrXMac/StarPlayrXMac.xcodeproj
+
+
+⚠️ You've edited 3 times without building. Run xc(action:"build") now to catch errors early.

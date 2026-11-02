@@ -1,0 +1,1 @@
+{"tool":"user_shell","spilled":1793633236.178457,"input":{"command":"sleep 60; head -c 3000 \/tmp\/sync.log; echo; grep -c META \/tmp\/sync.log"}}

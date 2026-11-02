@@ -1,0 +1,3 @@
+187:    /// Clicking the bars steps the bubbles: full → half strength → off → full. Defaults to soft; each click
+189:    @AppStorage("bubbleStage") private var bubbleStage = 1   // UserDefaults; Soft Bubbles until the user picks
+1

@@ -1,0 +1,1 @@
+{"spilled":1793633236.2155151,"input":{"command":"cd \/Users\/toddbruss\/Documents\/GitHub\/StarPlayrX && ls *.md StarPlayrXMac\/*.md 2>\/dev\/null; grep -n -i \"mac\\|equalizer\\|bubble\\|1\\.1\\.\\|screenshot\\|macOS 14\\|record\" README.md | head -60"},"tool":"user_shell"}

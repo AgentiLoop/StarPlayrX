@@ -1,0 +1,1 @@
+{"input":{"command":"ls -la \/tmp\/spectrum.log; wc -l \/tmp\/spectrum.log; grep -v miss \/tmp\/spectrum.log | tail -30; grep miss \/tmp\/spectrum.log | tail -5"},"tool":"user_shell","spilled":1793633236.119359}

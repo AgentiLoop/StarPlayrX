@@ -1,0 +1,14 @@
+00:00:31
+3973 /Users/toddbruss/Library/Developer/Xcode/DerivedData/StarPlayrXMac-cpwkvnhjcilnxwcazrzzsegmszyp/Build/Products/Debug/StarPlayrX.app/Contents/MacOS/StarPlayrX -NSDocumentRevisionsDebugMode YES
+   1 23:59:41 SPECTRUM nolive status=0 date=nil
+   5 23:59:42 SPECTRUM nolive status=0 date=nil
+   2 23:59:42 SPECTRUM nolive status=0 date=Optional(2026-11-01 23:54:21 +0000)
+   1 23:59:42 SPECTRUM dup siriushits1_256k_1_110186344355_00232208_v3.aac
+   1 23:59:42 SPECTRUM nolive status=0 date=Optional(2026-11-01 23:59:11 +0000)
+   1 23:59:42 SPECTRUM nolive status=1 date=Optional(2026-11-01 23:59:11 +0000)
+   1 23:59:49 SPECTRUM seg siriushits1_256k_1_110186354107_00232209_v3.aac start=2026-11-01 23:59:
+   1 23:59:59 SPECTRUM seg siriushits1_256k_1_110186363858_00232210_v3.aac start=2026-11-01 23:59:
+   1 00:00:08 SPECTRUM seg siriushits1_256k_1_110186373610_00232211_v3.aac start=2026-11-01 23:59:
+   1 00:00:18 SPECTRUM seg siriushits1_256k_1_110186383361_00232212_v3.aac start=2026-11-01 23:59:
+   1 00:00:28 SPECTRUM seg siriushits1_256k_1_110186393113_00232213_v3.aac start=2026-11-01 23:59:
+   3 23:59:44   30 23:59:45   30 23:59:46   30 23:59:47   30 23:59:48   10 23:59:49 

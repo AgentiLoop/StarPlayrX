@@ -1,0 +1,1 @@
+{"tool":"user_shell","spilled":1793633236.1665831,"input":{"command":"cd \/Users\/toddbruss\/Documents\/GitHub\/StarPlayrX\/StarPlayrXMac\/Sources && grep -n \"private struct LavaBubbles\" -A22 Visualizer.swift"}}

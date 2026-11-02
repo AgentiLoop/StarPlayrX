@@ -1,0 +1,36 @@
+applescript.md
+lookaround-timing.md
+mac-release.md
+track-clearance.md
+SiriusXM web player (sxm-player-web, index-*.js remote config "lookaround"): pollingMs 45000, localRefreshIntervalMs 5000, livePointIntervalMs 60000. Grid shows the latest cut with now >= validFrom + 60s (content-*.js fn gn). Cut validFrom == liveUpdate/tuneSource item timestamp (same clock). XtraClient.liveNowPlaying mirrors this (cached 45s, 60s offset).
+     M StarPlayrXMac/Sources/Xtra.swift
+
+ StarPlayrXMac/Sources/Radio.swift | 13 +++----------
+ StarPlayrXMac/Sources/Xtra.swift  |  9 ++++-----
+ 2 files changed, 7 insertions(+), 15 deletions(-)
+--- a/StarPlayrXMac/Sources/Radio.swift
++++ b/StarPlayrXMac/Sources/Radio.swift
+-    /// How far the live stream runs behind on-air time, measured when a live channel starts.
+-    private var streamLag = UserDefaults.standard.double(forKey: "streamLag")
+-            if let at = item.currentDate() {
+-                streamLag = max(0, Date().timeIntervalSince(at))
+-                UserDefaults.standard.set(streamLag, forKey: "streamLag")
+-            }
+-            print("LIVE lag \(Int(streamLag))s")
+-            // (lookAround). No PDT mixing, so nothing flip-flops. It is read as far behind live as the
+-            // player actually runs, so every row shows what would be heard on tuning, like the tuned one.
+-            if let live = try? await xtra.liveNowPlaying(behind: streamLag > 0 ? streamLag : 60) {
++            // (lookAround). No PDT mixing, so nothing flip-flops. The player runs at live, so the cut
++            // on air now is what would be heard on tuning.
++            if let live = try? await xtra.liveNowPlaying() {
+--- a/StarPlayrXMac/Sources/Xtra.swift
++++ b/StarPlayrXMac/Sources/Xtra.swift
+-    /// livePointIntervalMs 60000): the feed is refetched at most every 45 s, and a cut is only
+-    /// shown once it has been on air for `behind` seconds (60 s by default, or how far the player
+-    /// actually runs behind live), so the list matches what a listener hears.
+-    func liveNowPlaying(behind: TimeInterval = 60) async throws -> [String: NowPlaying] {
++    /// livePointIntervalMs 60000): the feed is refetched at most every 45 s. The player runs at live
++    /// (within 1 s), so the cut on air now is what a listener hears.
++    func liveNowPlaying() async throws -> [String: NowPlaying] {
+-        let now = Date().addingTimeInterval(-behind)
++        let now = Date()

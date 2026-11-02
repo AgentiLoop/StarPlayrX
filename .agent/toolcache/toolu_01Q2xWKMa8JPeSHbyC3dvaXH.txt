@@ -1,0 +1,6 @@
+true
+MenuView.swift:20:    @ObservedObject private var menu = MenuController.shared
+MenuView.swift:27:    private var shaded: Bool { menu.shaded }
+MenuView.swift:260:final class MenuController: NSObject, ObservableObject {
+MenuView.swift:264:    @Published var shaded = false
+MenuView.swift:536:        let menu = MenuView().environmentObject(Radio.shared)

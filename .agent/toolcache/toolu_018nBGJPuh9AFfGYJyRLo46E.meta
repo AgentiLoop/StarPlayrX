@@ -1,0 +1,1 @@
+{"input":{"command":"screencapture -x -R-348,98,340,80 \/tmp\/bars1.png; sleep 0.3; screencapture -x -R-348,98,340,80 \/tmp\/bars2.png; ls -la \/tmp\/bars*.png; sips -g pixelWidth -g pixelHeight \/tmp\/bars1.png | tail -2"},"spilled":1793633236.1655259,"tool":"user_shell"}

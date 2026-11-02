@@ -1,0 +1,11 @@
+        if serverStarted, await text("ping") == "pong" { return }
+        for p in port..<65000 where portIsOpen(UInt16(p)) {
+            port = UInt16(p)
+            break
+        }
+        realSegmentDurations = true
+        SpectrumTimeline.shared.observeServer(port: port)
+        startServer(port)
+        preflightConfig(location: localeIsCA ? "CA" : "US")
+        for _ in 0..<20 {
+            if await text("ping") == "pong" { break }

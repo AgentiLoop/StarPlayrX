@@ -1,0 +1,84 @@
+125	private extension Double {
+126	    var clamped: Double { Swift.min(1, Swift.max(0, self)) }
+127	}
+128	
+129	/// Picks bar colours that always stand out from the panel: WCAG relative luminance and
+130	/// contrast ratio, lightening (dark mode) or darkening (light mode) a hue only as far as
+131	/// needed to reach `minRatio`, so saturated colours survive wherever they already contrast.
+132	enum ContrastColor {
+133	    /// Approximate luminance of the menu/panel material behind the bars.
+134	    static func background(_ scheme: ColorScheme) -> Double { scheme == .dark ? 0.025 : 0.84 }
+135	
+136	    static func color(hue: Double, saturation: Double, against bg: Double, minRatio: Double = 3.5) -> Color {
+137	        let dark = bg < 0.5
+138	        // Dark background: full brightness, then wash toward white. Light: darken.
+139	        for step in 0...20 {
+140	            let k = Double(step) / 20
+141	            let s = dark ? saturation * (1 - 0.7 * k) : saturation
+142	            let b = dark ? 1 : 1 - 0.75 * k
+143	            let (r, g, bl) = rgb(hue, s, b)
+144	            let l = 0.2126 * linear(r) + 0.7152 * linear(g) + 0.0722 * linear(bl)
+145	            let ratio = (max(l, bg) + 0.05) / (min(l, bg) + 0.05)
+146	            if ratio >= minRatio || step == 20 { return Color(red: r, green: g, blue: bl) }
+147	        }
+148	        return .primary
+149	    }
+150	
+151	    private static func linear(_ c: Double) -> Double {
+152	        c <= 0.04045 ? c / 12.92 : pow((c + 0.055) / 1.055, 2.4)
+153	    }
+154	
+155	    private static func rgb(_ h: Double, _ s: Double, _ v: Double) -> (Double, Double, Double) {
+156	        let h6 = (h - floor(h)) * 6
+157	        let f = h6 - floor(h6)
+158	        let p = v * (1 - s), q = v * (1 - s * f), t = v * (1 - s * (1 - f))
+159	        switch Int(h6) % 6 {
+160	        case 0: return (v, t, p)
+161	        case 1: return (q, v, p)
+162	        case 2: return (p, v, t)
+163	        case 3: return (p, q, v)
+164	        case 4: return (t, p, v)
+165	        default: return (v, p, q)
+166	        }
+167	    }
+168	}
+169	
+170	/// Spectrum bars whose colours follow the music: each bar drifts at the pace of its own band,
+171	/// onsets push it along, and bass kicks throw a fresh random palette. Every colour is checked
+172	/// for contrast against the panel. Kicks also make the bars glow and a soft blob swell behind.
+173	struct SpectrumView: View {
+174	    @ObservedObject private var viz = Visualizer.shared
+175	    @Environment(\.colorScheme) private var scheme
+176	
+177	    private func hue(_ x: Double) -> Double { (x.truncatingRemainder(dividingBy: 1) + 1).truncatingRemainder(dividingBy: 1) }
+178	
+179	    var body: some View {
+180	        let bg = ContrastColor.background(scheme)
+181	        HStack(alignment: .bottom, spacing: 2) {
+182	            ForEach(viz.levels.indices, id: \.self) { i in
+183	                let level = Double(viz.levels[i])
+184	                let h = viz.hues[i]
+185	                let base = ContrastColor.color(hue: h, saturation: 0.9, against: bg)
+186	                let top = ContrastColor.color(hue: hue(h + 0.06 + 0.1 * level), saturation: 0.75, against: bg, minRatio: 4.5)
+187	                RoundedRectangle(cornerRadius: 1.5)
+188	                    .fill(LinearGradient(colors: [base, top], startPoint: .bottom, endPoint: .top))
+189	                    .frame(height: max(2, CGFloat(level) * 28))
+190	                    .shadow(color: top.opacity(0.4 + 0.6 * viz.pulse), radius: 1 + 4 * viz.pulse)
+191	            }
+192	        }
+193	        .frame(height: 28, alignment: .bottom)
+194	        .background {
+195	            // The "lava": a blurred blob of the colour opposite the middle bar's, swelling on the beat.
+196	            Ellipse()
+197	                .fill(Color(hue: hue(viz.hues[Visualizer.bandCount / 2] + 0.5), saturation: 0.8, brightness: 1))
+198	                .scaleEffect(x: 0.6 + 0.3 * sin(viz.phase * 2 * .pi * 2), y: 0.6 + 0.5 * viz.pulse)
+199	                .offset(x: 80 * viz.blobX)
+200	                .blur(radius: 14)
+201	                .opacity(0.075 + 0.175 * viz.pulse)
+202	        }
+203	        .animation(.linear(duration: 0.05), value: viz.levels)
+204	        .onAppear { viz.start() }
+205	        .onDisappear { viz.stop() }
+206	    }
+207	}
+208	

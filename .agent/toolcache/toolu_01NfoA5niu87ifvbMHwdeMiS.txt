@@ -1,0 +1,11 @@
+ M .agent/tool_outcomes.json
+mac-1.1.7
+pre-silence-tuning
+mac-1.1.6
+mac-1.1.5
+mac-1.1.4
+10e4631 checkpoint: you can have light backgrounds in dark mode dummmy — tool_outcomes.json, Visualizer.swift
+88efeb2 checkpoint: for the EQ on light backgrounds make the shadow darker be... — tool_outcomes.json, Visualizer.swift
+dd4ccc6 checkpoint: reason why 20, 3 times per minutes — tool_outcomes.json, Xtra.swift
+mustang
+## mustang...origin/mustang [ahead 13]

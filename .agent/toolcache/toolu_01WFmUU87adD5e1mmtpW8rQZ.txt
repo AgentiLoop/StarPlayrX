@@ -1,0 +1,48 @@
+7215 /Users/toddbruss/Library/
+StarPlayrX-2026-10-31-182426.ips
+252:private final class BubblePopup {
+253-    static let shared = BubblePopup()
+254-    private let pad: CGFloat = 4   // room for the bubble's shadow inside its window
+255-    private var window: NSPanel?
+256-    private var host: NSHostingView<AnyView>?
+257-    private var shown = 0
+258-
+259-    func show(_ text: String, at point: NSPoint) {
+260-        // One hosting view, reused. It must not drive the window's size itself (sizingOptions = []):
+261-        // swapping in a new hosting view each click and letting it resize the window threw AppKit's
+262-        // "too many Update Constraints passes" exception, which crashed the app.
+263-        let content = AnyView(ChatBubble(text: text).fixedSize().padding(pad))
+264-        let host = self.host ?? {
+265-            let h = NSHostingView(rootView: content)
+266-            h.sizingOptions = []
+267-            self.host = h
+268-            return h
+269-        }()
+270-        host.rootView = content
+271-        let size = host.fittingSize
+272-        let panel = window ?? {
+273-            let p = NSPanel(contentRect: .zero, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: true)
+274-            p.isOpaque = false
+275-            p.backgroundColor = .clear
+276-            p.hasShadow = false
+277-            p.ignoresMouseEvents = true
+278-            p.level = .popUpMenu
+279-            p.collectionBehavior = [.canJoinAllSpaces, .transient, .ignoresCycle]
+280-            window = p
+281-            return p
+282-        }()
+283-        if panel.contentView !== host { panel.contentView = host }
+284-        panel.setFrame(NSRect(x: point.x - size.width / 2, y: point.y - pad, width: size.width, height: size.height), display: false)
+285-        host.frame = NSRect(origin: .zero, size: size)
+286-        panel.alphaValue = 1
+287-        panel.orderFrontRegardless()
+288-        shown += 1
+289-        let id = shown
+290-        Task {
+291-            try? await Task.sleep(for: .seconds(1.2))
+292-            guard shown == id else { return }   // a newer click keeps its own label up
+293-            await NSAnimationContext.runAnimationGroup { $0.duration = 0.3; panel.animator().alphaValue = 0 }
+294-            if shown == id { panel.orderOut(nil) }
+295-        }
+296-    }
+297-}

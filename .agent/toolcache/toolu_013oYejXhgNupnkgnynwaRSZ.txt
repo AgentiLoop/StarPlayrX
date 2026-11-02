@@ -1,0 +1,20 @@
+8:    <suite name="StarPlayrX Suite" code="SPrx" description="Control StarPlayrX — sign in, play channels, and compare what a channel lists (PDT) with what actually plays.">
+9-
+10-        <class-extension extends="application" description="StarPlayrX application.">
+11-            <property name="signed in" code="SPsi" type="boolean" access="r" description="Whether a SiriusXM account is signed in.">
+12-                <cocoa key="spSignedIn"/>
+13-            </property>
+14-            <property name="busy" code="SPbz" type="boolean" access="r" description="Whether a sign in is in progress.">
+15-                <cocoa key="spBusy"/>
+16-            </property>
+17-            <property name="playing" code="SPpl" type="boolean" access="r" description="Whether a channel is playing.">
+18-                <cocoa key="spPlaying"/>
+19-            </property>
+20-            <property name="status" code="SPst" type="text" access="r" description="Sign-in status text (shown in the menu when signed out).">
+--
+102:        <command name="select channel" code="SPrxSelc" description="Click a row in the channel list: plays it if the list is showing it (see search text) and waits until it is really playing, like play channel. Returns false otherwise.">
+103-            <cocoa class="SPXCommand"/>
+104-            <direct-parameter type="text" description="Channel number."/>
+105-            <result type="boolean"/>
+106-        </command>
+107-

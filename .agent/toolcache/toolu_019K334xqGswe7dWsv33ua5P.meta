@@ -1,0 +1,1 @@
+{"tool":"user_shell","spilled":1793633236.1331491,"input":{"command":"date -u +%T; pgrep -lf \"StarPlayrX.app\"; grep -E \"fail|seg |dup|nolive\" \/tmp\/spectrum.log | cut -c12-19,26-110 | uniq -c | tail -40; awk '$5==\"miss\"' \/tmp\/spectrum.log | cut -c12-19 | uniq -c | tr '\\n' ' '"}}

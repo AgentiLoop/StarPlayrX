@@ -1,0 +1,8 @@
+0
+    </div>
+    <h3 class="how-title">How it works: <span class="glow">click the bars.</span></h3>
+    <p class="lead">Each single click on the equalizer moves to the next mode, and a little speech bubble pops up right where you clicked to name it. StarPlayrX remembers your choice. Double-click still rolls the window up.</p>
+  </section>
+Current Version ID: c1b7f4d3-6c5e-47fd-9291-4ebb380851c9
+0
+1

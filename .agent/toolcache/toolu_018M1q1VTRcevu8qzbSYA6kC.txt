@@ -1,0 +1,202 @@
+Error: edit_file refused — this file had not been read this task. It has now been read FOR YOU and is marked as read. Do NOT call file(action:"read") on it. Your very next call must be the same edit_file, with old_string/source/line numbers copied verbatim from the content below.
+
+/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrXMac/Sources/SpectrumTimeline.swift:
+1  	import Foundation
+2  	import AVFoundation
+3  	import Accelerate
+4  	import StarPlayrRadioKit
+5  	
+6  	/// Bar heights worked out ahead of time, while the audio is decoded before it plays: live segments
+7  	/// as the local server hands them to the player, Xtra tracks as soon as they are downloaded.
+8  	/// Every 1024 samples get one frame, stamped with its place in the stream, so the bars are read
+9  	/// at the player's exact position: no recording permission, and they can't fall behind the music.
+10 	final class SpectrumTimeline: @unchecked Sendable {
+11 	    static let shared = SpectrumTimeline()
+12 	
+13 	    private struct Chunk { let channel: String; let start: Date; let hop: Double; let frames: [[Float]] }
+14 	    private struct Track { let hop: Double; let first: Int; var frames: [[Float]] }
+15 	
+16 	    private let lock = NSLock()
+17 	    private let queue = DispatchQueue(label: "StarPlayrX.spectrum", qos: .utility)
+18 	    private var segmentDates = [String: Date]()   // live segment file name -> EXT-X-PROGRAM-DATE-TIME
+19 	    private var liveChannel = ""
+20 	    private var live = [Chunk]()
+21 	    private var tracks = [URL: Track]()
+22 	
+23 	    /// Hooks into the local server; call before it starts.
+24 	    func observeServer() {
+25 	        livePlaylistObserver = { [unowned self] in playlist($0) }
+26 	        liveSegmentObserver = { [unowned self] name, data, key in queue.async { self.segment(name, data, key) } }
+27 	    }
+28 	
+29 	    // MARK: Live
+30 	
+31 	    private func playlist(_ text: String) {
+32 	        let f = ISO8601DateFormatter()
+33 	        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+34 	        let tag = "#EXT-X-PROGRAM-DATE-TIME:"
+35 	        var dates = [String: Date]()
+36 	        var date: Date?
+37 	        for line in text.split(whereSeparator: \.isNewline) {
+38 	            if line.hasPrefix(tag) {
+39 	                date = f.date(from: String(line.dropFirst(tag.count)))
+40 	            } else if !line.hasPrefix("#"), let d = date, let name = line.split(separator: "/").last {
+41 	                dates[String(name)] = d
+42 	                date = nil
+43 	            }
+44 	        }
+45 	        guard let channel = dates.keys.first.map(Self.channel) else { return }
+46 	        lock.lock()
+47 	        segmentDates = dates
+48 	        liveChannel = channel
+49 	        live.removeAll { $0.channel != channel }
+50 	        lock.unlock()
+51 	    }
+52 	
+53 	    /// Server thread hands each segment over before the player gets it; decrypt, decode and analyze here.
+54 	    private func segment(_ name: String, _ data: Data, _ key: Data?) {
+55 	        lock.lock()
+56 	        let start = segmentDates[name]
+57 	        lock.unlock()
+58 	        // Live segments have no explicit IV: HLS uses the media sequence number, the second-last field of the name.
+59 	        let parts = name.split(separator: "_")
+60 	        guard let start, let key, parts.count > 2, let sequence = Int(parts[parts.count - 2]),
+61 	              let plain = aes128Decrypt(data, key: key, iv: Data(sequenceIV: sequence)) else { return }
+62 	        let file = FileManager.default.temporaryDirectory.appendingPathComponent("StarPlayrX-\(name)")
+63 	        guard (try? stripID3(plain).write(to: file)) != nil else { return }
+64 	        defer { try? FileManager.default.removeItem(at: file) }
+65 	        var hop = 0.0
+66 	        var frames = [[Float]]()
+67 	        Self.decode(file) { h, _, f in hop = h; frames += f; return true }
+68 	        guard !frames.isEmpty else { return }
+69 	        lock.lock()
+70 	        live.removeAll { $0.start == start }
+71 	        live.append(Chunk(channel: Self.channel(name), start: start, hop: hop, frames: frames))
+72 	        if live.count > 30 { live.removeFirst(live.count - 30) }
+73 	        lock.unlock()
+74 	    }
+75 	
+76 	    /// Bars for the live stream at the player's current date (AVPlayerItem.currentDate()).
+77 	    func levels(at date: Date) -> [Float]? {
+78 	        lock.lock()
+79 	        defer { lock.unlock() }
+80 	        for c in live where c.channel == liveChannel {
+81 	            let t = date.timeIntervalSince(c.start)
+82 	            guard t >= 0 else { continue }
+83 	            let k = Int(t / c.hop)
+84 	            if k < c.frames.count { return c.frames[k] }
+85 	        }
+86 	        return nil
+87 	    }
+88 	
+89 	    private static func channel(_ name: String) -> String { String(name.split(separator: "_").first ?? "") }
+90 	
+91 	    // MARK: Xtra
+92 	
+93 	    /// Analyzes a downloaded track from `seconds` on, publishing about a second at a time so the
+94 	    /// start is ready almost at once.
+95 	    func analyze(track file: URL, from seconds: Double = 0) {
+96 	        queue.async { [self] in
+97 	            Self.decode(file, from: seconds) { hop, index, frames in
+98 	                lock.lock()
+99 	                defer { lock.unlock() }
+100	                if tracks[file] == nil, index == Int(seconds / hop) {
+101	                    tracks[file] = Track(hop: hop, first: index, frames: [])
+102	                }
+103	                guard tracks[file] != nil else { return false }   // forgotten meanwhile
+104	                tracks[file]!.frames += frames
+105	                return true
+106	            }
+107	        }
+108	    }
+109	
+110	    func levels(track file: URL, at seconds: Double) -> [Float]? {
+111	        lock.lock()
+112	        defer { lock.unlock() }
+113	        guard let t = tracks[file], seconds >= 0 else { return nil }
+114	        let k = Int(seconds / t.hop) - t.first
+115	        return k >= 0 && k < t.frames.count ? t.frames[k] : nil
+116	    }
+117	
+118	    func forget(track file: URL) {
+119	        lock.lock()
+120	        tracks[file] = nil
+121	        lock.unlock()
+122	    }
+123	
+124	    func forgetTracks() {
+125	        lock.lock()
+126	        tracks.removeAll()
+127	        lock.unlock()
+128	    }
+129	
+130	    // MARK: Analysis
+131	
+132	    private static let n = 1024
+133	
+134	    /// Decodes an AAC file and hands `emit` the bars of every 1024 samples, about a second at a time:
+135	    /// (seconds per frame, index of the first frame, frames). `emit` returns false to stop.
+136	    private static func decode(_ url: URL, from seconds: Double = 0,
+137	                               emit: (Double, Int, [[Float]]) -> Bool) {
+138	        guard let file = try? AVAudioFile(forReading: url) else { return }
+139	        let format = file.processingFormat
+140	        let rate = format.sampleRate
+141	        let channels = Int(format.channelCount)
+142	        var index = Int(seconds * rate) / n
+143	        file.framePosition = AVAudioFramePosition(index * n)
+144	        let chunk = AVAudioFrameCount(n * 43)
+145	        guard rate > 0, channels > 0, file.framePosition < file.length,
+146	              let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: chunk) else { return }
+147	        let bands = Bands()
+148	        while (try? file.read(into: buffer, frameCount: chunk)) != nil, buffer.frameLength > 0,
+149	              let data = buffer.floatChannelData {
+150	            let length = Int(buffer.frameLength)
+151	            var mono = Array(UnsafeBufferPointer(start: data[0], count: length))
+152	            for c in 1..<channels { mono = vDSP.add(mono, UnsafeBufferPointer(start: data[c], count: length)) }
+153	            if channels > 1 { mono = vDSP.multiply(1 / Float(channels), mono) }
+154	            let frames = stride(from: 0, through: length - n, by: n).map { bands.levels(mono[$0..<$0 + n]) }
+155	            guard emit(Double(n) / rate, index, frames) else { return }
+156	            index += frames.count
+157	        }
+158	    }
+159	
+160	    /// FFT of one 1024-sample block into `Visualizer.bandCount` bar heights (0...1).
+161	    private final class Bands {
+162	        private let fft = vDSP_create_fftsetup(10, FFTRadix(kFFTRadix2))!
+163	        private var window = [Float](repeating: 0, count: SpectrumTimeline.n)
+164	
+165	        init() { vDSP_hann_window(&window, vDSP_Length(SpectrumTimeline.n), Int32(vDSP_HANN_NORM)) }
+166	        deinit { vDSP_destroy_fftsetup(fft) }
+167	
+168	        func levels(_ block: ArraySlice<Float>) -> [Float] {
+169	            let n = SpectrumTimeline.n
+170	            let half = n / 2
+171	            let windowed = vDSP.multiply(block, window)
+172	            var real = [Float](repeating: 0, count: half)
+173	            var imag = [Float](repeating: 0, count: half)
+174	            var mags = [Float](repeating: 0, count: half)
+175	            real.withUnsafeMutableBufferPointer { rp in
+176	                imag.withUnsafeMutableBufferPointer { ip in
+177	                    var split = DSPSplitComplex(realp: rp.baseAddress!, imagp: ip.baseAddress!)
+178	                    windowed.withUnsafeBufferPointer { wp in
+179	                        wp.baseAddress!.withMemoryRebound(to: DSPComplex.self, capacity: half) {
+180	                            vDSP_ctoz($0, 2, &split, 1, vDSP_Length(half))
+181	                        }
+182	                    }
+183	                    vDSP_fft_zrip(fft, &split, 1, 10, FFTDirection(FFT_FORWARD))
+184	                    vDSP_zvabs(&split, 1, &mags, 1, vDSP_Length(half))
+185	                }
+186	            }
+187	            // Log-spaced bands from bin 2 (~90 Hz) up to Nyquist.
+188	            let count = Visualizer.bandCount
+189	            return (0..<count).map { b in
+190	                let lo = Int(2 * pow(Float(half / 2), Float(b) / Float(count)))
+191	                let hi = max(lo + 1, min(half, Int(2 * pow(Float(half / 2), Float(b + 1) / Float(count)))))
+192	                let peak = mags[lo..<hi].max() ?? 0
+193	                let db = 20 * log10(peak / Float(n) + 1e-9)
+194	                return max(0, min(1, (db + 50) / 50))
+195	            }
+196	        }
+197	    }
+198	}
+199	

@@ -1,0 +1,27 @@
+-rw-r--r--@ 1 toddbruss  wheel  129084 Nov  1 18:56 /tmp/spectrum.log
+hit=946 miss=569
+23:55:33 SPECTRUM seg siriushits1_256k_1_110186100539_00232183_v3.aac start=2026-11-01 23:55:00 +0000
+23:55:46 SPECTRUM seg siriushits1_256k_1_110186120042_00232185_v3.aac start=2026-11-01 23:55:20 +0000
+23:55:53 SPECTRUM seg siriushits1_256k_1_110186129793_00232186_v3.aac start=2026-11-01 23:55:29 +0000
+23:56:05 SPECTRUM seg siriushits1_256k_1_110186149296_00232188_v3.aac start=2026-11-01 23:55:49 +0000
+23:55:56 SPECTRUM miss date=2026-11-01 23:55:10 +0000 chunks=8 first=2026-11-01 23:54:11 +0000 lastEnd=2026-11-01 23:55:39 +0000
+23:55:56 SPECTRUM miss date=2026-11-01 23:55:11 +0000 chunks=8 first=2026-11-01 23:54:11 +0000 lastEnd=2026-11-01 23:55:39 +0000
+23:55:57 SPECTRUM miss date=2026-11-01 23:55:12 +0000 chunks=8 first=2026-11-01 23:54:11 +0000 lastEnd=2026-11-01 23:55:39 +0000
+23:55:58 SPECTRUM miss date=2026-11-01 23:55:13 +0000 chunks=8 first=2026-11-01 23:54:11 +0000 lastEnd=2026-11-01 23:55:39 +0000
+23:55:59 SPECTRUM miss date=2026-11-01 23:55:14 +0000 chunks=8 first=2026-11-01 23:54:11 +0000 lastEnd=2026-11-01 23:55:39 +0000
+23:56:00 SPECTRUM miss date=2026-11-01 23:55:15 +0000 chunks=8 first=2026-11-01 23:54:11 +0000 lastEnd=2026-11-01 23:55:39 +0000
+23:56:01 SPECTRUM miss date=2026-11-01 23:55:16 +0000 chunks=8 first=2026-11-01 23:54:11 +0000 lastEnd=2026-11-01 23:55:39 +0000
+23:56:02 SPECTRUM miss date=2026-11-01 23:55:17 +0000 chunks=8 first=2026-11-01 23:54:11 +0000 lastEnd=2026-11-01 23:55:39 +0000
+23:56:03 SPECTRUM miss date=2026-11-01 23:55:18 +0000 chunks=8 first=2026-11-01 23:54:11 +0000 lastEnd=2026-11-01 23:55:39 +0000
+23:56:04 SPECTRUM miss date=2026-11-01 23:55:19 +0000 chunks=8 first=2026-11-01 23:54:11 +0000 lastEnd=2026-11-01 23:55:39 +0000
+23:56:15 SPECTRUM miss date=2026-11-01 23:55:20 +0000 chunks=9 first=2026-11-01 23:54:11 +0000 lastEnd=2026-11-01 23:55:59 +0000
+   5 23:55:24 SPECTRUM nolive status=0 date=nil
+   1 23:55:24 SPECTRUM nolive status=0 date=Optional(2026-11-01 23:50:07 +0000)
+   3 23:55:24 SPECTRUM nolive status=0 date=Optional(2026-11-01 23:54:50 +0000)
+   3 23:55:24 SPECTRUM nolive status=0 date=Optional(2026-11-01 23:54:49 +0000)
+   1 23:55:24 SPECTRUM nolive status=1 date=Optional(2026-11-01 23:54:49 +0000)
+   2 23:55:45 SPECTRUM nolive status=1 date=Optional(2026-11-01 23:55:10 +0000)
+   5 23:55:46 SPECTRUM nolive status=1 date=Optional(2026-11-01 23:55:10 +0000)
+   1 23:55:46 SPECTRUM nolive status=1 date=Optional(2026-11-01 23:55:00 +0000)
+  10 23:56:05 SPECTRUM nolive status=1 date=Optional(2026-11-01 23:55:19 +0000)
+   1 23:56:05 SPECTRUM nolive status=1 date=Optional(2026-11-01 23:55:10 +0000)

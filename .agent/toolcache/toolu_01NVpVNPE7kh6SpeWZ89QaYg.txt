@@ -1,0 +1,16 @@
+dfb5246 checkpoint: if I single click here, scroll to that channel, if not al... — tool_outcomes.json, playlistRoute.swift, MenuView.swift +2 more
+f137c6e checkpoint: yes. also we are decoding it ahead of time so do it then — mac-release.md, tool_outcomes.json, audioRoute.swift +77 more
+394edb1 checkpoint: we don't want to be behind live, we want to be within 1 s... — playlistRoute.swift, Radio.swift
+b26ef1a checkpoint: sound stutters again when playing a new channel — playlistRoute.swift
+58bfffc Mac: start at live via EXT-X-START, play immediately (seek only as fallback)
+dfb5246 Sun Nov 1 18:51:21 2026 -0500 checkpoint: if I single click here, scroll to that channel, if not al... — tool_outcomes.json, playlistRoute.swift, MenuView.swift +2 more
+commit dfb5246a8256c564ee849c447bbd5f8d28b977b2
+Author: AgentiLoop Agent <agent@agentiloop.ai>
+Date:   Sun Nov 1 18:51:21 2026 -0500
+
+    checkpoint: if I single click here, scroll to that channel, if not al... — tool_outcomes.json, playlistRoute.swift, MenuView.swift +2 more
+    
+    Auto-checkpoint after successful build (5 files).
+    
+    Task: if I single click here, scroll to that channel, if not already in view
+    

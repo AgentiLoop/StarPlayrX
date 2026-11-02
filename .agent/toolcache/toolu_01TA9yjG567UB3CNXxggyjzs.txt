@@ -1,0 +1,20 @@
+672b9ab OG image: your tagline + subscription/not-affiliated line; gentler waves below the text
+48f3ff6 OG image: smoother, antialiased waves
+e05992c OG image: rounded screenshot corners
+  pixelWidth: 2400
+  pixelHeight: 1260
+8:<meta property="og:title" content="StarPlayrX returns to the Mac">
+9:<meta name="twitter:title" content="StarPlayrX returns to the Mac">
+10:<meta property="og:description" content="We&#39;re back to the Mac baby, in a big way! SiriusXM talk, music and sports, plus Xtra music channels, in your menu bar. SiriusXM subscription required. StarPlayrX is not affiliated with SiriusXM.">
+11:<meta name="twitter:description" content="We&#39;re back to the Mac baby, in a big way! SiriusXM talk, music and sports, plus Xtra music channels, in your menu bar. SiriusXM subscription required. StarPlayrX is not affiliated with SiriusXM.">
+12:<meta property="og:image" content="https://starplayrx.com/og-image.png?v=1.1.3d">
+13:<meta property="og:image:width" content="2400">
+14:<meta property="og:image:height" content="1260">
+15:<meta property="og:image:alt" content="StarPlayrX for Mac 1.1.6: Small Radio. Big Waves.">
+16:<meta name="twitter:card" content="summary_large_image">
+17:<meta name="twitter:image" content="https://starplayrx.com/og-image.png?v=1.1.3d">
+LICENSE
+README.md
+public
+wrangler.jsonc
+zsh:1: no matches found: --include=*.py

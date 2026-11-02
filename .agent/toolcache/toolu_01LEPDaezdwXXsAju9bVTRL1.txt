@@ -1,0 +1,68 @@
+ .agent/memory/mac-release.md                                          | 2 +-
+ .agent/tool_outcomes.json                                             | 2 +-
+ StarPlayrRadioKit/Sources/StarPlayrRadioKit/Routes/audioRoute.swift   | 2 ++
+ .../Sources/StarPlayrRadioKit/Routes/playlistRoute.swift              | 1 +
+ StarPlayrRadioKit/Sources/StarPlayrRadioKit/Setup/Global.swift        | 4 ++++
+ 5 files changed, 9 insertions(+), 2 deletions(-)
+
+diff --git a/.agent/memory/mac-release.md b/.agent/memory/mac-release.md
+index 6ff850b..742d576 100644
+--- a/.agent/memory/mac-release.md
++++ b/.agent/memory/mac-release.md
+@@ -11,6 +11,6 @@ mac-1.1.7 (build 12) shipped 2026-11-01 (one lookAround source, start 1 s behind
+ - Screenshots: AppleScript `show menu` / `park menu at upper right` / `toggle shade`, then `screencapture -x -l <CGWindowID>` (panel window is layer 3 of the app pid). Panel auto-hides when focus moves, so capture right after showing it.
+ - Blog (../Agent.xcf.ai): write blog/src/YYYY-MM-DD-slug.md, run `python3 blog/tools/build.py`, commit, push (push auto-deploys). Pull first, because a workflow pushes read-count commits (conflicts only in blog/tools/views.json: keep upstream, then rebuild).
+ - DMG: hdiutil UDZO of folder {app, /Applications symlink}, codesign dmg, notarize dmg, staple. Release assets also carry StarPlayrX-Mac-screenshot.png + -menu.png (copy from previous release).
+-- Website repo: ~/Documents/GitHub/starplayrx.com (public/index.html has download link + version; screenshot public/starplayrx-mac.png); deploy `npx -y wrangler@4 deploy`.
++- Website repo: ~/Documents/GitHub/starplayrx.com (public/index.html has download link + version; screenshot public/starplayrx-mac.png); deploy `npx -y wrangler@4 deploy`. Since 2026-11-01 public/releases.js reads GitHub releases (mac-* tags, non-prerelease, with DMG) and updates #download-btn, #notes-btn, #version-text and the #releases table, so a new release needs NO site edit/deploy.
+ - Demo video/GIF with visible cursor: agent_script MouseDemo (real CGEvent mouse + `screencapture -v -C -k`). The menu bar icon's x MOVES between runs, so use IX/IY/PX/PY tokens (read live via AX), never hardcoded coords.
+ - Mac tags use `mac-X.Y` to keep them apart from the old Catalyst/iOS tags (1.3.1).
+diff --git a/.agent/tool_outcomes.json b/.agent/tool_outcomes.json
+index 6c8846b..f9aab36 100644
+--- a/.agent/tool_outcomes.json
++++ b/.agent/tool_outcomes.json
+@@ -1 +1 @@
+-{"ax_type_into_element":{"failures":0,"successes":2,"lastError":""},"ax_get_properties":{"failures":0,"lastError":"","successes":1},"run_applescript":{"failures":0,"successes":3,"lastError":""},"edit_file":{"failures":0,"lastError":"Error: edit_file refused — this file had not been read this task. It has now been read FOR YOU and is marked as read. Do NOT call file(action:\"read\") on it. Your very next call must be the same edit_file, with old_string\/source\/line numbers copied verbatim from the content below.\n\n\/Users\/toddbruss\/D","successes":15,"build":"295"},"execute_daemon_command":{"successes":6,"failures":0,"lastError":""},"ax_press_key":{"failures":0,"lastError":"","successes":1},"git_commit":{"failures":0,"successes":4,"lastError":""},"git_status":{"failures":0,"lastError":"","successes":1},"create_agent":{"lastError":"","successes":1,"failures":0},"write_file":{"lastError":"","successes":4,"failures":0},"batch_tools":{"failures":0,"successes":6,"lastError":""},"ax_click_menu_item":{"failures":0,"lastError":"{\"error\":\"'Microphone' not found in the 'Control Center' panel. Available: Pick project folder, Browse for folder, Home folder, Clear project folder, Clear recent folders, Restore recent folders, Token usage today, claude-opus-5-5, claude-opus-5-5 3, claude-opus-5-5 3, SafariSonarClicks, claude-opus","successes":3,"build":"295"},"plan_mode":{"lastError":"","successes":2,"failures":0},"ax_get_children":{"successes":2,"failures":0,"lastError":"{\"error\":\"Element not found\",\"success\":false}","build":"295"},"ax_find_element":{"successes":3,"failures":1,"lastError":"{\"error\":\"Element not found\",\"success\":false}","build":"295"},"diff_and_apply":{"lastError":"Error: diff_and_apply refused — this file had not been read this task. It has now been read FOR YOU and is marked as read. Do NOT call file(action:\"read\") on it. Your very next call must be the same diff_and_apply, with old_string\/source\/line numbers copied verbatim from the content below.\n\n\/Users\/t","build":"295","successes":10,"failures":0},"ax_click_element":{"successes":1,"failures":0,"lastError":"{\"error\":\"Element not found in com.starplayrx.mac: role=any, title=menu bar item \\\"StarPlayrX\\\" of menu bar 2. Available interactive elements: Apple | About This Mac | System Information | System Settings… | App Store…, 14 updates | Recent Items | Agent! | Show “Agent!” in Finder | Agent!-debug | Sh","build":"295"},"memory":{"failures":0,"successes":6,"lastError":""},"read_file":{"successes":11,"failures":0,"lastError":"Error: could not read file (binary or encoding issue): \/tmp\/contact.png","build":"295"},"run_agent":{"lastError":"","successes":12,"failures":0},"git_log":{"failures":0,"successes":2,"lastError":""},"web_open":{"successes":1,"failures":0,"lastError":""},"execute_agent_command":{"lastError":"zsh:1: === not found\n","build":"295","successes":385,"failures":0},"xcode_run":{"failures":0,"lastError":"Error: Invalid project path ''. Use xcode (action: list_projects) to find the correct project. Must be .xcodeproj or .xcworkspace.","successes":1,"build":"295"},"xcode_build":{"failures":0,"successes":3,"lastError":""},"batch_commands":{"failures":0,"lastError":"","successes":8},"web_execute_js":{"successes":1,"failures":0,"lastError":""},"search_files":{"failures":0,"successes":4,"lastError":""}}
+\ No newline at end of file
++{"diff_and_apply":{"failures":0,"successes":10,"lastError":"Error: diff_and_apply refused — this file had not been read this task. It has now been read FOR YOU and is marked as read. Do NOT call file(action:\"read\") on it. Your very next call must be the same diff_and_apply, with old_string\/source\/line numbers copied verbatim from the content below.\n\n\/Users\/t","build":"295"},"edit_file":{"failures":0,"build":"295","successes":18,"lastError":"Error: edit_file refused — this file had not been read this task. It has now been read FOR YOU and is marked as read. Do NOT call file(action:\"read\") on it. Your very next call must be the same edit_file, with old_string\/source\/line numbers copied verbatim from the content below.\n\n\/Users\/toddbruss\/D"},"ax_click_element":{"failures":0,"build":"295","successes":1,"lastError":"{\"error\":\"Element not found in com.starplayrx.mac: role=any, title=menu bar item \\\"StarPlayrX\\\" of menu bar 2. Available interactive elements: Apple | About This Mac | System Information | System Settings… | App Store…, 14 updates | Recent Items | Agent! | Show “Agent!” in Finder | Agent!-debug | Sh"},"memory":{"failures":0,"successes":6,"lastError":""},"create_agent":{"failures":0,"successes":1,"lastError":""},"read_file":{"failures":0,"successes":15,"lastError":"Error: could not read file (binary or encoding issue): \/tmp\/contact.png","build":"295"},"web_execute_js":{"failures":0,"successes":1,"lastError":""},"batch_commands":{"failures":0,"successes":11,"lastError":""},"batch_tools":{"failures":0,"successes":6,"lastError":""},"ax_click_menu_item":{"failures":0,"build":"295","successes":3,"lastError":"{\"error\":\"'Microphone' not found in the 'Control Center' panel. Available: Pick project folder, Browse for folder, Home folder, Clear project folder, Clear recent folders, Restore recent folders, Token usage today, claude-opus-5-5, claude-opus-5-5 3, claude-opus-5-5 3, SafariSonarClicks, claude-opus"},"plan_mode":{"failures":0,"successes":2,"lastError":""},"execute_agent_command":{"failures":0,"successes":399,"lastError":"zsh:1: === not found\n","build":"295"},"ax_get_properties":{"failures":0,"successes":1,"lastError":""},"ax_type_into_element":{"failures":0,"successes":2,"lastError":""},"git_status":{"failures":0,"successes":1,"lastError":""},"search_files":{"failures":0,"successes":6,"lastError":""},"ax_find_element":{"failures":1,"build":"295","successes":3,"lastError":"{\"error\":\"Element not found\",\"success\":false}"},"git_commit":{"failures":0,"successes":4,"lastError":""},"write_file":{"failures":0,"successes":4,"lastError":""},"run_applescript":{"failures":0,"successes":3,"lastError":""},"ax_press_key":{"failures":0,"successes":1,"lastError":""},"execute_daemon_command":{"failures":0,"successes":6,"lastError":""},"xcode_build":{"failures":0,"successes":3,"lastError":""},"git_log":{"failures":0,"successes":2,"lastError":""},"web_open":{"failures":0,"successes":1,"lastError":""},"xcode_run":{"failures":0,"build":"295","successes":1,"lastError":"Error: Invalid project path ''. Use xcode (action: list_projects) to find the correct project. Must be .xcodeproj or .xcworkspace."},"run_agent":{"failures":0,"successes":12,"lastError":""},"ax_get_children":{"failures":0,"successes":2,"lastError":"{\"error\":\"Element not found\",\"success\":false}","build":"295"}}
+\ No newline at end of file
+diff --git a/StarPlayrRadioKit/Sources/StarPlayrRadioKit/Routes/audioRoute.swift b/StarPlayrRadioKit/Sources/StarPlayrRadioKit/Routes/audioRoute.swift
+index 926606d..db58714 100644
+--- a/StarPlayrRadioKit/Sources/StarPlayrRadioKit/Routes/audioRoute.swift
++++ b/StarPlayrRadioKit/Sources/StarPlayrRadioKit/Routes/audioRoute.swift
+@@ -36,6 +36,8 @@ func audioRoute() -> httpReq {{ request in
+             return HttpResponse.notFound(.none)
+         }
+         
++        liveSegmentObserver?(aac, audio, Data(base64Encoded: userX.key))
++        
+         // Use the optimized audioStream response type for better streaming performance
+         return HttpResponse.ok(.data(audio, contentType: audioFormat), [
+             "X-Channel-ID": userX.channel,
+diff --git a/StarPlayrRadioKit/Sources/StarPlayrRadioKit/Routes/playlistRoute.swift b/StarPlayrRadioKit/Sources/StarPlayrRadioKit/Routes/playlistRoute.swift
+index 0ee1455..210e548 100644
+--- a/StarPlayrRadioKit/Sources/StarPlayrRadioKit/Routes/playlistRoute.swift
++++ b/StarPlayrRadioKit/Sources/StarPlayrRadioKit/Routes/playlistRoute.swift
+@@ -87,6 +87,7 @@ func playlistRoute() -> httpReq {{ request in
+                 }
+ 
+                 playlist = processPlaylist(list)
++                livePlaylistObserver?(playlist)
+             }
+         }
+         
+diff --git a/StarPlayrRadioKit/Sources/StarPlayrRadioKit/Setup/Global.swift b/StarPlayrRadioKit/Sources/StarPlayrRadioKit/Setup/Global.swift
+index 3adcf8d..726ec95 100644
+--- a/StarPlayrRadioKit/Sources/StarPlayrRadioKit/Setup/Global.swift
++++ b/StarPlayrRadioKit/Sources/StarPlayrRadioKit/Setup/Global.swift
+@@ -11,6 +11,10 @@ public var appRegion = "US"
+ /// Serve live playlists with their real segment durations, so AVPlayerItem.currentDate() is the
+ /// stream's true EXT-X-PROGRAM-DATE-TIME (the Mac app matches it against the cut timeline).
+ public var realSegmentDurations = false
++/// The Mac app's spectrum bars: each live playlist, and each audio segment (still encrypted, with
++/// its AES key), as the server hands them to the player, so the bars are worked out before playback.
++public var livePlaylistObserver: ((_ playlist: String) -> Void)?
++public var liveSegmentObserver: ((_ name: String, _ data: Data, _ key: Data?) -> Void)?
+ 
+ public var hls_sources = Dictionary<String, String>()
+ 

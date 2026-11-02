@@ -1,0 +1,1 @@
+{"tool":"user_shell","input":{"command":"cd ~\/Documents\/GitHub\/starplayrx.com && git status -sb | head -3 && git pull -q && ls public; grep -n -i \"screenshot\\|<img\\|equalizer\\|<section\\|<h2\\|feature\" public\/index.html | head -50"},"spilled":1793633236.221303}

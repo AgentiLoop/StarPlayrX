@@ -1,0 +1,1 @@
+{"tool":"user_shell","input":{"command":"md5 -q \/tmp\/sp1.png \/tmp\/sp2.png; osascript -e 'tell application \"StarPlayrX\" to get properties' 2>&1 | head -5; pgrep -lf \"tccd\" >\/dev\/null; log show --last 2m --predicate 'process == \"StarPlayrX\"' 2>\/dev\/null | grep -i \"spectrum\\|error\" | head"},"spilled":1793633236.11538}

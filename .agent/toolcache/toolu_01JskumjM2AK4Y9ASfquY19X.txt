@@ -1,0 +1,6 @@
+23:57:44
+-rw-r--r--@ 1 toddbruss  wheel  21188 Nov  1 18:57 /tmp/spectrum.log
+3893 /Users/toddbruss/Library/Developer/Xcode/DerivedData/StarPlayrXMac-cpwkvnhjcilnxwcazrzzsegmszyp/Build/Products/Debug/StarPlayrX.app/Contents/MacOS/StarPlayrX -NSDocumentRevisionsDebugMode YES
+2026-11-01 23:57:44 +0000 SPECTRUM hit
+2026-11-01 23:57:44 +0000 SPECTRUM hit
+2026-11-01 23:57:44 +0000 SPECTRUM hit

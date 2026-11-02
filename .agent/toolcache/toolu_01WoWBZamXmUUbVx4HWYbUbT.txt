@@ -1,0 +1,2 @@
+214:                                                  shade: Color(hue: h, saturation: 0.9, brightness: 1))   // the bar's pure colour, not contrast-darkened }
+243:    let shade: Color   // the bar's own colour, for the bubbles that cast a shadow

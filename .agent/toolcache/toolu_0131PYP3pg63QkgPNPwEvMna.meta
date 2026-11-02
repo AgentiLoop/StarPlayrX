@@ -1,0 +1,1 @@
+{"tool":"user_shell","input":{"command":"cd \/Users\/toddbruss\/Documents\/GitHub\/StarPlayrX && git log --oneline -3 && git show --stat HEAD | head -15 && git show HEAD -- StarPlayrXMac\/Sources\/Visualizer.swift | grep '^[+-]' | head"},"spilled":1793633236.143003}

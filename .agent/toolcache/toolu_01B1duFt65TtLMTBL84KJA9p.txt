@@ -1,0 +1,20 @@
+Applied diff to /Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrXMac/Sources/Visualizer.swift (lines 193-204) [verified: true] — file now has 292 lines. Re-read the file before making more edits. diff_id: 3135DF32-C0E0-438B-A125-0832771DCE7E
+
+❌                // A glow in the bar's own colour washes out on a light panel; there it's a deeper shade instead.
+❌                let glow = bg < 0.5 ? top : ContrastColor.color(hue: hue(h + 0.06 + 0.1 * level), saturation: 0.9, against: bg, minRatio: 8)
+✅                // A glow in the bar's own colour washes out on a light panel; there it's the darkest shade
+✅                // of the bar's hue instead, and stronger, so the bars stand off the background.
+✅                let light = bg >= 0.5
+✅                let glow = light ? ContrastColor.color(hue: hue(h + 0.06 + 0.1 * level), saturation: 0.9, against: bg, minRatio: 14) : top
+📎                RoundedRectangle(cornerRadius: 1.5)
+📎                    .fill(LinearGradient(colors: [base, top], startPoint: .bottom, endPoint: .top))
+📎                    // On a light panel a thin dark edge keeps pale bars from melting into it.
+📎                    .overlay {
+❌                        if bg >= 0.5 {
+✅                        if light {
+📎                            RoundedRectangle(cornerRadius: 1.5).strokeBorder(.black.opacity(0.25), lineWidth: 0.5)
+📎                        }
+📎                    }
+📎                    .frame(height: max(2, CGFloat(level) * 28))
+❌                    .shadow(color: glow.opacity(0.4 + 0.6 * viz.pulse), radius: 1 + 4 * viz.pulse)
+✅                    .shadow(color: glow.opacity(light ? 0.75 + 0.25 * viz.pulse : 0.4 + 0.6 * viz.pulse), radius: 1 + 4 * viz.pulse)

@@ -1,0 +1,53 @@
+StarPlayrX for Mac 1.1.7
+# 📻 StarPlayrX for Mac 1.1.7
+
+<table>
+  <tr>
+    <td align="center" valign="top" width="33%"><img src="https://github.com/AgentiLoop/StarPlayrX/releases/download/mac-1.1.7/StarPlayrX-Mac-screenshot.png" width="260" alt="StarPlayrX pulled down from the menu bar"><br><b>📻 Menu bar</b></td>
+    <td align="center" valign="top" width="33%"><img src="https://github.com/AgentiLoop/StarPlayrX/releases/download/mac-1.1.7/StarPlayrX-Mac-tear-off.png" width="260" alt="StarPlayrX torn off into its own window"><br><b>✂️ Tear-off window</b></td>
+    <td align="center" valign="top" width="33%"><img src="https://github.com/AgentiLoop/StarPlayrX/releases/download/mac-1.1.7/StarPlayrX-Mac-shade.png" width="260" alt="StarPlayrX rolled up like a window shade"><br><b>🎬 Window shade</b></td>
+  </tr>
+</table>
+
+## ⚡️ Within 1 second of live
+- The stream now starts 1 second behind live instead of three segments (30 seconds) back
+- Playback waits until the start position is set, so the old position no longer plays for half a second before it jumps (no more stutter when you pick a channel)
+- Playback starts once a small amount of audio is buffered, so channels start sooner
+
+## 📡 One source for what's playing
+- Every live channel, tuned or not, now gets its song, artist and album art from the same place: SiriusXM's live feed. The channel list and Now Playing always agree, and the song shown no longer jumps back and forth
+- What's playing is refreshed every 5 seconds. The live feed itself is downloaded at most every 45 seconds, the same rate the SiriusXM web player uses
+- Live rows fill in as soon as the channel list loads
+
+## 🖼️ Channel art loads ahead
+- While you scroll the channel list, the art for the 10 channels above and below each visible row starts loading ahead of time, so it's usually already there when those rows scroll into view
+
+## 🧠 Memory leaks fixed
+- Fixed memory leaks in the caching of channel art and album art
+
+## 📜 Long names scroll in the list too
+- Channel names and artist / song lines too long for a row in the channel list now scroll sideways, like the Now Playing header, instead of ending in "…"
+
+## 💻 Requirements
+- macOS 13 Ventura or later (equalizer: macOS 14.2 or later)
+- Universal: Apple silicon and Intel
+- An active SiriusXM subscription
+
+## 🔏 Security
+- Signed with Developer ID and notarized by Apple (ticket stapled)
+
+## 📦 Install
+1. Download `StarPlayrX-Mac-1.1.7.dmg` (or the `.zip`)
+2. Move `StarPlayrX.app` to Applications and open it
+3. Click the 📻 icon in the menu bar
+
+SHA-256 (`StarPlayrX-Mac-1.1.7.dmg`): `54c03ff9f2812d643280a4c812443a345a3f172d851d2047adee10efdcab1e61`
+SHA-256 (`StarPlayrX-Mac-1.1.7.zip`): `80458acf9752b3023cd3c6472f64fe2c4dfb75977bd0ae1f30480917a03e0f6c`
+
+
+StarPlayrX-Mac-1.1.7.dmg
+StarPlayrX-Mac-1.1.7.zip
+StarPlayrX-Mac-screenshot.png
+StarPlayrX-Mac-shade.png
+StarPlayrX-Mac-tear-off.png
+StarPlayrXMac-cpwkvnhjcilnxwcazrzzsegmszyp

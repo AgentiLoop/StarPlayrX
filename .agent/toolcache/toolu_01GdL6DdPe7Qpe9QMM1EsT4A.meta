@@ -1,0 +1,1 @@
+{"spilled":1793633236.103965,"tool":"user_shell","input":{"command":"lsof -nP -p 2918 -iTCP -sTCP:LISTEN | tail -3; for p in $(lsof -nP -p 2918 -iTCP -sTCP:LISTEN -a | awk 'NR>1{split($9,a,\":\");print a[2]}'); do curl -s -m 8 http:\/\/127.0.0.1:$p\/api\/v3\/m3u\/2.m3u8 | head -30; done"}}

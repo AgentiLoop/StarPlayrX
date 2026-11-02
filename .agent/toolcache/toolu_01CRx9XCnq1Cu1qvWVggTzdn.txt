@@ -1,0 +1,20 @@
+-                    // It also starts 10 s behind live instead of AVPlayer's default three segments back.
++                    // It also starts 1 s behind live instead of AVPlayer's default three segments back.
+-                            playlist.insert(contentsOf: "\n#EXT-X-START:TIME-OFFSET=-10", at: header.upperBound)
++                            playlist.insert(contentsOf: "\n#EXT-X-START:TIME-OFFSET=-1", at: header.upperBound)
+-            // Fallback: only jump if the start tag was ignored and we're well off the live target.
++            // Fallback: only jump if the start tag was ignored and we're more than 1 s off live.
+-                let edge = max(CMTimeSubtract(CMTimeRangeGetEnd(range), CMTime(seconds: 10, preferredTimescale: 1000)), range.start)
+-                if abs(CMTimeGetSeconds(CMTimeSubtract(edge, item.currentTime()))) > 3 {
+-                    // Land on any segment boundary at or before the target — no exact-frame fetch.
+-                    await item.seek(to: edge, toleranceBefore: .positiveInfinity, toleranceAfter: .zero)
++                let edge = max(CMTimeSubtract(CMTimeRangeGetEnd(range), CMTime(seconds: 1, preferredTimescale: 1000)), range.start)
++                if abs(CMTimeGetSeconds(CMTimeSubtract(edge, item.currentTime()))) > 1 {
++                    // Exact seek so we land within 1 s of live, not on an earlier segment boundary.
++                    await item.seek(to: edge, toleranceBefore: .zero, toleranceAfter: .zero)
+-                        if !playlist.contains("#EXT-X-START"), let firstLine = playlist.firstIndex(of: "\n") {
+-                            playlist.insert(contentsOf: "\n#EXT-X-START:TIME-OFFSET=-10", at: firstLine)
++                        // Insert right after #EXTM3U so it works with both "\n" and "\r\n" line endings
++                        // (Swift treats "\r\n" as one Character, so firstIndex(of: "\n") misses it).
++                        if !playlist.contains("#EXT-X-START"), let header = playlist.range(of: "#EXTM3U") {
++                            playlist.insert(contentsOf: "\n#EXT-X-START:TIME-OFFSET=-10", at: header.upperBound)

@@ -1,0 +1,37 @@
+1:import Foundation
+2:import AVFoundation
+3:import Accelerate
+4:import StarPlayrRadioKit
+
+    // MARK: Live
+
+    private func playlist(_ text: String) {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        let tag = "#EXT-X-PROGRAM-DATE-TIME:"
+        var dates = [String: Date]()
+        var date: Date?
+        for line in text.split(whereSeparator: \.isNewline) {
+            if line.hasPrefix(tag) {
+                date = f.date(from: String(line.dropFirst(tag.count)))
+            } else if !line.hasPrefix("#"), let d = date, let name = line.split(separator: "/").last {
+                dates[String(name)] = d
+                date = nil
+            }
+        }
+        guard let channel = dates.keys.first.map(Self.channel) else { return }
+        lock.lock()
+        segmentDates = dates
+        liveChannel = channel
+        live.removeAll { $0.channel != channel }
+        lock.unlock()
+    }
+
+    /// Server thread hands each segment over before the player gets it; decrypt, decode and analyze here.
+    private func segment(_ name: String, _ data: Data, _ key: Data?) {
+        lock.lock()
+        let start = segmentDates[name]
+        let done = live.contains { $0.start == start }
+        lock.unlock()
+        guard !done else { return }
+        // Live segments have no explicit IV: HLS uses the media sequence number, the second-last field of the name.

@@ -1,0 +1,75 @@
+/Applications/StarPlayrX.app
+2918 /Applications/StarPlayrX.app/Contents/MacOS/StarPlayrX
+
+//
+//  Playlist makek
+//
+//  Created by Todd on 1/16/19.
+//
+
+import Foundation
+
+//Cached verison of Playlist
+func Playlist(channelid: String) -> String {
+    let bitrate = Network.ability.networkIsCellular ? "64k" : "256k"
+
+    let size = "medium"
+    let underscore = "_"
+    let version = "v3"
+    let ext = ".m3u8"
+    
+    let tail = channelid + underscore + bitrate + underscore + size + underscore + version + ext
+    var source = userX.keyurl
+    
+    let primary = String(hls_sources["Live_Primary_HLS"] ?? "")
+    let secondary = String(hls_sources["Live_Secondary_HLS"] ?? "")
+    
+    if usePrime {
+        source = source.replacingOccurrences(of: "%Live_Primary_HLS%", with: primary)
+    } else {
+        source = source.replacingOccurrences(of: "%Live_Primary_HLS%", with: secondary)
+    }
+    
+    source = source.replacingOccurrences(of: "32k",  with: bitrate)
+    source = source.replacingOccurrences(of: "key/1", with: tail)
+    source += userX.consumer + "&token=" + userX.token
+    
+	return source
+}
+//
+//  DataAsync.swift
+//
+//  Created by Todd on 4/18/20.
+//
+
+import Foundation
+
+//MARK: Data Sync
+internal func dataSync(endpoint: String, method: String, DataHandler: @escaping DataHandler ) {
+ 
+    guard let url = URL(string: endpoint) else { DataHandler(.none); return}
+    
+    let semaphore = DispatchSemaphore(value: 0)
+
+    var urlReq = URLRequest(url: url)
+    urlReq.httpMethod = "GET"
+    urlReq.setValue(userAgent, forHTTPHeaderField: "User-Agent")
+    urlReq.addValue("application/json", forHTTPHeaderField: "Content-Type")
+    urlReq.timeoutInterval = TimeInterval(60)
+    urlReq.cachePolicy = .reloadIgnoringLocalAndRemoteCacheData
+    
+    let task = URLSession.shared.dataTask(with: urlReq ) { ( data, _, _ ) in
+        
+        guard
+            let d = data
+        else { DataHandler(.none); return
+        }
+        
+        DataHandler(d)
+        
+        semaphore.signal()
+    }
+    
+    task.resume()
+    _ = semaphore.wait(timeout: .distantFuture)
+}

@@ -1,0 +1,5 @@
+-rw-r--r--@ 1 toddbruss  wheel  102500 Nov  1 20:02 /tmp/bars.png
+-rw-r--r--@ 1 toddbruss  wheel   74504 Nov  1 20:02 /tmp/bars1.png
+-rw-r--r--@ 1 toddbruss  wheel   98709 Nov  1 20:02 /tmp/bars2.png
+  pixelWidth: 680
+  pixelHeight: 160

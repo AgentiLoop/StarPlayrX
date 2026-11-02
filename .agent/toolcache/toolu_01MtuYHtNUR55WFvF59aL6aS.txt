@@ -1,0 +1,17 @@
+        .animation(.linear(duration: 1.0 / 60), value: viz.levels)
+        .background(WallpaperProbe(luminance: $wallpaper))
+        .overlay {
+            GeometryReader { _ in
+                if let stageLabel {
+                    // The pointer's tip sits exactly on the click; the bubble grows up from there
+                    // (it may run past the window's edge).
+                    ChatBubble(text: stageLabel)
+                        .fixedSize()
+                        .frame(width: 0, height: 0, alignment: .bottom)
+                        .position(x: labelX, y: labelY)
+                        .transition(.opacity.combined(with: .scale(scale: 0.85)))
+                }
+            }
+        }
+        .contentShape(Rectangle())
+        .onTapGesture(coordinateSpace: .local) { location in

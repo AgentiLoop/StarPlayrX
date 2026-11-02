@@ -1,0 +1,7 @@
+https://github.com/AgentiLoop/StarPlayrX/releases/tag/mac-1.1.8
+https://github.com/AgentiLoop/StarPlayrX/releases/tag/mac-1.1.8
+StarPlayrX-Mac-1.1.8.dmg
+StarPlayrX-Mac-1.1.8.zip
+StarPlayrX-Mac-screenshot.png
+StarPlayrX-Mac-shade.png
+StarPlayrX-Mac-tear-off.png

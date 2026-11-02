@@ -1,0 +1,15 @@
+md5: docs/screenshot-mac.png StarPlayrX-Mac-screenshot.png: No such file or directory
+md5: /tmp/spx-shots/: Is a directory
+screenshot-mac.png StarPlayrX-Mac-screenshot.png = new
+md5: docs/screenshot-mac-torn-off.png StarPlayrX-Mac-tear-off.png: No such file or directory
+md5: /tmp/spx-shots/: Is a directory
+screenshot-mac-torn-off.png StarPlayrX-Mac-tear-off.png = new
+md5: docs/screenshot-mac-shade.png StarPlayrX-Mac-shade.png: No such file or directory
+md5: /tmp/spx-shots/: Is a directory
+screenshot-mac-shade.png StarPlayrX-Mac-shade.png = new
+docs/screenshot-mac-shade-bubbles.png committed
+docs/screenshot-mac-shade-soft-bubbles.png committed
+docs/screenshot-mac-shade-no-bubbles.png committed
+Sun Nov 1 14:09:15 2026 -0500
+6
+## mustang...origin/mustang

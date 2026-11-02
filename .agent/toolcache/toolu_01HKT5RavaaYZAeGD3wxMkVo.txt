@@ -1,0 +1,14 @@
+23:59:56
+hit=314 miss=133 stall=1
+23:59:42 SPECTRUM dup siriushits1_256k_1_110186344355_00232208_v3.aac
+23:59:49 SPECTRUM seg siriushits1_256k_1_110186354107_00232209_v3.aac start=20
+   1 23:59:41 SPECTRUM nolive status=0 date=nil
+   5 23:59:42 SPECTRUM nolive status=0 date=nil
+   3 23:59:42 SPECTRUM nolive status=0 date=Opti
+   1 23:59:42 SPECTRUM nolive status=1 date=Opti
+   3 23:59:44 SPECTRUM miss date=2026-11-01 23:5
+  30 23:59:45 SPECTRUM miss date=2026-11-01 23:5
+  30 23:59:46 SPECTRUM miss date=2026-11-01 23:5
+  30 23:59:47 SPECTRUM miss date=2026-11-01 23:5
+  30 23:59:48 SPECTRUM miss date=2026-11-01 23:5
+  10 23:59:49 SPECTRUM miss date=2026-11-01 23:5

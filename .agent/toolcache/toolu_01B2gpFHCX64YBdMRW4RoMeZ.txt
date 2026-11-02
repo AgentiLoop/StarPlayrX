@@ -1,0 +1,2 @@
+                    .overlay { LavaBubbles(rise: viz.rise[i], seed: Double(i), color: light ? .black : .white,
+                                                  shade: Color(hue: h, saturation: 0.9, brightness: 1)) }   // the bar's pure colour, not contrast-darkened

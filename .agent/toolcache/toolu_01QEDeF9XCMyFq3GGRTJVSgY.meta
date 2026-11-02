@@ -1,0 +1,1 @@
+{"tool":"user_shell","input":{"command":"for r in ~\/Documents\/GitHub\/StarPlayrX ~\/Documents\/GitHub\/starplayrx.com; do cd $r; echo \"== $r\"; git status --short | grep -v \"toolcache\" | head; done"},"spilled":1793633236.2263031}

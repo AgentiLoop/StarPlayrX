@@ -1,0 +1,1 @@
+{"spilled":1793633236.120816,"input":{"command":"awk '{w=$5; if(w!=\"hit\"&&w!=\"miss\"&&w!=\"nolive\")w=\"SEG:\"$6; print $2, w, ($5==\"miss\"?$7:\"\")}' \/tmp\/spectrum.log | uniq -c | head -80"},"tool":"user_shell"}

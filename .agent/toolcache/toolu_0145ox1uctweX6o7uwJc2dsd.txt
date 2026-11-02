@@ -1,0 +1,31 @@
+174	
+175	    // MARK: Analysis
+176	
+177	    private static let n = 1024
+178	
+179	    /// Decodes an AAC file and hands `emit` the bars of every 1024 samples, about a second at a time:
+180	    /// (seconds per frame, index of the first frame, frames). `emit` returns false to stop.
+181	    private static func decode(_ url: URL, from seconds: Double = 0,
+182	                               emit: (Double, Int, [[Float]]) -> Bool) {
+183	        guard let file = try? AVAudioFile(forReading: url) else { return }
+184	        let format = file.processingFormat
+185	        let rate = format.sampleRate
+186	        let channels = Int(format.channelCount)
+187	        var index = Int(seconds * rate) / n
+188	        file.framePosition = AVAudioFramePosition(index * n)
+189	        let chunk = AVAudioFrameCount(n * 43)
+190	        guard rate > 0, channels > 0, file.framePosition < file.length,
+191	              let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: chunk) else { return }
+192	        let bands = Bands()
+193	        while (try? file.read(into: buffer, frameCount: chunk)) != nil, buffer.frameLength > 0,
+194	              let data = buffer.floatChannelData {
+195	            let length = Int(buffer.frameLength)
+196	            var mono = Array(UnsafeBufferPointer(start: data[0], count: length))
+197	            for c in 1..<channels { mono = vDSP.add(mono, UnsafeBufferPointer(start: data[c], count: length)) }
+198	            if channels > 1 { mono = vDSP.multiply(1 / Float(channels), mono) }
+199	            let frames = stride(from: 0, through: length - n, by: n).map { bands.levels(mono[$0..<$0 + n]) }
+200	            guard emit(Double(n) / rate, index, frames) else { return }
+201	            index += frames.count
+202	        }
+203	    }
+... (44 more lines)

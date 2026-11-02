@@ -1,0 +1,1 @@
+{"input":{"command":"wc -l \/tmp\/tl.log; cut -c1-220 \/tmp\/tl.log | tail -25"},"tool":"user_shell","spilled":1793633236.184936}

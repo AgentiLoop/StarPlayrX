@@ -1,0 +1,1 @@
+{"spilled":1793633236.134762,"input":{"command":"cd \/Users\/toddbruss\/Documents\/GitHub\/StarPlayrX\/StarPlayrXMac\/Sources && sed -i '' 's\/segmentDates = dates.compactMapValues { _ in nil }\/segmentDates = [:]\/' SpectrumTimeline.swift && sed -n 50,66p SpectrumTimeline.swift"},"tool":"user_shell"}

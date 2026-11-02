@@ -1,0 +1,27 @@
+181:        <command name="channel info" code="SPrxInfo" description="Tab-separated &quot;number, name, category, xtra|live, artist, song&quot; for a channel. Empty when there is no such channel.">
+182-            <cocoa class="SPXCommand"/>
+183-            <direct-parameter type="text" description="Channel number."/>
+184-            <result type="text"/>
+185-        </command>
+186-
+187-        <command name="search channels" code="SPrxSrch" description="Channel numbers matching the menu's search field logic (number, name, category, artist, song, &quot;Music Xtra&quot;).">
+2: 2	Hits 1	Pop	live	Ax and the Hatchetmen	Hotel Room
+3: 3	Unwell Music	Pop	live	THE ANXIETY/WILLOW/Tyler Cole	Meet Me At Our Spot
+4: 4	Life with John Mayer	Pop	live	Life with John Mayer	on SiriusXM
+5: 5	The Pulse	Oldies	live	Alyssa Grace	bloodstream - stripped
+6: 6	PopRocks	Oldies	live	No Doubt	It's My Life
+7: 7	70s on 7	Rock	live	Chaka Khan	I'm Every Woman (78)
+8: 8	80s on 8	Rock	live	Joe Jackson	Steppin' Out
+9: 9	90s on 9	Alternative	live	Mark Morrison	Return Of The Mack (96)
+10: 10	Pop2K	Pop	live	The Game/50 Cent	How We Do (04)
+13: 13	Pitbull's Globalization	Dance/Electronic	live	@hugelthug	#POWERTOOLS @RichardVission
+15: 15	Yacht Rock Radio	Pop	live	Gerry Rafferty	Right Down the Line
+16: 16	The Blend	Pop	live	Steve Winwood	Higher Love
+17: 17	The Coffee House	Rock	live	Black Pumas	Colors (Acoustic)
+20: 20	E Street Radio	Artists	live	8/19/84 East Rutherford, NJ	The Promised Land
+22: 22	Pearl Jam Radio	Artists	live	10.9.00 Chicago, IL	Nothingman
+23: 23	Grateful Dead	Artists	live	Grateful Dead	Hell in a Bucket
+25: 25	Classic Rewind	Rock	live	Blue Oyster Cult	(Don't Fear) The Reaper
+bfab4839b7d071312a6fd9fbbd47b9bf33e73b05a0656c2f043d53247cda818f  StarPlayrX-Mac-1.1.8.dmg
+fac47534d45e30ab4081fbe0662fb473385308fea36f965c7389d67e16d31867  StarPlayrX-Mac-1.1.8.zip
+DONE

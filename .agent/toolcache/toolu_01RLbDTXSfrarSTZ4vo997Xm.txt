@@ -1,0 +1,10 @@
+202:            let item = AVPlayerItem(url: url)
+203-            // Start as soon as a little audio is buffered instead of waiting to fill a large buffer.
+204-            item.preferredForwardBufferDuration = 3
+205-            // Stay paused until the start position is settled so the old position never plays
+358:    func updatePDT() async {
+359-        // One source for every live row, tuned or not: the newer API (lookAround).
+360-        // The player's date runs ahead of the stream's real PDT (segments are tagged 10 s but hold
+361-        // ~9.75 s, so the gap grows to ~8 s). The song list was matched to the player's date, so it
+21:@MainActor
+22:final class Radio: ObservableObject {

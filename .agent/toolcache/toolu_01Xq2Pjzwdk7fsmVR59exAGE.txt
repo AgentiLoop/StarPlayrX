@@ -1,0 +1,2 @@
+3343 /Users/toddbruss/Library/Developer/Xcode/DerivedData/StarPlayrXMac-cpwkvnhjcilnxwcazrzzsegmszyp/Build/Products/Debug/StarPlayrX.app/Contents/MacOS/StarPlayrX -NSDocumentRevisionsDebugMode YES
+ok

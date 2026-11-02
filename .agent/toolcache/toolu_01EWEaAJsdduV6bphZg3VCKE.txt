@@ -1,0 +1,3 @@
+                    .overlay { LavaBubbles(rise: viz.rise[i], seed: Double(i), color: light ? .black.opacity(0.45) : .white,   // dark bubbles at under half strength, so they stay soft
+                                                 
+                                                  shade: Color(hue: h, saturation: 0.9, brightness: 1)) }   // the bar's pure colour, not contrast-darkened

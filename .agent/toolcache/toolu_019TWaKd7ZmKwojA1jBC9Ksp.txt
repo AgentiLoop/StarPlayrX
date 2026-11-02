@@ -1,0 +1,8 @@
+true
+true, -840, 234
+/private/tmp/spx-shots/StarPlayrX-Mac-screenshot.png
+  pixelHeight: 1150
+/private/tmp/spx-shots/StarPlayrX-Mac-shade.png
+  pixelHeight: 252
+/private/tmp/spx-shots/StarPlayrX-Mac-tear-off.png
+  pixelHeight: 1150

@@ -1,0 +1,1 @@
+{"spilled":1793633236.2013049,"input":{"command":"perl -e 'alarm 10; exec @ARGV' -- osascript -e 'tell application \"StarPlayrX\" to get menu shaded'; cd \/Users\/toddbruss\/Documents\/GitHub\/StarPlayrX\/StarPlayrXMac\/Sources && grep -n \"var menu\\|menu = \\|class .*Menu.*ObservableObject\\|var shaded\" MenuView.swift StarPlayrXMacApp.swift | head"},"tool":"user_shell"}
