@@ -191,6 +191,7 @@ struct SpectrumView: View {
     /// Names the new stage in a little chat bubble over the bars for a moment after each click.
     @State private var stageLabel: String?
     @State private var labelID = 0
+    @State private var labelX: CGFloat = 0   // where the user clicked, so the bubble pops up there
 
     private func hue(_ x: Double) -> Double { (x.truncatingRemainder(dividingBy: 1) + 1).truncatingRemainder(dividingBy: 1) }
 
@@ -238,12 +239,21 @@ struct SpectrumView: View {
         .animation(.linear(duration: 1.0 / 60), value: viz.levels)
         .background(WallpaperProbe(luminance: $wallpaper))
         .overlay {
-            if let stageLabel {
-                ChatBubble(text: stageLabel).transition(.opacity.combined(with: .scale(scale: 0.85)))
+            GeometryReader { geo in
+                if let stageLabel {
+                    // Centred on the click, nudged in at the ends so it's never cut off.
+                    let half = ChatBubble.width(stageLabel) / 2
+                    let x = min(max(labelX, half), max(half, geo.size.width - half))
+                    ChatBubble(text: stageLabel)
+                        .fixedSize()
+                        .position(x: x, y: geo.size.height / 2)
+                        .transition(.opacity.combined(with: .scale(scale: 0.85)))
+                }
             }
         }
         .contentShape(Rectangle())
-        .onTapGesture {
+        .onTapGesture(coordinateSpace: .local) { location in
+            labelX = location.x
             bubbleStage = (bubbleStage + 1) % 3
             labelID += 1
             let id = labelID
@@ -263,6 +273,12 @@ struct SpectrumView: View {
 /// A small speech bubble (capsule with a tail pointing down at the bars) that fits within the bar row.
 private struct ChatBubble: View {
     let text: String
+
+    static let font = NSFont.systemFont(ofSize: 11, weight: .semibold)
+    /// Width of the capsule for `text`, used to keep the bubble inside the bar row.
+    static func width(_ text: String) -> CGFloat {
+        ceil((text as NSString).size(withAttributes: [.font: font]).width) + 16
+    }
 
     var body: some View {
         VStack(spacing: 0) {
