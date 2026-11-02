@@ -336,15 +336,17 @@ private struct ChannelRow: View, Equatable {
                 }
             }
         }
-        // Inset from the scroll view's edges so the squircle's corners are never clipped.
+        // Inset from the scroll view's edges so the squircle's corners are never clipped. The list
+        // extends 12pt past the clipped content area on the right (scroll bar at the window edge),
+        // so the trailing inset has to cover that plus the same 4pt margin as the leading side.
         .padding(.leading, 4)
-        .padding(.trailing, 8)
+        .padding(.trailing, 16)
         .contentShape(Rectangle())
     }
 
     private static let highlight = Color(nsColor: NSColor(name: nil) { appearance in
         appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
-            ? NSColor(white: 1, alpha: 0.22)
+            ? NSColor(white: 1, alpha: 0.10)
             : NSColor(white: 0.75, alpha: 0.5)
     })
 }
