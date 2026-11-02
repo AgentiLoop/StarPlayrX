@@ -188,8 +188,8 @@ struct SpectrumView: View {
             ForEach(viz.levels.indices, id: \.self) { i in
                 let level = Double(viz.levels[i])
                 let h = viz.hues[i]
-                let base = ContrastColor.color(hue: h, saturation: 0.9, against: bg)
-                let top = ContrastColor.color(hue: hue(h + 0.06 + 0.1 * level), saturation: 0.75, against: bg, minRatio: 4.5)
+                let base = ContrastColor.color(hue: h, saturation: 0.9, against: fixed)
+                let top = ContrastColor.color(hue: hue(h + 0.06 + 0.1 * level), saturation: 0.75, against: fixed, minRatio: 4.5)
                 // A glow in the bar's own colour washes out on a light panel; there it's a deeper shade instead.
                 let glow = bg < 0.5 ? top : ContrastColor.color(hue: hue(h + 0.06 + 0.1 * level), saturation: 0.9, against: bg, minRatio: 8)
                 RoundedRectangle(cornerRadius: 1.5)
