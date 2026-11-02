@@ -253,10 +253,21 @@ private final class BubblePopup {
     static let shared = BubblePopup()
     private let pad: CGFloat = 4   // room for the bubble's shadow inside its window
     private var window: NSPanel?
+    private var host: NSHostingView<AnyView>?
     private var shown = 0
 
     func show(_ text: String, at point: NSPoint) {
-        let host = NSHostingView(rootView: ChatBubble(text: text).padding(pad))
+        // One hosting view, reused. It must not drive the window's size itself (sizingOptions = []):
+        // swapping in a new hosting view each click and letting it resize the window threw AppKit's
+        // "too many Update Constraints passes" exception, which crashed the app.
+        let content = AnyView(ChatBubble(text: text).fixedSize().padding(pad))
+        let host = self.host ?? {
+            let h = NSHostingView(rootView: content)
+            h.sizingOptions = []
+            self.host = h
+            return h
+        }()
+        host.rootView = content
         let size = host.fittingSize
         let panel = window ?? {
             let p = NSPanel(contentRect: .zero, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: true)
@@ -269,8 +280,9 @@ private final class BubblePopup {
             window = p
             return p
         }()
-        panel.contentView = host
-        panel.setFrame(NSRect(x: point.x - size.width / 2, y: point.y - pad, width: size.width, height: size.height), display: true)
+        if panel.contentView !== host { panel.contentView = host }
+        panel.setFrame(NSRect(x: point.x - size.width / 2, y: point.y - pad, width: size.width, height: size.height), display: false)
+        host.frame = NSRect(origin: .zero, size: size)
         panel.alphaValue = 1
         panel.orderFrontRegardless()
         shown += 1
@@ -293,6 +305,8 @@ private struct ChatBubble: View {
         VStack(spacing: 0) {
             Text(text)
                 .font(.system(size: 11, weight: .semibold))
+                .lineLimit(1)
+                .fixedSize()   // never truncated to "…"
                 .padding(.horizontal, 8)
                 .padding(.vertical, 3)
                 .background(.regularMaterial, in: Capsule())
