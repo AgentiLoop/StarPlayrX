@@ -321,12 +321,21 @@ private struct ChannelRow: View, Equatable {
             .buttonStyle(.plain)
             .help(isStarred ? "Remove from stars" : "Add to stars")
             .accessibilityLabel(isStarred ? "Preset On, Channel \(channel.name)" : "Preset Off, Channel \(channel.name)")
-            if isPlaying {
-                Image(systemName: "speaker.wave.2.fill").foregroundStyle(.tint)
-            }
         }
         .padding(.vertical, 4)
-        .padding(.trailing, 12)
+        .padding(.horizontal, 6)
+        // The playing channel's row sits on a Liquid Glass squircle (translucent tint before macOS 26).
+        .background {
+            if isPlaying {
+                let shape = RoundedRectangle(cornerRadius: 10, style: .continuous)
+                if #available(macOS 26.0, *) {
+                    Color.clear.glassEffect(.regular.tint(Color.accentColor.opacity(0.25)), in: shape)
+                } else {
+                    shape.fill(Color.accentColor.opacity(0.2))
+                }
+            }
+        }
+        .padding(.trailing, 6)
         .contentShape(Rectangle())
     }
 }
