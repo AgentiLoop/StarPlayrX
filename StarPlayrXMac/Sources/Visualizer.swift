@@ -1,6 +1,7 @@
 import SwiftUI
 import AppKit
 import ImageIO
+import MetalKit
 
 /// Spectrum of what is playing. The bars are worked out ahead of time from the decoded audio
 /// (`SpectrumTimeline`); this reads the frame at the player's position 60 times a second
@@ -142,7 +143,8 @@ enum ContrastColor {
     /// Approximate luminance of the menu/panel material behind the bars.
     static func background(_ scheme: ColorScheme) -> Double { scheme == .dark ? 0.025 : 0.84 }
 
-    static func color(hue: Double, saturation: Double, against bg: Double, minRatio: Double = 3.5) -> Color {
+    /// The contrast-checked colour as sRGB components (alpha 1), for the Metal shader.
+    static func components(hue: Double, saturation: Double, against bg: Double, minRatio: Double = 3.5) -> SIMD4<Float> {
         let dark = bg < 0.5
         // Dark background: full brightness, then wash toward white. Light: darken.
         for step in 0...20 {
@@ -152,9 +154,15 @@ enum ContrastColor {
             let (r, g, bl) = rgb(hue, s, b)
             let l = 0.2126 * linear(r) + 0.7152 * linear(g) + 0.0722 * linear(bl)
             let ratio = (max(l, bg) + 0.05) / (min(l, bg) + 0.05)
-            if ratio >= minRatio || step == 20 { return Color(red: r, green: g, blue: bl) }
+            if ratio >= minRatio || step == 20 { return [Float(r), Float(g), Float(bl), 1] }
         }
-        return .primary
+        return [1, 1, 1, 1]
+    }
+
+    /// Plain hue/saturation/brightness as sRGB components (alpha 1).
+    static func hsb(_ h: Double, _ s: Double, _ v: Double) -> SIMD4<Float> {
+        let (r, g, b) = rgb(h, s, v)
+        return [Float(r), Float(g), Float(b), 1]
     }
 
     private static func linear(_ c: Double) -> Double {
@@ -179,8 +187,10 @@ enum ContrastColor {
 /// Spectrum bars whose colours follow the music: each bar drifts at the pace of its own band,
 /// onsets push it along, and bass kicks throw a fresh random palette. Every colour is checked
 /// for contrast against the panel. Kicks also make the bars glow and a soft blob swell behind.
+/// Everything (blob, glows, bars, bubbles) is drawn by one Metal fragment shader; SwiftUI only
+/// re-evaluates this view when the scheme, wallpaper or bubble setting changes, not every frame.
 struct SpectrumView: View {
-    @ObservedObject private var viz = Visualizer.shared
+    private let viz = Visualizer.shared
     @Environment(\.colorScheme) private var scheme
     /// Luminance of the wallpaper behind the panel (it shows through the translucent material).
     @State private var wallpaper: Double?
@@ -189,65 +199,228 @@ struct SpectrumView: View {
     @AppStorage("bubbleStage") private var bubbleStage = 1   // UserDefaults; Soft Bubbles until the user picks
     private var bubbleStrength: Double { [0.90, 0.5, 0][bubbleStage % 3] }
 
-    private func hue(_ x: Double) -> Double { (x.truncatingRemainder(dividingBy: 1) + 1).truncatingRemainder(dividingBy: 1) }
-
     var body: some View {
         let fixed = ContrastColor.background(scheme)
         // The material mostly hides the wallpaper; let a bright or dark desktop pull the guess part way.
         let bg = wallpaper.map { fixed * 0.7 + $0 * 0.3 } ?? fixed
-        HStack(alignment: .bottom, spacing: 2) {
-            ForEach(viz.levels.indices, id: \.self) { i in
-                let level = Double(viz.levels[i])
-                let h = viz.hues[i]
-                let base = ContrastColor.color(hue: h, saturation: 0.9, against: fixed)
-                let top = ContrastColor.color(hue: hue(h + 0.06 + 0.1 * level), saturation: 0.75, against: fixed, minRatio: 4.5)
-                // A glow in the bar's own colour washes out on a light background; there it's the darkest shade
-                // of the bar's hue instead, and stronger, so the bars stand off it. The panel is translucent, so a
-                // bright wallpaper makes it light in Dark Mode too: decide from the wallpaper, not just the scheme.
-                let light = bg >= 0.5 || (wallpaper ?? 0) >= 0.35
-                let glow = light ? ContrastColor.color(hue: hue(h + 0.06 + 0.1 * level), saturation: 0.9, against: max(bg, 0.84), minRatio: 14) : top
-                RoundedRectangle(cornerRadius: 1.5)
-                    .fill(LinearGradient(colors: [base, top], startPoint: .bottom, endPoint: .top))
-                    // On a light panel a thin dark edge keeps pale bars from melting into it.
-                    .overlay {
-                        if light {
-                            RoundedRectangle(cornerRadius: 1.5).strokeBorder(.black.opacity(0.25), lineWidth: 0.5)
-                        }
-                    }
-                    .overlay { if bubbleStrength > 0 { LavaBubbles(rise: viz.rise[i], seed: Double(i), color: light ? .black.opacity(0.7) : .white,   // dark bubbles at 70% strength, so they stay soft
-                                                  shade: Color(hue: h, saturation: 0.9, brightness: 1))   // the bar's pure colour, not contrast-darkened
-                        .opacity(bubbleStrength) } }
-                    .clipShape(RoundedRectangle(cornerRadius: 1.5))
-                    .frame(height: max(2, CGFloat(level) * 28))
-                    .shadow(color: glow.opacity(light ? 0.75 + 0.25 * viz.pulse : 0.4 + 0.6 * viz.pulse), radius: 1 + 4 * viz.pulse)
+        // A glow in the bar's own colour washes out on a light background; there it's the darkest shade
+        // of the bar's hue instead, and stronger, so the bars stand off it. The panel is translucent, so a
+        // bright wallpaper makes it light in Dark Mode too: decide from the wallpaper, not just the scheme.
+        let light = bg >= 0.5 || (wallpaper ?? 0) >= 0.35
+        // The Metal view overhangs the bars on every side so the glow and the blurred blob aren't clipped.
+        SpectrumMetalView(fixed: fixed, bg: bg, light: light, bubbles: bubbleStrength)
+            .padding(-CGFloat(SpectrumRenderer.pad))
+            .frame(height: 28)
+            .background(WallpaperProbe(luminance: $wallpaper))
+            .contentShape(Rectangle())
+            // A double-click is left to the tear-off area around the bars, which rolls the panel up. This
+            // empty double-click handler only makes SwiftUI wait out the double-click time, so the single
+            // click below doesn't also switch the bubbles.
+            .onTapGesture(count: 2) {}
+            .onTapGesture {
+                bubbleStage = (bubbleStage + 1) % 3
+                // Names the new stage in a chat bubble whose pointer tip is on the mouse.
+                BubblePopup.shared.show(["Bubbles", "Soft Bubbles", "No Bubbles"][bubbleStage], at: NSEvent.mouseLocation)
             }
-        }
-        .frame(height: 28, alignment: .bottom)
-        .background {
-            // The "lava": a blurred blob of the colour opposite the middle bar's, swelling on the beat.
-            Ellipse()
-                .fill(Color(hue: hue(viz.hues[Visualizer.bandCount / 2] + 0.5), saturation: 0.8, brightness: 1))
-                .scaleEffect(x: 0.6 + 0.3 * sin(viz.phase * 2 * .pi * 2), y: 0.6 + 0.5 * viz.pulse)
-                .offset(x: 80 * viz.blobX)
-                .blur(radius: 14)
-                .opacity(0.075 + 0.175 * viz.pulse)
-        }
-        .animation(.linear(duration: 1.0 / 60), value: viz.levels)
-        .background(WallpaperProbe(luminance: $wallpaper))
-        .contentShape(Rectangle())
-        // A double-click is left to the tear-off area around the bars, which rolls the panel up. This
-        // empty double-click handler only makes SwiftUI wait out the double-click time, so the single
-        // click below doesn't also switch the bubbles.
-        .onTapGesture(count: 2) {}
-        .onTapGesture {
-            bubbleStage = (bubbleStage + 1) % 3
-            // Names the new stage in a chat bubble whose pointer tip is on the mouse.
-            BubblePopup.shared.show(["Bubbles", "Soft Bubbles", "No Bubbles"][bubbleStage], at: NSEvent.mouseLocation)
-        }
-        .help(["Bubbles", "Soft Bubbles", "No Bubbles"][bubbleStage % 3])
-        .onAppear { viz.start() }
-        .onDisappear { viz.stop() }
+            .help(["Bubbles", "Soft Bubbles", "No Bubbles"][bubbleStage % 3])
+            .onAppear { viz.start() }
+            .onDisappear { viz.stop() }
     }
+}
+
+private struct SpectrumMetalView: NSViewRepresentable {
+    let fixed: Double, bg: Double, light: Bool, bubbles: Double
+
+    func makeCoordinator() -> SpectrumRenderer { SpectrumRenderer() }
+
+    func makeNSView(context: Context) -> MTKView {
+        let view = PassThroughMTKView(frame: .zero, device: context.coordinator.device)
+        view.colorPixelFormat = .bgra8Unorm
+        view.colorspace = CGColorSpace(name: CGColorSpace.sRGB)
+        view.layer?.isOpaque = false
+        view.clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 0)
+        view.preferredFramesPerSecond = 60
+        view.delegate = context.coordinator
+        return view
+    }
+
+    func updateNSView(_ view: MTKView, context: Context) {
+        let r = context.coordinator
+        (r.fixed, r.bg, r.light, r.bubbles) = (fixed, bg, light, bubbles)
+    }
+
+    /// Clicks go through to the SwiftUI gestures (and the tear-off area) behind it.
+    final class PassThroughMTKView: MTKView {
+        override func hitTest(_ point: NSPoint) -> NSView? { nil }
+    }
+}
+
+/// Reads the visualizer state each frame and hands it to the shader: colours are worked out here
+/// (24 bars, a few contrast checks each), all per-pixel work runs on the GPU.
+@MainActor
+final class SpectrumRenderer: NSObject, MTKViewDelegate {
+    /// Points the Metal view overhangs the bars on each side, for the glow and the blob.
+    static let pad: Float = 18
+
+    struct Bar { var base, top, glow, shade, misc: SIMD4<Float> }   // misc: level, rise
+    struct Globals { var view, state, bubble, blob, blobShape, glowStyle: SIMD4<Float> }
+
+    let device = MTLCreateSystemDefaultDevice()!
+    private lazy var queue = device.makeCommandQueue()!
+    private lazy var pipeline: MTLRenderPipelineState = {
+        let library = try! device.makeLibrary(source: Self.shader, options: nil)
+        let desc = MTLRenderPipelineDescriptor()
+        desc.vertexFunction = library.makeFunction(name: "spectrumVertex")
+        desc.fragmentFunction = library.makeFunction(name: "spectrumFragment")
+        desc.colorAttachments[0].pixelFormat = .bgra8Unorm
+        return try! device.makeRenderPipelineState(descriptor: desc)
+    }()
+    var fixed = 0.025, bg = 0.025, light = false, bubbles = 0.5
+
+    private static func hue(_ x: Double) -> Double { (x.truncatingRemainder(dividingBy: 1) + 1).truncatingRemainder(dividingBy: 1) }
+
+    func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {}
+
+    func draw(in view: MTKView) {
+        guard view.bounds.width > 0, let pass = view.currentRenderPassDescriptor, let drawable = view.currentDrawable,
+              let commands = queue.makeCommandBuffer(), let encoder = commands.makeRenderCommandEncoder(descriptor: pass) else { return }
+        let viz = Visualizer.shared
+        let pulse = viz.pulse
+        var bars = viz.levels.indices.map { i -> Bar in
+            let level = Double(viz.levels[i]), h = viz.hues[i]
+            let top = ContrastColor.components(hue: Self.hue(h + 0.06 + 0.1 * level), saturation: 0.75, against: fixed, minRatio: 4.5)
+            return Bar(base: ContrastColor.components(hue: h, saturation: 0.9, against: fixed),
+                       top: top,
+                       glow: light ? ContrastColor.components(hue: Self.hue(h + 0.06 + 0.1 * level), saturation: 0.9, against: max(bg, 0.84), minRatio: 14) : top,
+                       shade: ContrastColor.hsb(h, 0.9, 1),   // the bar's pure colour, not contrast-darkened
+                       misc: [Float(level), Float(viz.rise[i]), 0, 0])
+        }
+        // The "lava": a blurred blob of the colour opposite the middle bar's, swelling on the beat.
+        var blob = ContrastColor.hsb(Self.hue(viz.hues[Visualizer.bandCount / 2] + 0.5), 0.8, 1)
+        blob.w = Float(0.075 + 0.175 * pulse)
+        var globals = Globals(
+            view: [Float(view.bounds.width) - 2 * Self.pad, 28, Float(view.drawableSize.width / view.bounds.width), Self.pad],
+            state: [Float(pulse), light ? 1 : 0, Float(bubbles), Float(Date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 3600))],
+            bubble: light ? [0, 0, 0, 0.7] : [1, 1, 1, 1],   // dark bubbles at 70% strength, so they stay soft
+            blob: blob,
+            blobShape: [Float(80 * viz.blobX), Float(0.6 + 0.3 * sin(viz.phase * 2 * .pi * 2)), Float(0.6 + 0.5 * pulse), 0],
+            glowStyle: [Float(light ? 0.75 + 0.25 * pulse : 0.4 + 0.6 * pulse), Float(1 + 4 * pulse), 0, 0])
+        encoder.setRenderPipelineState(pipeline)
+        encoder.setFragmentBytes(&globals, length: MemoryLayout<Globals>.stride, index: 0)
+        encoder.setFragmentBytes(&bars, length: MemoryLayout<Bar>.stride * bars.count, index: 1)
+        encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+        encoder.endEncoding()
+        commands.present(drawable)
+        commands.commit()
+    }
+
+    private static let shader = """
+    #include <metal_stdlib>
+    using namespace metal;
+    #define BANDS \(Visualizer.bandCount)
+
+    struct Bar { float4 base, top, glow, shade, misc; };
+    struct Globals {
+        float4 view;       // bars width, bars height (pt), pixels per point, overhang (pt)
+        float4 state;      // pulse, light panel, bubble strength, seconds
+        float4 bubble;     // bubble colour, alpha
+        float4 blob;       // blob colour, opacity
+        float4 blobShape;  // x offset (pt), x scale, y scale
+        float4 glowStyle;  // glow opacity, glow radius (pt)
+    };
+
+    vertex float4 spectrumVertex(uint id [[vertex_id]]) {
+        float2 p = float2((id << 1) & 2, id & 2);   // one triangle covering the view
+        return float4(p * 2 - 1, 0, 1);
+    }
+
+    static float roundedRect(float2 p, float2 centre, float2 hs, float r) {
+        float2 q = abs(p - centre) - (hs - r);
+        return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - r;
+    }
+
+    static float ellipse(float2 p, float2 r) {
+        float k0 = length(p / r), k1 = length(p / (r * r));
+        return k1 > 0 ? k0 * (k0 - 1) / k1 : -min(r.x, r.y);
+    }
+
+    static float cover(float sd, float px) { return saturate(0.5 - sd / px); }
+
+    static float4 over(float4 dst, float3 rgb, float a) { return float4(rgb * a, a) + dst * (1 - a); }
+
+    // Fixed per bar and slot (so nothing flickers): size, spacing jitter, sway and wobble rate.
+    static float hash(float seed, float k, float salt) {
+        return fract(abs(sin(seed * 12.9898 + k * 78.233 + salt) * 43758.5453));
+    }
+
+    // Lava-lamp blobs rising through a bar: 3 or 4 per bar, unevenly spaced, each with its own size.
+    // They slowly stretch and squash as they climb, sway, breathe, and fade in at the bottom and out at the top.
+    static float4 bubbles(float4 dst, float2 lp, float2 size, int i, Bar b, constant Globals &g, float px) {
+        float seed = i, strength = g.state.z, now = g.state.w;
+        int count = 3 + i % 2;
+        for (int k = 0; k < count; k++) {
+            float fk = k;
+            float slot = (fk + 0.6 * hash(seed, fk, 1)) / count;
+            float p = fract(b.misc.y + slot + seed * 0.137);
+            float period = 3 + 3 * hash(seed, fk, 5);
+            float breath = 1 + 0.4 * sin(2 * M_PI_F * (now / period + hash(seed, fk, 6)));
+            float d = min(size.x * (0.2 + 0.65 * hash(seed, fk, 0)), size.y * 0.35) * breath;
+            float wobble = 0.06 * sin(p * 2 * M_PI_F * (1.5 + hash(seed, fk, 2)) + fk);
+            float2 r = float2(d * (1 - wobble), d * (1 + wobble)) / 2;
+            float2 c = float2(size.x / 2 + size.x * 0.12 * sin(p * (4 + 3 * hash(seed, fk, 3)) + seed * 2 + fk),
+                              size.y + r.y - (size.y + 2 * r.y) * p);   // in from the bottom, out the top
+            float fade = min(1.0, sin(p * M_PI_F) * 2) * strength;
+            float look = hash(seed, fk, 4);
+            if (look < 0.33) {
+                // The bar's own colour, solid, 1 pt down and right: a shadow you only just notice.
+                dst = over(dst, b.shade.rgb, fade * cover(ellipse(lp - c - 1, r), px));
+            } else if (look > 0.67) {
+                float2 hr = r * 1.8;
+                float glow = 1 - saturate(length(lp - c) / max(hr.x, hr.y));
+                dst = over(dst, float3(1), 0.22 * fade * glow * cover(ellipse(lp - c, hr), px));
+            }
+            // Soft: fades from a gentle centre to nothing at the edge, with no hard rim or highlight.
+            float t = length(lp - (c - 0.2 * r)) / (1.2 * max(r.x, r.y));
+            float a = t < 0.5 ? mix(0.3, 0.14, t / 0.5) : mix(0.14, 0.0, saturate((t - 0.5) / 0.5));
+            dst = over(dst, g.bubble.rgb, a * g.bubble.a * fade * cover(ellipse(lp - c, r), px));
+        }
+        return dst;
+    }
+
+    fragment float4 spectrumFragment(float4 pos [[position]], constant Globals &g [[buffer(0)]],
+                                     constant Bar *bars [[buffer(1)]]) {
+        float W = g.view.x, H = g.view.y, px = 1 / g.view.z;
+        float2 p = pos.xy * px - g.view.w;   // points, from the bars' top-left
+        float4 out = 0;
+
+        // Blurred blob behind the bars.
+        float2 br = max(float2(W / 2 * g.blobShape.y, H / 2 * g.blobShape.z), 0.5);
+        float bsd = ellipse(p - float2(W / 2 + g.blobShape.x, H / 2), br);
+        out = over(out, g.blob.rgb, g.blob.a * (1 - smoothstep(-14.0, 14.0, bsd)));
+
+        float bw = (W - 2 * (BANDS - 1)) / BANDS;
+        float sigma = max(g.glowStyle.y * 0.5, 0.5);
+        for (int i = 0; i < BANDS; i++) {
+            Bar b = bars[i];
+            float hb = max(2.0, b.misc.x * H);
+            float2 hs = float2(bw, hb) / 2;
+            float2 centre = float2(i * (bw + 2) + hs.x, H - hs.y);
+            float sd = roundedRect(p, centre, hs, 1.5);
+            if (sd > 3 * sigma + 1) continue;
+            float d = max(sd, 0.0);
+            out = over(out, b.glow.rgb, g.glowStyle.x * exp(-d * d / (2 * sigma * sigma)));
+            float c = cover(sd, px);
+            if (c <= 0) continue;
+            float2 lp = p - (centre - hs);
+            float4 bar = float4(mix(b.base.rgb, b.top.rgb, saturate(1 - lp.y / hb)), 1);
+            // On a light panel a thin dark edge keeps pale bars from melting into it.
+            if (g.state.y > 0.5 && sd > -0.5) bar = over(bar, float3(0), 0.25);
+            if (g.state.z > 0 && hb > 8) bar = bubbles(bar, lp, float2(bw, hb), i, b, g, px);
+            out = bar * c + out * (1 - c);
+        }
+        return out;
+    }
+    """
 }
 
 /// Shows a `ChatBubble` for a moment in its own small floating window, so it is never cropped by the
@@ -331,61 +504,6 @@ private struct ChatBubble: View {
                 p.closeSubpath()
             }
         }
-    }
-}
-
-/// Lava-lamp blobs rising through a bar: 3 or 4 per bar, unevenly spaced, each with its own size.
-/// They slowly stretch tall and squash wide as they climb, sway, and fade in at the bottom and out at the top.
-private struct LavaBubbles: View {
-    let rise: Double
-    let seed: Double
-    let color: Color
-    let shade: Color   // the bar's own colour, for the bubbles that cast a shadow
-
-    var body: some View {
-        Canvas { ctx, size in
-            guard size.height > 8 else { return }
-            let count = 3 + Int(seed) % 2
-            // Wall-clock time for the swelling; the canvas redraws every frame while the bubbles rise.
-            let now = Date.timeIntervalSinceReferenceDate
-            for k in 0..<count {
-                // Fixed per bar and slot (so nothing flickers): size, spacing jitter, sway and wobble rate.
-                func hash(_ salt: Double) -> Double {
-                    abs(sin(seed * 12.9898 + Double(k) * 78.233 + salt) * 43758.5453).truncatingRemainder(dividingBy: 1)
-                }
-                // Uneven spacing so blobs bunch up and drift apart instead of marching in step.
-                let slot = (Double(k) + 0.6 * hash(1)) / Double(count)
-                let p = (rise + slot + seed * 0.137).truncatingRemainder(dividingBy: 1)
-                // 20...85% of the bar's width, swelling a little as it rises, like warm wax.
-                // Each one slowly swells and shrinks (about 60...140%) on its own 3-6 s breath, never in step.
-                let period = 3 + 3 * hash(5)
-                let breath = 1 + 0.4 * sin(2 * .pi * (now / period + hash(6)))
-                let d = min(size.width * (0.2 + 0.65 * hash(0)), size.height * 0.35) * breath
-                // Only a slight stretch and squash, so they stay round.
-                let wobble = 0.06 * sin(p * 2 * .pi * (1.5 + hash(2)) + Double(k))
-                let w = d * (1 - wobble), h = d * (1 + wobble)
-                let x = size.width / 2 + size.width * 0.12 * sin(p * (4 + 3 * hash(3)) + seed * 2 + Double(k))
-                let y = size.height + h / 2 - (size.height + h) * p           // in from the bottom, out the top
-                let fade = min(1, sin(p * .pi) * 2)
-                let rect = CGRect(x: x - w / 2, y: y - h / 2, width: w, height: h)
-                // About a third of the bubbles cast a soft shadow down and right, another third glow.
-                let look = hash(4)
-                if look < 0.33 {
-                    // The bar's own colour, solid, 1 pt down and right: a shadow you only just notice.
-                    ctx.fill(Path(ellipseIn: rect.offsetBy(dx: 1, dy: 1)), with: .color(shade.opacity(fade)))
-                } else if look > 0.67 {
-                    let halo = rect.insetBy(dx: -w * 0.4, dy: -h * 0.4)
-                    ctx.fill(Path(ellipseIn: halo), with: .radialGradient(
-                        Gradient(colors: [Color.white.opacity(0.22 * fade), Color.white.opacity(0)]),
-                        center: CGPoint(x: halo.midX, y: halo.midY), startRadius: 0, endRadius: max(halo.width, halo.height) * 0.5))
-                }
-                // Soft: fades from a gentle centre to nothing at the edge, with no hard rim or highlight.
-                ctx.fill(Path(ellipseIn: rect), with: .radialGradient(
-                    Gradient(colors: [color.opacity(0.3 * fade), color.opacity(0.14 * fade), color.opacity(0)]),
-                    center: CGPoint(x: rect.midX - w * 0.1, y: rect.midY - h * 0.1), startRadius: 0, endRadius: max(w, h) * 0.6))
-            }
-        }
-        .allowsHitTesting(false)
     }
 }
 
