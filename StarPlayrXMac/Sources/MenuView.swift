@@ -197,8 +197,8 @@ struct MenuView: View {
     /// so it's usually already in `ArtCache` by the time those rows scroll into view.
     private func prefetchArt(around index: Int, in list: [Channel]) {
         for ch in list[max(0, index - 10)..<min(list.count, index + 11)] {
-            let np = radio.displayed(ch.id)
-            ArtCache.shared.prefetch((np?.image).flatMap { $0.isEmpty ? nil : $0 } ?? ch.imageURL, pixels: ArtCache.pixels(32))
+            let albumArt = (radio.displayed(ch.id)?.image).flatMap { $0.isEmpty ? nil : $0 }
+            ArtCache.shared.prefetch(albumArt ?? ch.imageURL, pixels: ArtCache.pixels(32), trimBorder: albumArt != nil)
         }
     }
 
@@ -675,14 +675,15 @@ final class ArtCache {
         images.object(forKey: "\(pixels) \(sizedURL(url, pixels: pixels))" as NSString)
     }
 
-    func image(_ url: String, pixels: Int) async -> NSImage? {
+    /// `trimBorder` (album art): a solid frame around the picture is cropped off, see `trimmedBorder`.
+    func image(_ url: String, pixels: Int, trimBorder: Bool = false) async -> NSImage? {
         let url = sizedURL(url, pixels: pixels)
         let key = "\(pixels) \(url)"
         if let image = images.object(forKey: key as NSString) { return image }
         guard !url.isEmpty, let address = URL(string: url) else { return nil }
         let task = loading[key] ?? Task.detached(priority: .utility) {
             guard let data = try? await ArtCache.session.data(from: address).0,
-                  let thumb = ArtCache.thumbnail(data, pixels: pixels) else { return nil }
+                  let thumb = ArtCache.thumbnail(data, pixels: pixels, trimBorder: trimBorder) else { return nil }
             return Thumbnail(image: thumb)
         }
         loading[key] = task
@@ -696,9 +697,9 @@ final class ArtCache {
     }
 
     /// Starts loading art that isn't shown yet; `image` shares the download if a row asks for it meanwhile.
-    func prefetch(_ url: String, pixels: Int) {
+    func prefetch(_ url: String, pixels: Int, trimBorder: Bool = false) {
         guard !url.isEmpty, cached(url, pixels: pixels) == nil else { return }
-        Task { _ = await image(url, pixels: pixels) }
+        Task { _ = await image(url, pixels: pixels, trimBorder: trimBorder) }
     }
 
     private func sizedURL(_ url: String, pixels: Int) -> String {
@@ -731,13 +732,106 @@ final class ArtCache {
     }
 
     /// Decodes straight to a small bitmap, so neither the downloaded Data nor a full-size image is kept.
-    nonisolated private static func thumbnail(_ data: Data, pixels: Int) -> CGImage? {
+    nonisolated private static func thumbnail(_ data: Data, pixels: Int, trimBorder: Bool) -> CGImage? {
         guard let source = CGImageSourceCreateWithData(data as CFData, nil) else { return nil }
         let options: [CFString: Any] = [kCGImageSourceCreateThumbnailFromImageAlways: true,
                                         kCGImageSourceCreateThumbnailWithTransform: true,
                                         kCGImageSourceShouldCacheImmediately: true,
                                         kCGImageSourceThumbnailMaxPixelSize: pixels]
-        return CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary)
+        guard let thumb = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary) else { return nil }
+        return trimBorder ? trimmedBorder(thumb) : thumb
+    }
+
+    /// Some album art is boxed in a solid frame (a white or black margin, or non-square art
+    /// letterboxed to a square), and filling the squircle with it shows the frame instead of the
+    /// picture. Scans in from each edge for rows/columns of one colour and crops them off, so
+    /// `scaledToFill` zooms to the picture. Only a frame is cropped: the two sides of a pair
+    /// (top/bottom, left/right) must be the same colour and about as deep, and end well inside
+    /// the picture — a cover with a flat sky, or a flat background all the way to the middle, is
+    /// not a frame and is left alone.
+    nonisolated private static func trimmedBorder(_ image: CGImage) -> CGImage {
+        let w = image.width, h = image.height
+        guard w >= 16, h >= 16,
+              let ctx = CGContext(data: nil, width: w, height: h, bitsPerComponent: 8, bytesPerRow: w * 4,
+                                  space: CGColorSpaceCreateDeviceRGB(),
+                                  bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue),
+              let data = ctx.data else { return image }
+        ctx.draw(image, in: CGRect(x: 0, y: 0, width: w, height: h))   // memory row 0 is the top row
+        let px = data.bindMemory(to: UInt8.self, capacity: w * h * 4)
+        typealias RGB = (Int, Int, Int)
+        func pixel(_ x: Int, _ y: Int) -> RGB {
+            let i = (y * w + x) * 4
+            return (Int(px[i]), Int(px[i + 1]), Int(px[i + 2]))
+        }
+        let tolerance = 28   // JPEG ringing and dithering within a flat colour
+        func near(_ a: RGB, _ b: RGB) -> Bool {
+            abs(a.0 - b.0) <= tolerance && abs(a.1 - b.1) <= tolerance && abs(a.2 - b.2) <= tolerance
+        }
+        // How deep the frame is on one side: lines (rows or columns) from the edge inward, and the
+        // colour of the outermost line. A frame is a band of one flat colour, which may carry a
+        // title or logo (a sliver of other pixels) and may be followed by a thin band of another
+        // flat colour (double border, hairline). It ends at a line that is mostly another colour:
+        // the picture's edge. Depth 0 when it isn't a frame: the band gave way gradually (a horse
+        // against a flat background of the same colour); `limit` when it never ended (a flat
+        // background all the way in).
+        func inset(upTo limit: Int, _ line: (Int) -> [RGB]) -> (depth: Int, color: RGB) {
+            let count = line(0).count
+            let allowed = count / 100        // stray pixels a flat line may have
+            let thin = max(3, count / 12)    // an inner band deeper than this is the picture, not a border
+            func mean(_ l: [RGB]) -> RGB {
+                (l.map(\.0).reduce(0, +) / count, l.map(\.1).reduce(0, +) / count, l.map(\.2).reduce(0, +) / count)
+            }
+            func off(_ l: [RGB], _ c: RGB) -> Int { l.filter { !near($0, c) }.count }
+            let outer = mean(line(0))
+            var ref = outer          // colour of the band being scanned
+            var bandStart = 0        // where that band began
+            var lastFlat = -1        // last line that was flat in `ref`
+            var edge: Int?           // the band ended here, on a line mostly another colour
+            var n = 0
+            while n < limit {
+                let l = line(n), m = mean(l)
+                let flat = off(l, m) <= allowed
+                if let e = edge {
+                    // Just past the band: a flat line of another colour within 2 lines (JPEG blurs
+                    // the transition) is an inner border; the same colour again means a hairline
+                    // sat in the band. Otherwise the picture starts at the edge.
+                    guard flat, n - e <= 2 else { return (e, outer) }
+                    if !near(m, ref) { ref = m; bandStart = e }
+                    edge = nil
+                    lastFlat = n
+                } else if flat, near(m, ref) {
+                    lastFlat = n
+                } else if off(l, ref) * 2 >= count {
+                    if n - lastFlat > 3 { return (0, outer) }   // gave way gradually: a subject, not a frame
+                    if bandStart > 0, n - bandStart > thin { return (bandStart, outer) }   // the inner band was the picture
+                    edge = n
+                }
+                n += 1
+            }
+            if let e = edge { return (e, outer) }
+            return (bandStart > 0 ? bandStart : limit, outer)
+        }
+        // A pair of opposite sides is a frame when both are frames of the same colour, about as
+        // deep (a letterbox is symmetric; a title in the frame may shift one side a little), and
+        // neither ran into the limit. Each side loses its depth plus one line, where the frame's
+        // edge bleeds into the picture.
+        func frame(_ a: (depth: Int, color: RGB), _ b: (depth: Int, color: RGB), limit: Int) -> (Int, Int) {
+            guard a.depth > 0, b.depth > 0, a.depth < limit, b.depth < limit,
+                  abs(a.depth - b.depth) <= max(3, limit / 5), near(a.color, b.color) else { return (0, 0) }
+            return (a.depth + 1, b.depth + 1)
+        }
+        // Letterboxed 2.35:1 art has bars of 29% a side, so look up to 30% in. Each line is read
+        // over the middle 70% of its length only, so the frame along the other two sides (and a
+        // hairline inside it) doesn't make the lines of an inner band look busy.
+        let limitY = h * 3 / 10, limitX = w * 3 / 10
+        let xs = (w * 3 / 20)..<(w * 17 / 20), ys = (h * 3 / 20)..<(h * 17 / 20)
+        let (top, bottom) = frame(inset(upTo: limitY) { y in xs.map { pixel($0, y) } },
+                                  inset(upTo: limitY) { y in xs.map { pixel($0, h - 1 - y) } }, limit: limitY)
+        let (left, right) = frame(inset(upTo: limitX) { x in ys.map { pixel(x, $0) } },
+                                  inset(upTo: limitX) { x in ys.map { pixel(w - 1 - x, $0) } }, limit: limitX)
+        guard top + bottom + left + right > 0 else { return image }
+        let rect = CGRect(x: left, y: top, width: w - left - right, height: h - top - bottom)
+        return image.cropping(to: rect) ?? image
     }
 }
 
@@ -759,7 +853,7 @@ private struct CachedArt<Content: View>: View {
             if let image { content(image, isAlbumArt) } else { content(loaded?.image, loaded?.isAlbumArt ?? false) }
         }
         .task(id: url) {
-            let image = await ArtCache.shared.image(url, pixels: pixels)
+            let image = await ArtCache.shared.image(url, pixels: pixels, trimBorder: isAlbumArt)
             if !Task.isCancelled { loaded = (url, image, isAlbumArt) }
         }
     }
