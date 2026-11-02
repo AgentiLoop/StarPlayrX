@@ -246,6 +246,10 @@ struct MenuView: View {
 
     private var footer: some View {
         HStack {
+            // Torn off: Close sits left-most, like a window's close control.
+            if menu.detached {
+                Button("Close") { menu.hide() }
+            }
             // Click for the Modern API switch. Not offered after a modern sign-in: there is no
             // legacy session to switch to.
             if radio.modernLogin {
@@ -265,9 +269,6 @@ struct MenuView: View {
             Spacer()
             if radio.isLoggedIn {
                 Button("Sign Out") { radio.signOut() }
-            }
-            if menu.detached {
-                Button("Close") { menu.hide() }
             }
             Button("Quit") { NSApp.terminate(nil) }
         }
