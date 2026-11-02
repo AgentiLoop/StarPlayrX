@@ -184,9 +184,6 @@ struct SpectrumView: View {
     @Environment(\.colorScheme) private var scheme
     /// Luminance of the wallpaper behind the panel (it shows through the translucent material).
     @State private var wallpaper: Double?
-    /// A click waits out the double-click time before switching the bubbles; a second click cancels
-    /// it, so a double-click only rolls the panel up (handled by the tear-off area around the bars).
-    @State private var pendingClick: Task<Void, Never>?
     /// Clicking the bars steps the bubbles: full → half strength → off → full. Defaults to soft; each click
     /// fades out one step at a time, so a click always does something visible; remembered.
     @AppStorage("bubbleStage") private var bubbleStage = 1   // UserDefaults; Soft Bubbles until the user picks
@@ -238,21 +235,14 @@ struct SpectrumView: View {
         .animation(.linear(duration: 1.0 / 60), value: viz.levels)
         .background(WallpaperProbe(luminance: $wallpaper))
         .contentShape(Rectangle())
+        // A double-click is left to the tear-off area around the bars, which rolls the panel up. This
+        // empty double-click handler only makes SwiftUI wait out the double-click time, so the single
+        // click below doesn't also switch the bubbles.
+        .onTapGesture(count: 2) {}
         .onTapGesture {
-            if let pending = pendingClick {   // second click of a double-click: leave the bubbles alone
-                pending.cancel()
-                pendingClick = nil
-                return
-            }
-            let mouse = NSEvent.mouseLocation
-            pendingClick = Task {
-                try? await Task.sleep(for: .seconds(NSEvent.doubleClickInterval))
-                guard !Task.isCancelled else { return }
-                pendingClick = nil
-                bubbleStage = (bubbleStage + 1) % 3
-                // Names the new stage in a chat bubble whose pointer tip is on the mouse.
-                BubblePopup.shared.show(["Bubbles", "Soft Bubbles", "No Bubbles"][bubbleStage], at: mouse)
-            }
+            bubbleStage = (bubbleStage + 1) % 3
+            // Names the new stage in a chat bubble whose pointer tip is on the mouse.
+            BubblePopup.shared.show(["Bubbles", "Soft Bubbles", "No Bubbles"][bubbleStage], at: NSEvent.mouseLocation)
         }
         .help("Click to change the bubbles: full, soft, off")
         .onAppear { viz.start() }
