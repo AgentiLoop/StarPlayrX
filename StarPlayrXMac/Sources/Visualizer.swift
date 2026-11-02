@@ -291,7 +291,7 @@ final class SpectrumRenderer: NSObject, MTKViewDelegate {
             let top = ContrastColor.components(hue: Self.hue(h + 0.06 + 0.1 * level), saturation: 0.75, against: fixed, minRatio: 4.5)
             return Bar(base: ContrastColor.components(hue: h, saturation: 0.9, against: fixed),
                        top: top,
-                       glow: ContrastColor.hsb(Self.hue(h + 0.06 + 0.2 * level), 1, 0.3 + 0.6 * bg),   // lighter background, lighter glow; fully saturated
+                       glow: ContrastColor.hsb(Self.hue(h + 0.1 + 0.35 * level), 1, 0.55 + 0.45 * bg),   // lighter background, lighter glow; fully saturated
                        shade: ContrastColor.hsb(h, 0.9, 1),   // the bar's pure colour, not contrast-darkened
                        misc: [Float(level), Float(viz.rise[i]), 0, 0])
         }
