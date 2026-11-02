@@ -212,22 +212,24 @@ struct MenuView: View {
         #endif
     }()
 
-    private func showModernMenu() {
-        let menu = NSMenu()
-        let item = NSMenuItem(title: "Modern API for live channels", action: #selector(ModernMenuTarget.toggle), keyEquivalent: "")
-        item.state = radio.modernLive ? .on : .off
-        item.target = ModernMenuTarget.shared
-        menu.addItem(item)
-        menu.popUp(positioning: nil, at: NSEvent.mouseLocation.flippedForMenu, in: nil)
-    }
     private var footer: some View {
         HStack {
-            // Click for the Modern API switch (a popover never showed inside this non-activating panel).
-            // Not offered after a modern sign-in: there is no legacy session to switch to.
-            Text(Self.version).font(.caption).foregroundStyle(.tertiary)
+            // Click for the Modern API switch. Not offered after a modern sign-in: there is no
+            // legacy session to switch to.
+            if radio.modernLogin {
+                Text(Self.version).font(.caption).foregroundStyle(.tertiary).offset(y: 2)
+            } else {
+                Menu {
+                    Toggle("Modern API for live channels", isOn: Binding(
+                        get: { radio.modernLive }, set: { radio.setModernLive($0) }))
+                } label: {
+                    Text(Self.version).font(.caption).foregroundStyle(.tertiary)
+                }
+                .menuStyle(.borderlessButton)
+                .menuIndicator(.hidden)
+                .fixedSize()
                 .offset(y: 2)
-                .contentShape(Rectangle())
-                .onTapGesture { if !radio.modernLogin { showModernMenu() } }
+            }
             Spacer()
             if radio.isLoggedIn {
                 Button("Sign Out") { radio.signOut() }
@@ -923,12 +925,3 @@ private struct MarqueeWidthKey: PreferenceKey {
     static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = max(value, nextValue()) }
 }
 
-@MainActor
-private final class ModernMenuTarget: NSObject {
-    static let shared = ModernMenuTarget()
-    @objc func toggle() { Radio.shared.setModernLive(!Radio.shared.modernLive) }
-}
-private extension NSPoint {
-    /// NSMenu.popUp with a nil view takes screen coordinates; mouseLocation already is one.
-    var flippedForMenu: NSPoint { self }
-}
