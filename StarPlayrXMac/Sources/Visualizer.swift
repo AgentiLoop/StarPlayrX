@@ -65,7 +65,11 @@ final class Visualizer {
             history.removeFirst()
             // The shader draws a smooth curve through the last four steps, which shows each one two
             // steps (~67 ms) late; reading the audio two steps ahead puts the bars back on the beat.
-            let new = Radio.shared.spectrumNow(ahead: 2 * Self.step) ?? [Float](repeating: 0, count: Self.bandCount)
+            // A step spans ~3 analysis frames (11.6 ms each); reading just one picked a random frame and
+            // the bars twitched. Average the three, and read a little further ahead for the softer easing below.
+            let reads = [0.0, 1.0 / 3, 2.0 / 3].compactMap { Radio.shared.spectrumNow(ahead: (2 + $0) * Self.step + 0.04) }
+            let new = reads.isEmpty ? [Float](repeating: 0, count: Self.bandCount)
+                : (0..<Self.bandCount).map { i in reads.reduce(0) { $0 + $1[i] } / Float(reads.count) }
             update(new)
             update(new)
             history.append(levels)
@@ -81,7 +85,8 @@ final class Visualizer {
         let previous = levels
         // Rise fast but over a few frames, fall slowly. At 60 fps an instant rise showed every
         // frame-to-frame wobble of the FFT as jitter; easing in hides it without adding lag you can see.
-        levels = zip(levels, new).map { old, new in new > old ? old + (new - old) * 0.55 : max(new, old * 0.894) }
+        // Softer than before (0.55 up, ×0.894 down): bars ease toward each new height instead of jumping.
+        levels = zip(levels, new).map { old, new in new > old ? old + (new - old) * 0.35 : max(new, old - (old - new) * 0.18) }
         rise = rise.indices.map { i in
             (rise[i] + 0.0015 + 0.006 * Double(levels[i]) + 0.004 * pulse).truncatingRemainder(dividingBy: 1)
         }
