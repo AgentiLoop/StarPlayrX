@@ -22,6 +22,9 @@ final class MenuController: NSObject, ObservableObject {
     private var outsideClick: Any?
     private var glide: Timer?
     private var playing: AnyCancellable?
+    /// When the expanded interface session last ended with the panel closing (macOS 27). The click
+    /// that closed it can start a new session, and that one has to be cancelled, not acted on.
+    private var lastSessionEnd = 0.0
 
     func install() {
         _ = panel
@@ -283,15 +286,30 @@ final class MenuController: NSObject, ObservableObject {
 @available(macOS 27, *)
 extension MenuController: @preconcurrency NSStatusItemExpandedInterfaceDelegate {
     func statusItem(_ statusItem: NSStatusItem, didBegin session: NSStatusItemExpandedInterfaceSession) {
+        // A click on the icon while the panel is under the menu bar means close, not open. AppKit
+        // starts a fresh session for that click either way: sometimes without ending the old one,
+        // sometimes right after ending it (which already hid the panel below). Both have to end
+        // here, or the click that dismissed the panel would open it straight back up.
+        if panel.isVisible, !detached {
+            hide()
+            session.cancel()
+            return
+        }
+        if CACurrentMediaTime() - lastSessionEnd < 0.3 {
+            session.cancel()
+            return
+        }
         showUnderMenuBar()
     }
 
     func statusItemDidEndExpandedInterfaceSession(_ statusItem: NSStatusItem, animated: Bool) {
         // Torn off, it is no longer the icon's interface: it stays put and only the highlight ends.
         guard panel.isVisible, !detached else { return }
+        lastSessionEnd = CACurrentMediaTime()
         hide()
     }
 }
+
 
 /// Borderless panel with the translucent menu look, rounded corners and shadow.
 final class MenuPanel: NSPanel {
