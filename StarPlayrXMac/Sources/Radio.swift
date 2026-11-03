@@ -486,9 +486,12 @@ final class Radio: ObservableObject {
     var trackPosition: TimeInterval? {
         guard isPlaying else { return nil }
         guard current?.xtraID != nil else {
-            guard let started = current.flatMap({ nowPlaying[$0.id] })?.startedAt,
+            guard let np = current.flatMap({ nowPlaying[$0.id] }), let started = np.startedAt,
                   let heard = heardDate else { return nil }
-            let at = heard.timeIntervalSince(started) + Self.liveLyricsLead
+            // The shift measured from the audio for this very song when there is one, and the
+            // same constant for everything else only until that lands.
+            let lead = LyricSync.shared.shift(forKey: LyricsStore.key(np.artist, np.song)) ?? Self.liveLyricsLead
+            let at = heard.timeIntervalSince(started) + lead
             // A talk segment or a stale cut can run for hours; past that these aren't its lyrics.
             return (0...900).contains(at) ? at : nil
         }

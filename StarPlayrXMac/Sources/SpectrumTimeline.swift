@@ -18,7 +18,7 @@ import Accelerate
 final class SpectrumTimeline: @unchecked Sendable {
     static let shared = SpectrumTimeline()
 
-    private struct Chunk { let channel: String; let start: Date; let sequence: Int; let hop: Double; let duration: Double; let frames: [[Float]] }
+    private struct Chunk { let channel: String; let start: Date; let real: Date?; let sequence: Int; let hop: Double; let duration: Double; let frames: [[Float]] }
     private struct Track { let hop: Double; let first: Int; var frames: [[Float]] }
 
     private let lock = NSLock()
@@ -111,7 +111,8 @@ final class SpectrumTimeline: @unchecked Sendable {
         let duration = Double(audio.length) / audio.processingFormat.sampleRate   // ~9.75 s, not the tagged 10
         lock.lock()
         live.removeAll { $0.start == start }
-        live.append(Chunk(channel: Self.channel(name), start: start, sequence: sequence, hop: hop, duration: duration, frames: frames))
+        live.append(Chunk(channel: Self.channel(name), start: start, real: realDates[name], sequence: sequence,
+                          hop: hop, duration: duration, frames: frames))
         if live.count > 30 { live.removeFirst(live.count - 30) }
         lock.unlock()
     }
@@ -156,7 +157,36 @@ final class SpectrumTimeline: @unchecked Sendable {
         }
     }
 
-    /// The real on-air time (stream PDT) of the player's current date, which runs ahead of it.
+    /// How loud each band got *louder* from one frame to the next, summed: the onset strength of
+    /// the audio that has already been decoded, on real broadcast time. Singing entering a quiet
+    /// bar is a spike, which is what `LyricAligner` lines the lyrics up against. The frames are the
+    /// equalizer's own, so this costs one subtraction per band and no extra decoding.
+    /// Returns the first frame's real time, the seconds each frame covers, and the curve.
+    func onsets() -> (start: Date, step: Double, values: [Float])? {
+        lock.lock()
+        defer { lock.unlock() }
+        let chunks = live.filter { $0.channel == liveChannel && $0.real != nil }.sorted { $0.sequence < $1.sequence }
+        guard let first = chunks.first, let start = first.real, first.hop > 0 else { return nil }
+        var values = [Float]()
+        var previous: [Float]?
+        var expected = first.sequence
+        for chunk in chunks {
+            // A gap in the segments breaks the timeline; keep only the run that starts at `first`.
+            guard chunk.sequence == expected else { break }
+            expected += 1
+            for frame in chunk.frames {
+                var flux: Float = 0
+                if let previous, previous.count == frame.count {
+                    for i in 0..<frame.count { flux += max(0, frame[i] - previous[i]) }
+                }
+                values.append(flux)
+                previous = frame
+            }
+        }
+        return values.isEmpty ? nil : (start, first.hop, values)
+    }
+
+    /// The real on-air time (stream PDT) of the player's current date, which runs ahead of it.    /// The real on-air time (stream PDT) of the player's current date, which runs ahead of it.
     func realDate(at date: Date) -> Date? {
         lock.lock()
         defer { lock.unlock() }

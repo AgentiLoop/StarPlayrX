@@ -53,7 +53,7 @@ final class LyricsStore: ObservableObject {
     private var cache = [String: Lyrics?]()
     private var task: Task<Void, Never>?
 
-    private static func key(_ artist: String, _ song: String) -> String {
+    static func key(_ artist: String, _ song: String) -> String {
         "\(artist.lowercased())|\(song.lowercased())"
     }
 
@@ -511,6 +511,7 @@ struct LyricsPane: View {
     private func lines(_ lyrics: Lyrics) -> some View {
         // 0.25 s is close enough for a sung line and costs almost nothing to redraw.
         TimelineView(.periodic(from: .now, by: 0.25)) { _ in
+            let _ = measure(lyrics)
             let at = radio.trackPosition
             let current = at.flatMap { Self.line(of: lyrics, at: $0) }
             ScrollViewReader { proxy in
@@ -541,6 +542,14 @@ struct LyricsPane: View {
                 }
             }
         }
+    }
+
+    /// Hands the aligner a turn on every tick; it measures at most every 15 seconds, and only on
+    /// a live channel, where the cut's stamp is what the position is worked out from.
+    private func measure(_ lyrics: Lyrics) {
+        guard let channel = radio.current, channel.xtraID == nil,
+              let np = radio.nowPlaying[channel.id], let started = np.startedAt else { return }
+        LyricSync.shared.update(lyrics: lyrics, key: LyricsStore.key(np.artist, np.song), songStart: started)
     }
 
     /// The lines grouped into sections, keeping every line's id (the highlight and the auto-scroll
@@ -603,5 +612,13 @@ private extension View {
     @available(macOS, deprecated: 14.0)
     func legacyOnChange<V: Equatable>(of value: V, perform action: @escaping (V) -> Void) -> some View {
         onChange(of: value, perform: action)
+    }
+}
+
+extension LyricsPane {
+    /// The tests reach the aligner through the pane, which is where it is used.
+    static func alignment(lineTimes: [Double], songStart: Date,
+                          onsets: (start: Date, step: Double, values: [Float])) -> LyricAligner.Alignment? {
+        LyricAligner.align(lineTimes: lineTimes, songStart: songStart, onsets: onsets)
     }
 }

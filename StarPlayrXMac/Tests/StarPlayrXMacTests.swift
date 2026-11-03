@@ -135,6 +135,46 @@ final class LogicTests: XCTestCase {
         }
     }
 
+    // MARK: Lyric alignment
+
+    /// An onset curve with a spike wherever a line is really sung, `shift` seconds away from where
+    /// the broadcast's stamp says it is, plus a steady background so the peak has to stand out.
+    private func onsetCurve(lineTimes: [Double], shift: Double, step: Double = 1.0 / 86.0,
+                            seconds: Double = 200, noise: Float = 0.2) -> [Float] {
+        var values = [Float](repeating: noise, count: Int(seconds / step))
+        for t in lineTimes {
+            let index = Int((t + shift) / step)
+            guard index >= 0, index < values.count else { continue }
+            for k in -2...2 where index + k >= 0 && index + k < values.count {
+                values[index + k] += 2 - Float(abs(k)) * 0.3
+            }
+        }
+        return values
+    }
+
+    func testAlignerFindsTheShiftTheStationIsUsing() {
+        let lines = stride(from: 12.0, to: 180.0, by: 7).map { $0 }
+        let start = Date(timeIntervalSince1970: 1_000_000)
+        for truth in [-4.0, -1.5, 0.0, 2.5, 5.0] {
+            let curve = onsetCurve(lineTimes: lines, shift: truth)
+            let found = LyricsPane.alignment(lineTimes: lines, songStart: start,
+                                             onsets: (start, 1.0 / 86.0, curve))
+            XCTAssertNotNil(found, "no alignment for \(truth)")
+            XCTAssertEqual(found?.shift ?? 0, truth, accuracy: 0.2, "shift for \(truth)")
+        }
+    }
+
+    func testAlignerWalksAwayWhenTheAudioSaysNothing() {
+        let lines = stride(from: 12.0, to: 180.0, by: 7).map { $0 }
+        let start = Date(timeIntervalSince1970: 1_000_000)
+        // Flat: every shift scores the same, so there is nothing to find.
+        let flat = [Float](repeating: 0.5, count: 86 * 200)
+        XCTAssertNil(LyricsPane.alignment(lineTimes: lines, songStart: start, onsets: (start, 1.0 / 86.0, flat)))
+        // Too few lines inside the audio we have.
+        let curve = onsetCurve(lineTimes: lines, shift: 1)
+        XCTAssertNil(LyricsPane.alignment(lineTimes: [12, 19], songStart: start, onsets: (start, 1.0 / 86.0, curve)))
+    }
+
     func testCachedLinesSurviveTheRoundTrip() {
         let lines = [LyricLine(id: 0, at: 11.07, text: "We don't have to worry bout nothing"),
                      LyricLine(id: 1, at: nil, text: "(fire fire fire)"),

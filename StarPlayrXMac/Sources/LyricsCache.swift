@@ -47,6 +47,9 @@ final class LyricsCache {
                 lines TEXT NOT NULL,
                 fetched REAL NOT NULL)
             """)
+        // Files written before the aligner existed have no `shift`; adding it fails harmlessly
+        // once it is there.
+        exec("ALTER TABLE lyrics ADD COLUMN shift REAL")
     }
 
     private func exec(_ sql: String) {
@@ -92,6 +95,32 @@ final class LyricsCache {
         sqlite3_bind_int(statement, 4, lyrics?.synced == true ? 1 : 0)
         sqlite3_bind_text(statement, 5, Self.json(from: lyrics?.lines ?? []), -1, transient)
         sqlite3_bind_double(statement, 6, Date().timeIntervalSince1970)
+        sqlite3_step(statement)
+    }
+
+    /// The shift `LyricAligner` measured for this song last time it played, if any.
+    func shift(for key: String) -> Double? {
+        lock.lock()
+        defer { lock.unlock() }
+        guard let db else { return nil }
+        var statement: OpaquePointer?
+        guard sqlite3_prepare_v2(db, "SELECT shift FROM lyrics WHERE key = ? AND shift IS NOT NULL", -1, &statement, nil) == SQLITE_OK else { return nil }
+        defer { sqlite3_finalize(statement) }
+        sqlite3_bind_text(statement, 1, key, -1, transient)
+        guard sqlite3_step(statement) == SQLITE_ROW else { return nil }
+        return sqlite3_column_double(statement, 0)
+    }
+
+    /// Keeps the measured shift beside the words, so the song starts in step next time.
+    func saveShift(_ shift: Double, for key: String) {
+        lock.lock()
+        defer { lock.unlock() }
+        guard let db else { return }
+        var statement: OpaquePointer?
+        guard sqlite3_prepare_v2(db, "UPDATE lyrics SET shift = ? WHERE key = ?", -1, &statement, nil) == SQLITE_OK else { return }
+        defer { sqlite3_finalize(statement) }
+        sqlite3_bind_double(statement, 1, shift)
+        sqlite3_bind_text(statement, 2, key, -1, transient)
         sqlite3_step(statement)
     }
 
