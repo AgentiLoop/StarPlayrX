@@ -317,6 +317,11 @@ extension MenuController: @preconcurrency NSStatusItemExpandedInterfaceDelegate 
             session.cancel()
             return
         }
+        if Date().timeIntervalSince(lastOutsideHide) < 0.5 {
+            lastOutsideHide = .distantPast
+            session.cancel()
+            return
+        }
         if CACurrentMediaTime() - lastSessionEnd < 0.3 {
             session.cancel()
             return
