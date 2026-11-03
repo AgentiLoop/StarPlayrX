@@ -88,15 +88,25 @@ enum CredentialPrompt {
         alert.buttons.first?.action = #selector(AlertResponder.confirm(_:))
         alert.buttons.last?.target = responder
         alert.buttons.last?.action = #selector(AlertResponder.cancel(_:))
-        // Cancel and Sign In side by side, together as wide as the dialog's content.
+        // Cancel and Sign In side by side, together as wide as the fields above them. The alert lays
+        // its buttons out with Auto Layout, so its horizontal constraints on them are replaced, not the frames.
         if let signIn = alert.buttons.first, let cancel = alert.buttons.last, signIn !== cancel,
-           let content = alert.accessoryView?.superview {
-            let left = alert.accessoryView?.frame.minX ?? content.bounds.minX
-            let right = alert.accessoryView?.frame.maxX ?? content.bounds.maxX
-            let gap: CGFloat = 12
-            let width = (right - left - gap) / 2
-            cancel.frame = NSRect(x: left, y: cancel.frame.minY, width: width, height: cancel.frame.height)
-            signIn.frame = NSRect(x: left + width + gap, y: signIn.frame.minY, width: width, height: signIn.frame.height)
+           let fields = alert.accessoryView, let content = fields.superview {
+            let horizontal: Set<NSLayoutConstraint.Attribute> = [.leading, .trailing, .left, .right, .width, .centerX]
+            for c in content.constraints where (c.firstItem === signIn || c.firstItem === cancel || c.secondItem === signIn || c.secondItem === cancel)
+                && (horizontal.contains(c.firstAttribute) || horizontal.contains(c.secondAttribute)) {
+                c.isActive = false
+            }
+            for b in [signIn, cancel] {
+                for c in b.constraints where c.firstAttribute == .width { c.isActive = false }
+                b.translatesAutoresizingMaskIntoConstraints = false
+            }
+            NSLayoutConstraint.activate([
+                cancel.leadingAnchor.constraint(equalTo: fields.leadingAnchor),
+                signIn.trailingAnchor.constraint(equalTo: fields.trailingAnchor),
+                signIn.leadingAnchor.constraint(equalTo: cancel.trailingAnchor, constant: 12),
+                signIn.widthAnchor.constraint(equalTo: cancel.widthAnchor),
+            ])
         }
         return await withCheckedContinuation { continuation in
             responder.continuation = continuation
