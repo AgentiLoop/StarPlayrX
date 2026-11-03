@@ -142,12 +142,24 @@ final class LyricsStore: ObservableObject {
         let found = try await request("/api/search", [URLQueryItem(name: "track_name", value: plainSong),
                                                      URLQueryItem(name: "artist_name", value: plainArtist)])
         guard let records = found as? [[String: Any]], !records.isEmpty else { return nil }
-        // Prefer a record with timestamps, and one whose artist really is this artist.
-        let best = records.first { $0["syncedLyrics"] is String && matches(plainArtist, $0) }
-            ?? records.first { matches(plainArtist, $0) }
-            ?? records.first { $0["syncedLyrics"] is String }
-            ?? records[0]
+        // Only a record that really is this song. The search endpoint answers with whatever it has
+        // (a search for Ed Sheeran's "Don't" came back as a Chinese song that happened to carry
+        // timestamps), and the wrong lyrics are worse than none, so artist and title must both fit.
+        let best = records.first { $0["syncedLyrics"] is String && matches(plainArtist, $0) && isSong(plainSong, $0) }
+            ?? records.first { matches(plainArtist, $0) && isSong(plainSong, $0) }
+        guard let best else { return nil }
         return lyrics(from: best, artist: artist, song: song)
+    }
+
+    /// The record's title is this song's, give or take the brackets either side carries.
+    private static func isSong(_ song: String, _ record: [String: Any]) -> Bool {
+        isSong(song, name: record["trackName"] as? String ?? "")
+    }
+
+    private static func isSong(_ song: String, name: String) -> Bool {
+        let name = withoutParentheses(name)
+        guard !name.isEmpty, !song.isEmpty else { return false }
+        return name.localizedCaseInsensitiveContains(song) || song.localizedCaseInsensitiveContains(name)
     }
 
     // MARK: Backup engines
@@ -164,10 +176,14 @@ final class LyricsStore: ObservableObject {
               let hits = result["songs"] as? [[String: Any]], !hits.isEmpty else { return nil }
         // Its search is loose enough to hand back covers and karaoke, so keep this artist's hits,
         // and of those take the one closest to the track's length.
+        // Its search is loose enough to answer with a different song in a different language when
+        // it has nothing close, so a hit has to be this artist's and carry this title. No hit that
+        // fits means no lyrics from here; the next source gets its turn.
         let mine = hits.filter { hit in
             (hit["artists"] as? [[String: Any]] ?? []).contains { matches(plainArtist, name: $0["name"] as? String ?? "") }
+                && isSong(plainSong, name: hit["name"] as? String ?? "")
         }
-        guard let best = (mine.isEmpty ? hits : mine).min(by: { gap($0, duration) < gap($1, duration) }),
+        guard let best = mine.min(by: { gap($0, duration) < gap($1, duration) }),
               let id = best["id"] as? Int else { return nil }
         var lyric = URLComponents(string: "https://music.163.com/api/song/lyric")!
         lyric.queryItems = [URLQueryItem(name: "id", value: String(id)),
