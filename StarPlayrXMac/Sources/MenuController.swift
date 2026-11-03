@@ -37,7 +37,6 @@ final class MenuController: NSObject, ObservableObject {
         statusItem.button?.target = self
         statusItem.button?.action = #selector(statusItemClicked)
         statusItem.button?.sendAction(on: .leftMouseUp)
-        (statusItem.button?.cell as? NSButtonCell)?.showsStateBy = .changeBackgroundCellMask
         playing = Radio.shared.$isPlaying.sink { [weak self] on in
             self?.statusItem.button?.image = NSImage(systemSymbolName: on ? "dot.radiowaves.left.and.right" : "radio",
                                                       accessibilityDescription: "StarPlayrX")
@@ -95,7 +94,10 @@ final class MenuController: NSObject, ObservableObject {
         // Like MenuBarExtra: the app becomes active, so controls draw active rather than greyed.
         NSApp.activate(ignoringOtherApps: true)
         panel.makeKeyAndOrderFront(nil)
-        statusItem.button?.state = .on
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            self.statusItem.button?.highlight(self.panel.isVisible && !self.detached)
+        }
 
         // Under the menu bar it behaves like a menu: a click in another app closes it.
         // Clicks on our own icon are left to statusItemClicked, or the two would fight
@@ -140,7 +142,7 @@ final class MenuController: NSObject, ObservableObject {
 
     /// Clears the icon highlight and cancels any expanded interface session.
     private func endSession() {
-        statusItem.button?.state = .off
+        statusItem.button?.highlight(false)
         if #available(macOS 27, *) { statusItem.expandedInterfaceSession?.cancel() }
     }
 
