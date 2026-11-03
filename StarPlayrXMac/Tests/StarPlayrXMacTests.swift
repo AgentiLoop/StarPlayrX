@@ -168,14 +168,56 @@ final class LogicTests: XCTestCase {
     func testAlignerFindsTheShiftTheStationIsUsing() {
         let lines = songLines
         let start = Date(timeIntervalSince1970: 1_000_000)
-        for truth in [-4.0, -1.5, 0.0, 2.5, 5.0] {
+        // Truths deliberately off the 0.1 s search grid: the arrival score peaks at the frame the
+        // voice comes in, and the parabola through its neighbours reads between the steps, so the
+        // answer has to land on the line itself — not a word or two of slack either side of it.
+        for truth in [-4.0, -1.53, 0.0, 2.47, 5.06] {
             let curve = onsetCurve(lineTimes: lines, shift: truth)
             let found = LyricsPane.alignment(lineTimes: lines, songStart: start,
                                              onsets: (start, 1.0 / 86.0, curve))
             XCTAssertNotNil(found, "no alignment for \(truth)")
-            XCTAssertEqual(found?.shift ?? 0, truth, accuracy: 0.5, "shift for \(truth)")   // half a second: a sung line is three to four
+            XCTAssertEqual(found?.shift ?? 0, truth, accuracy: 0.15, "shift for \(truth)")   // a syllable, not a word
         }
     }
+
+    /// Closer to what the equalizer really hands over: a backbeat thumping away all through the
+    /// song, and a sung line as a run of syllables that keeps going for about a bar rather than one
+    /// tidy spike. The backbeat is the thing that used to pull the answer off the line — a score
+    /// that asks "is it loud here?" is happy anywhere in the bar, so the highlight came up a word
+    /// or two early or late. Asking "did it get louder HERE, after a lull?" only fits the syllables.
+    private func sungCurve(lineTimes: [Double], shift: Double, step: Double = 1.0 / 86.0,
+                           seconds: Double = 240) -> [Float] {
+        var values = [Float](repeating: 0.05, count: Int(seconds / step))
+        func hit(_ at: Double, _ strength: Float, _ decay: Double) {
+            let index = Int(at / step)
+            guard index >= 0 else { return }
+            for k in 0..<Int(decay / step) where index + k < values.count {
+                values[index + k] += strength * Float(exp(-Double(k) * step / (decay / 3)))
+            }
+        }
+        // The band: a kick every half second from the top of the song to the end of it.
+        for beat in stride(from: 0.0, to: seconds, by: 0.5) { hit(beat, 0.8, 0.18) }
+        // The voice: four syllables a line, each a softer attack than the drum behind it.
+        for t in lineTimes {
+            for syllable in 0..<4 { hit(t + shift + Double(syllable) * 0.28, 0.5, 0.22) }
+        }
+        return values
+    }
+
+    func testAlignerLandsOnTheVoiceNotTheBeat() {
+        let lines = songLines
+        let start = Date(timeIntervalSince1970: 1_000_000)
+        for truth in [-3.37, -0.84, 1.26, 4.63] {
+            let found = LyricsPane.alignment(lineTimes: lines, songStart: start,
+                                             onsets: (start, 1.0 / 86.0,
+                                                      sungCurve(lineTimes: lines, shift: truth)))
+            XCTAssertNotNil(found, "no alignment for \(truth)")
+            // Within a syllable of where the singer actually comes in, with a drum kit in the way.
+            XCTAssertEqual(found?.shift ?? 0, truth, accuracy: 0.15, "shift for \(truth)")
+        }
+    }
+
+
 
     func testAlignerWalksAwayWhenTheAudioSaysNothing() {
         let lines = songLines

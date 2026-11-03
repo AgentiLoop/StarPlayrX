@@ -15,6 +15,13 @@
 //  which is when those spikes happen. Slide the lyrics over the curve, and the shift that lands the
 //  most line starts on the most onset is the one the station is really using.
 //
+//  Landing ON the line rather than near it is the whole point, so a line's score is not how loud
+//  the curve is at its stamp — a bar stays loud for a second after the voice comes in, and the
+//  highlight would sit anywhere in that second, a word or two out. It is how much LOUDER the
+//  moment of the stamp is than the half-second before it: a rise happens at one instant, so the
+//  best shift is pinned to that instant. The 0.1 s search then reads between its own steps off the
+//  scores either side of the winner, which is worth another syllable.
+//
 
 import Foundation
 
@@ -37,13 +44,17 @@ enum LyricAligner {
     static let minimumMargin = 1.25
     /// Two peaks closer together than this are the same peak, not a rival.
     static let peakSpacing = 2.5
-    /// A line's stamp and the moment it is actually sung are a few tenths apart (and LRC files are
-    /// typed by hand), so a line counts as arriving if the music opens up anywhere inside this much
-    /// of the stamp. It is the width of the window either side that the arrival score compares.
-    static let arrival = 0.35
+    /// The window just after a line's stamp: "the voice is arriving about now". Narrow on purpose —
+    /// it is what pins the moment down. Make it as wide as the lull below and the score stops being
+    /// a peak and becomes a plateau as wide as the window, with the true arrival somewhere inside
+    /// it, which is the word or two of slack this is here to remove. The slack a hand-typed LRC
+    /// stamp needs comes from averaging two dozen lines, not from blurring each one.
+    static let arrival = 0.12
+    /// And the stretch before it that a line has to stand out from: the gap between phrases that
+    /// the singer comes in out of. Wide enough to be a fair reading of "it was quieter than this".
+    static let lull = 0.5
     /// The curve is jagged at 11 ms a frame. This much of each point's neighbours takes that jitter
-    /// out without blunting the edge the arrival score is looking for — the slack for a hand-typed
-    /// stamp is `arrival`'s job, and a window has it without softening the moment it happens.
+    /// out without blunting the edge the arrival score is looking for.
     static let smoothing = 0.04
 
     struct Alignment: Equatable {
@@ -84,6 +95,7 @@ enum LyricAligner {
         var sums = [Double](repeating: 0, count: curve.count + 1)
         for i in 0..<curve.count { sums[i + 1] = sums[i] + Double(curve[i]) }
         let window = max(1, Int(arrival / onsets.step))
+        let back = max(window + 1, Int(lull / onsets.step))
 
         var scores = [(shift: Double, score: Double, lines: Int)]()
         var shift = search.lowerBound
@@ -95,19 +107,19 @@ enum LyricAligner {
             var last = -Double.infinity
             for (i, frame) in frames.enumerated() {
                 let index = Int((frame + delta).rounded())
-                guard index - window >= 0, index + window <= curve.count else { continue }
-                // How much the music OPENS UP on the stamp, not how loud it is there: the window
-                // after the line starts, against the window before it. A busy bar now scores
-                // nothing unless the busyness ARRIVES on the stamp, which is what the start of a
-                // sung line is. This is the difference between landing on the line and landing
-                // near it: the level is just as high for half a second either side of the voice
-                // coming in, and half a second is the word or two the highlight was out by, while
-                // the rise is only at the frame it actually happens.
-                let before = sums[index] - sums[index - window]
-                let after = sums[index + window] - sums[index]
+                guard index - back >= 0, index + window <= curve.count else { continue }
+                // How much the music OPENS UP on the stamp, not how loud it is there: the moment
+                // the line starts, against the lull it came out of. A busy bar scores nothing
+                // unless the busyness ARRIVES on the stamp, which is what the start of a sung line
+                // is. That is the difference between landing on the line and landing near it — the
+                // level stays just as high for half a second after the voice comes in, and half a
+                // second is the word or two the highlight was out by, while the rise is only at
+                // the frame it actually happens.
+                let before = (sums[index] - sums[index - back]) / Double(back)
+                let after = (sums[index + window] - sums[index]) / Double(window)
                 // Floored at nothing: a line that lands on a fade-out says nothing about the
                 // shift, and mustn't pay for the lines that did land on a voice.
-                total += max(0, (after - before) / Double(window))
+                total += max(0, after - before)
                 counted += 1
                 first = min(first, lineTimes[i])
                 last = max(last, lineTimes[i])
