@@ -32,21 +32,46 @@ final class MenuController: NSObject, ObservableObject {
     /// When the expanded interface session last ended with the panel closing (macOS 27). The click
     /// that closed it can start a new session, and that one has to be cancelled, not acted on.
     private var lastSessionEnd = 0.0
+    private var iconClick: Any?
+    /// When a mouse-down on the icon closed the panel (macOS 27): the session AppKit begins for
+    /// that same click must be cancelled, not shown.
+    private var closingClick = 0.0
 
     func install() {
         _ = panel
-        statusItem.button?.target = self
-        statusItem.button?.action = #selector(statusItemClicked)
-        statusItem.button?.sendAction(on: .leftMouseUp)
+        if #available(macOS 27, *) {
+            // AppKit tracks the panel as this item's "expanded interface" and draws the real system
+            // highlight capsule for as long as the session lasts. A highlight() set by hand is wiped
+            // by the menu bar, so this is the only way it stays on.
+            statusItem.expandedInterfaceDelegate = self
+            // A click on the icon while the panel hangs under it means close. Decide that on mouse
+            // down, before AppKit ends/begins sessions for the click in whatever order it likes.
+            iconClick = NSEvent.addLocalMonitorForEvents(matching: .leftMouseDown) { [weak self] event in
+                guard let self, self.panel.isVisible, !self.detached,
+                      self.isOnStatusItem(NSEvent.mouseLocation) else { return event }
+                self.closingClick = CACurrentMediaTime()
+                self.hide()
+                return event
+            }
+        } else {
+            statusItem.button?.target = self
+            statusItem.button?.action = #selector(statusItemClicked)
+            statusItem.button?.sendAction(on: .leftMouseUp)
+        }
         playing = Radio.shared.$isPlaying.sink { [weak self] on in
             self?.statusItem.button?.image = NSImage(systemSymbolName: on ? "dot.radiowaves.left.and.right" : "radio",
                                                       accessibilityDescription: "StarPlayrX")
         }
     }
 
-    /// Icon click: open if hidden, close if visible.
+    /// Icon click (and scripts): open if hidden, close if visible.
     @objc func statusItemClicked() {
         if panel.isVisible { hide(); return }
+        if #available(macOS 27, *) {
+            // Click the icon so AppKit opens a session (and lights the icon) for this open too.
+            statusItem.button?.performClick(nil)
+            if panel.isVisible { return }
+        }
         showUnderMenuBar()
     }
 
@@ -95,7 +120,8 @@ final class MenuController: NSObject, ObservableObject {
         // Like MenuBarExtra: the app becomes active, so controls draw active rather than greyed.
         NSApp.activate(ignoringOtherApps: true)
         panel.makeKeyAndOrderFront(nil)
-        keepLit()
+        // In a session AppKit draws the real highlight itself; only light it by hand without one.
+        if #available(macOS 27, *), statusItem.expandedInterfaceSession != nil {} else { keepLit() }
 
         // Under the menu bar it behaves like a menu: a click in another app closes it.
         // Clicks on our own icon are left to statusItemClicked, or the two would fight
@@ -320,6 +346,11 @@ extension MenuController: @preconcurrency NSStatusItemExpandedInterfaceDelegate 
         // starts a fresh session for that click either way: sometimes without ending the old one,
         // sometimes right after ending it (which already hid the panel below). Both have to end
         // here, or the click that dismissed the panel would open it straight back up.
+        if CACurrentMediaTime() - closingClick < 1 {
+            closingClick = 0
+            session.cancel()
+            return
+        }
         if panel.isVisible, !detached {
             hide()
             session.cancel()
