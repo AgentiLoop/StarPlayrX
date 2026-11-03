@@ -325,10 +325,11 @@ private struct ChannelRow: View, Equatable {
             .accessibilityLabel(isStarred ? "Preset On, Channel \(channel.name)" : "Preset Off, Channel \(channel.name)")
         }
         .padding(.vertical, 4)
-        // The squircle reaches 8pt further out on each side than the row's content (8pt from the window
+        // The squircle reaches further out on each side than the row's content (4pt from the window
         // edge, see channelList); the content itself keeps its place so the stars still line up.
         .padding(.horizontal, 12)
-        .padding(.trailing, -10)   // stars sit close to the squircle's right edge, lined up with the header star
+        .padding(.leading, 4)
+        .padding(.trailing, -6)   // stars sit close to the squircle's right edge, lined up with the header star
         // The playing channel's row sits on a Liquid Glass squircle (translucent tint before macOS 26):
         // white-based in dark mode, light gray in light mode.
         .background {
@@ -343,12 +344,10 @@ private struct ChannelRow: View, Equatable {
         }
         // Inset from the scroll view's edges so the squircle's corners are never clipped. The list
         // extends 8pt past the content area on the left and 12pt on the right (scroll bar at the
-        // window edge), so the squircle ends 8pt from the window edge on both sides.
+        // window edge), so the trailing inset is 4pt larger and the squircle ends 4pt from the
+        // window edge on both sides (half the former 8pt).
         .padding(.leading, 4)
         .padding(.trailing, 8)
-        // so the trailing inset has to cover that plus the same 4pt margin as the leading side.
-        .padding(.leading, 4)
-        .padding(.trailing, 4)
         .contentShape(Rectangle())
     }
 
