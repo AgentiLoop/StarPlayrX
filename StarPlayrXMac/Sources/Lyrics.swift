@@ -480,7 +480,10 @@ struct LyricsPane: View {
         HStack {
             VStack(alignment: .leading, spacing: 1) {
                 Text("Lyrics").font(.headline)
-                Text(store.lyrics.map { "\($0.song) · \($0.artist)" } ?? "LRCLIB · NetEase · QQ · Kugou")
+                // Plain lyrics say so in place of the title: nothing will scroll, and that's why.
+                Text(store.lyrics.map { $0.synced ? "\($0.song) · \($0.artist)"
+                                                  : "Text only lyrics - sync not available" }
+                     ?? "LRCLIB · NetEase · QQ · Kugou")
                     .font(.caption).foregroundStyle(.secondary).lineLimit(1)
             }
             Spacer()
