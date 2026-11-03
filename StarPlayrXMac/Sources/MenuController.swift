@@ -138,7 +138,9 @@ final class MenuController: NSObject, ObservableObject {
             outsideClick = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
                 let point = NSEvent.mouseLocation
                 Task { @MainActor in
-                    guard let self, !self.isOnStatusItem(point) else { return }
+                    guard let self else { return }
+                    menuLog.log("globalDown point=\(point.x),\(point.y) onIcon=\(self.isOnStatusItem(point)) rect=\(String(describing: self.statusItem.button?.window?.frame))")
+                    guard !self.isOnStatusItem(point) else { return }
                     self.lastOutsideHide = Date()
                     self.hide()
                 }
