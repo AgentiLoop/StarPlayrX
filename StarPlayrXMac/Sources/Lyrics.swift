@@ -5,7 +5,7 @@
 //  Copyright © 2026 Todd Bruss. All rights reserved.
 //
 //  Lyrics for the song that's playing, from LRCLIB (https://lrclib.net) — free, open, no API key
-//  — falling back to NetEase and lyrics.ovh when LRCLIB is down or hasn't got the song.
+//  — falling back to NetEase, QQ Music and lyrics.ovh when LRCLIB is down or hasn't got the song.
 //  Clicking the song/artist in Now Playing swaps the channel list for the lyrics (see MenuView).
 //
 
@@ -105,12 +105,12 @@ final class LyricsStore: ObservableObject {
         "StarPlayrX \(MenuView.version) (https://github.com/AgentiLoop/StarPlayrX)"
 
     /// LRCLIB first, then the backups, so a 503 or a missing record isn't the end of it:
-    /// NetEase (timestamped, like LRCLIB) and then lyrics.ovh (plain text only).
+    /// NetEase and QQ Music (timestamped, like LRCLIB) and then lyrics.ovh (plain text only).
     /// An error is only raised when every source failed — a plain miss everywhere is nil.
     private static func find(artist: String, song: String, duration: TimeInterval?) async throws -> Lyrics? {
         var failure: Error?
         var plain: Lyrics?
-        for source in [fetch, netease, lyricsOVH] {
+        for source in [fetch, netease, qqMusic, lyricsOVH] {
             do {
                 if let found = try await source(artist, song, duration) {
                     // Timestamps win: a source that only has the words doesn't end the search, or a
@@ -215,9 +215,54 @@ final class LyricsStore: ObservableObject {
         return abs(Double(ms) / 1000 - duration)
     }
 
-    /// NetEase puts the writing credits ("作词 : …") in the first timestamped lines of the LRC.
+    /// NetEase puts the writing credits ("作词 : …") in the first timestamped lines of the LRC, and
+    /// QQ Music the same ("Lyrics by：…"), always on a fullwidth colon no lyric line would carry.
     private static func isCredit(_ text: String) -> Bool {
-        ["作词", "作曲", "编曲", "制作人", "混音", "录音"].contains { text.contains($0) }
+        text.contains("：") || ["作词", "作曲", "编曲", "制作人", "混音", "录音"].contains { text.contains($0) }
+    }
+
+    /// What QQ Music wants to see as the `Referer` before it parts with a lyric.
+    private static let qq = "https://y.qq.com/"
+
+    /// QQ Music: the same two steps as NetEase — a search, then the hit's LRC, timestamped, no key.
+    /// A second synced source, for the songs NetEase hasn't got (and the days it won't answer).
+    private static func qqMusic(artist: String, song: String, duration: TimeInterval?) async throws -> Lyrics? {
+        let plainSong = withoutParentheses(song), plainArtist = withoutParentheses(artist)
+        var search = URLComponents(string: "https://c.y.qq.com/soso/fcgi-bin/client_search_cp")!
+        search.queryItems = [URLQueryItem(name: "w", value: "\(plainSong) \(plainArtist)"),
+                             URLQueryItem(name: "format", value: "json"),
+                             URLQueryItem(name: "n", value: "5"),
+                             URLQueryItem(name: "p", value: "1")]
+        guard let data = (try await json(search.url!, referer: qq) as? [String: Any])?["data"] as? [String: Any],
+              let hits = (data["song"] as? [String: Any])?["list"] as? [[String: Any]], !hits.isEmpty
+        else { return nil }
+        // Same guard as NetEase: its search answers with whatever it has, so a hit has to be this
+        // artist's and carry this title, and of those the one closest to the track's length wins.
+        let mine = hits.filter { hit in
+            (hit["singer"] as? [[String: Any]] ?? []).contains { matches(plainArtist, name: $0["name"] as? String ?? "") }
+                && isSong(plainSong, name: hit["songname"] as? String ?? "")
+        }
+        guard let best = mine.min(by: { interval($0, duration) < interval($1, duration) }),
+              let mid = best["songmid"] as? String else { return nil }
+        var lyric = URLComponents(string: "https://c.y.qq.com/lyric/fcgi-bin/fcg_query_lyric_new.fcg")!
+        lyric.queryItems = [URLQueryItem(name: "songmid", value: mid),
+                            URLQueryItem(name: "format", value: "json"),
+                            URLQueryItem(name: "nobase64", value: "1")]
+        // A song it has no words for comes back 200 with a retcode and no `lyric` — same as a miss.
+        guard let text = (try await json(lyric.url!, referer: qq) as? [String: Any])?["lyric"] as? String else { return nil }
+        var lines = timed(text).filter { !isCredit($0.text) }
+        // Its LRC opens with its own "<song> - <artist>" header, on the song's first instant.
+        if let first = lines.first, (first.at ?? 0) < 1, first.text.contains(" - ") { lines.removeFirst() }
+        let numbered = lines.enumerated().map { LyricLine(id: $0.offset, at: $0.element.at, text: $0.element.text) }
+        guard !numbered.isEmpty else { return nil }
+        return Lyrics(artist: (best["singer"] as? [[String: Any]])?.first?["name"] as? String ?? artist,
+                      song: best["songname"] as? String ?? song, lines: numbered, synced: true)
+    }
+
+    /// Seconds between a QQ Music hit (whose `interval` is in seconds) and the track we're playing.
+    private static func interval(_ hit: [String: Any], _ duration: TimeInterval?) -> TimeInterval {
+        guard let duration, let seconds = hit["interval"] as? Int else { return 0 }
+        return abs(Double(seconds) - duration)
     }
 
     /// lyrics.ovh: plain text only, no timestamps, but it has songs the other two don't. Last resort.
@@ -233,10 +278,12 @@ final class LyricsStore: ObservableObject {
     }
 
     /// Decoded JSON, or nil on anything but a 200. The backups have no error contract worth
-    /// retrying — if one doesn't answer, the next source gets its turn.
-    private static func json(_ url: URL) async throws -> Any? {
+    /// retrying — if one doesn't answer, the next source gets its turn. QQ Music hands back an
+    /// error code instead of the words unless the request says it came from its own site.
+    private static func json(_ url: URL, referer: String? = nil) async throws -> Any? {
         var request = URLRequest(url: url)
         request.setValue(userAgent, forHTTPHeaderField: "User-Agent")
+        if let referer { request.setValue(referer, forHTTPHeaderField: "Referer") }
         request.timeoutInterval = 15
         let (data, response) = try await session.data(for: request)
         guard (response as? HTTPURLResponse)?.statusCode == 200 else { return nil }
@@ -376,7 +423,7 @@ struct LyricsPane: View {
         HStack {
             VStack(alignment: .leading, spacing: 1) {
                 Text("Lyrics").font(.headline)
-                Text(store.lyrics.map { "\($0.song) · \($0.artist)" } ?? "LRCLIB · NetEase · lyrics.ovh")
+                Text(store.lyrics.map { "\($0.song) · \($0.artist)" } ?? "LRCLIB · NetEase · QQ · lyrics.ovh")
                     .font(.caption).foregroundStyle(.secondary).lineLimit(1)
             }
             Spacer()
