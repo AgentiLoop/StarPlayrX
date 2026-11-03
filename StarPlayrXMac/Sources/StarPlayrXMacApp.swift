@@ -53,7 +53,8 @@ enum CredentialPrompt {
             let pass = NSSecureTextField(frame: NSRect(x: 0, y: 38, width: 280, height: 24))
             pass.placeholderString = "Password"
             let canada = NSButton(checkboxWithTitle: "Canada", target: nil, action: nil)
-            canada.frame = NSRect(x: 0, y: 0, width: 100, height: 20)
+            // Right-aligned: the password field's autofill popup drops down over the left side.
+            canada.frame = NSRect(x: 180, y: 0, width: 100, height: 20)
             canada.state = Radio.shared.localeIsCA ? .on : .off
             let stack = NSView(frame: NSRect(x: 0, y: 0, width: 280, height: 104))
             stack.addSubview(user)
