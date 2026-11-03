@@ -261,6 +261,23 @@ final class MenuPanel: NSPanel {
     override var canBecomeKey: Bool { true }   // borderless panels can't otherwise take typing (search)
     override func cancelOperation(_ sender: Any?) { MenuController.shared.hide() }   // Esc closes it
 
+    /// ⌘T tears the panel off (or puts it back) and ⌘R rolls it up or down. The drag and the
+    /// double-click that do the same need a mouse; these work from the keyboard and VoiceOver.
+    /// A key equivalent, not `keyDown`: the search field is usually first responder and would eat it.
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        let menu = MenuController.shared
+        switch (event.modifierFlags.intersection(.deviceIndependentFlagsMask), event.charactersIgnoringModifiers?.lowercased()) {
+        case (.command, "t"):
+            if menu.detached { menu.hide(); menu.statusItemClicked() } else { menu.detach() }
+            return true
+        case (.command, "r"):
+            menu.shaded.toggle()
+            return true
+        default:
+            return super.performKeyEquivalent(with: event)
+        }
+    }
+
     /// Keep the top edge pinned when the content resizes (window shade), instead of the bottom.
     override func setFrame(_ frameRect: NSRect, display flag: Bool) {
         var rect = frameRect

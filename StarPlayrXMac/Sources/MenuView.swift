@@ -56,6 +56,13 @@ struct MenuView: View {
                     .contentShape(Rectangle())
                     .gesture(tearOff)
                     .simultaneousGesture(TapGesture(count: 2).onEnded { menu.shaded.toggle() })
+                    // The drag and the double-click are the only way to tear off, put back and roll
+                    // up with a mouse; VoiceOver and the keyboard get the same moves as actions.
+                    .accessibilityElement(children: .contain)
+                    .accessibilityLabel("Now Playing")
+                    .accessibilityHint("Drag to tear off, double-click to roll up")
+                    .modifier(PanelActions())
+                    .help("Drag to tear off (⌘T) · Double-click to roll up (⌘R)")
                 } else {
                     Text(radio.status).foregroundStyle(.secondary)
                     Button(radio.isBusy ? "Signing in…" : "Sign In…") {
@@ -290,6 +297,19 @@ struct MenuView: View {
     }
 }
 
+/// Tear off, put back and roll up as VoiceOver actions on the header. The gestures that do the
+/// same (drag, double-click) need a mouse, so these are the only way to get there with VoiceOver
+/// or the keyboard (which also has ⌘T and ⌘R, see MenuPanel).
+private struct PanelActions: ViewModifier {
+    @ObservedObject private var menu = MenuController.shared
+    func body(content: Content) -> some View {
+        content
+            .accessibilityAction(named: menu.detached ? "Put Back Under the Menu Bar" : "Tear Off Into a Window") {
+                if menu.detached { menu.hide(); menu.statusItemClicked() } else { menu.detach() }
+            }
+            .accessibilityAction(named: menu.shaded ? "Roll Down" : "Roll Up") { menu.shaded.toggle() }
+    }
+}
 /// One channel row. Equatable so a now-playing update redraws only the row it changed,
 /// and always two lines tall so the list never has to re-measure rows while scrolling.
 private struct ChannelRow: View, Equatable {
