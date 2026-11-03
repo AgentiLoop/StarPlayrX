@@ -92,6 +92,9 @@
             <property name="channels loaded" code="SPcd" type="boolean" access="r" description="Whether every channel (Xtra included) has finished loading after sign in. Commands like play channel wait for this.">
                 <cocoa key="spChannelsLoaded"/>
             </property>
+            <property name="lyric sync" code="SPls" type="text" access="r" description="What the lyric aligner measured for the song playing now: the shift, how sure it is, and how much audio it had.">
+                <cocoa key="spLyricSync"/>
+            </property>
             <property name="track position" code="SPtp" type="integer" access="r" description="Seconds into the song that's playing (what the time-synced lyrics follow), or -1 when it isn't known.">
                 <cocoa key="spTrackPosition"/>
             </property>

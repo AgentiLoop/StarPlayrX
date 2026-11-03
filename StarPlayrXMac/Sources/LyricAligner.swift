@@ -20,22 +20,48 @@ import Foundation
 
 enum LyricAligner {
     /// How far either way the search looks, and how finely.
-    static let search: ClosedRange<Double> = -8...8
+    static let search: ClosedRange<Double> = -15...15
     static let step = 0.1
-    /// Below this many lines inside the audio we have, the answer is noise.
-    static let minimumLines = 6
-    /// How far above the average score the winner has to stand (in standard deviations) before it
-    /// is used. A dense mix makes every shift score about the same; that is the case to walk away
-    /// from, because a confident wrong answer is worse than the constant it replaces.
+    /// Below this many lines inside the audio we have, the answer is noise. Six lines of a jingle
+    /// will happily "match" something eleven seconds away.
+    static let minimumLines = 12
+    /// And those lines have to be spread over at least this much of the song, so a cluster inside
+    /// one chorus can't decide where the whole thing sits.
+    static let minimumSpan: Double = 60
+    /// How far above the average score the winner has to stand (in standard deviations).
     static let minimumConfidence = 2.0
+    /// How much better than the best *other* alignment the winner has to be. A song built on a
+    /// repeated phrase ("doo doobie doo…") scores nearly as well a bar or a verse away, and that
+    /// near-miss is what puts the highlight four lines out — so when the runner-up is close, the
+    /// measurement is thrown away instead of believed.
+    static let minimumMargin = 1.25
+    /// Two peaks closer together than this are the same peak, not a rival.
+    static let peakSpacing = 2.5
+    /// A line's stamp and the moment it is actually sung are a few tenths apart (and LRC files are
+    /// typed by hand), so each point on the curve carries this much of its neighbours.
+    static let smoothing = 0.35
 
     struct Alignment: Equatable {
         /// Seconds to add to the position worked out from the cut's stamp.
         let shift: Double
         /// How far the winner stood above the field, in standard deviations.
         let confidence: Double
+        /// How many times better than the best alignment well away from it.
+        let margin: Double
         /// How many line starts were scored.
         let lines: Int
+    }
+
+    /// Takes the loudness out of it: a chorus is louder than a verse everywhere, which would let
+    /// a wrong shift win just by landing lines in the loud half. What's left is how much each
+    /// moment stands out from the half-minute around it.
+    static func normalized(_ values: [Float]) -> [Float] {
+        let background = smoothed(values, radius: 1_300)   // ~15 s either way at 86 frames a second
+        guard background.count == values.count else { return values }
+        // Divided, not subtracted: a spike in a quiet verse counts as much as one in a loud
+        // chorus, and lines that come at a steady pace aren't mistaken for the background.
+        let floor = max(1e-6, values.reduce(0, +) / Float(values.count) * 0.05)
+        return zip(values, background).map { $0 / max($1, floor) }
     }
 
     /// `lineTimes` are seconds into the recording (the LRC stamps of lines that have words).
@@ -47,7 +73,7 @@ enum LyricAligner {
         // Where each line falls on the onset curve when nothing is shifted, in frames.
         let offset = songStart.timeIntervalSince(onsets.start) / onsets.step
         let frames = lineTimes.map { offset + $0 / onsets.step }
-        let curve = smoothed(onsets.values)
+        let curve = normalized(smoothed(onsets.values, radius: Int(smoothing / onsets.step)))
 
         var scores = [(shift: Double, score: Double, lines: Int)]()
         var shift = search.lowerBound
@@ -55,15 +81,21 @@ enum LyricAligner {
             let delta = shift / onsets.step
             var total = 0.0
             var counted = 0
-            for frame in frames {
+            var first = Double.infinity
+            var last = -Double.infinity
+            for (i, frame) in frames.enumerated() {
                 let index = Int((frame + delta).rounded())
                 guard index >= 0, index < curve.count else { continue }
                 total += Double(curve[index])
                 counted += 1
+                first = min(first, lineTimes[i])
+                last = max(last, lineTimes[i])
             }
             // An average, not a sum: a shift that happens to drag more lines into the window
             // mustn't win on count alone.
-            if counted >= minimumLines { scores.append((shift, total / Double(counted), counted)) }
+            if counted >= minimumLines, last - first >= minimumSpan {
+                scores.append((shift, total / Double(counted), counted))
+            }
             shift += step
         }
         guard scores.count > 2, let best = scores.max(by: { $0.score < $1.score }) else { return nil }
@@ -71,17 +103,19 @@ enum LyricAligner {
         let mean = values.reduce(0, +) / Double(values.count)
         let variance = values.reduce(0) { $0 + ($1 - mean) * ($1 - mean) } / Double(values.count)
         let deviation = variance.squareRoot()
-        guard deviation > 0 else { return nil }
+        guard deviation > 0, best.score > 0 else { return nil }
         let confidence = (best.score - mean) / deviation
-        guard confidence >= minimumConfidence else { return nil }
-        return Alignment(shift: best.shift, confidence: confidence, lines: best.lines)
+        // The best alignment that isn't just a neighbour of the winner.
+        let rival = scores.filter { abs($0.shift - best.shift) >= peakSpacing }.map(\.score).max() ?? 0
+        let margin = rival > 0 ? best.score / rival : .infinity
+        guard confidence >= minimumConfidence, margin >= minimumMargin else { return nil }
+        return Alignment(shift: best.shift, confidence: confidence, margin: margin, lines: best.lines)
     }
 
     /// A singer doesn't land on the exact millisecond of the stamp, and the curve is jagged at
-    /// 11 ms a frame, so each point carries a little of its neighbours (±~60 ms).
-    static func smoothed(_ values: [Float]) -> [Float] {
-        let radius = 5
-        guard values.count > radius * 2 else { return values }
+    /// 11 ms a frame, so each point carries a little of its neighbours.
+    static func smoothed(_ values: [Float], radius: Int = 5) -> [Float] {
+        guard radius > 0, values.count > radius * 2 else { return values }
         var out = [Float](repeating: 0, count: values.count)
         var window: Float = 0
         for i in 0..<values.count {

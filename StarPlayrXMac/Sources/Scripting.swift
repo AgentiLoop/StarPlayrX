@@ -23,7 +23,7 @@ extension AppDelegate {
         "spMenuPosition", "spMenuSize", "spSearchText", "spVisibleChannelNumbers",
         "spScrollPosition", "spTopVisibleChannel",
         "spVersion", "spChannelsLoaded", "spAudioStarted", "spCurrentChannelCategory", "spCategories",
-        "spTrackPosition",
+        "spTrackPosition", "spLyricSync",
         "spShownArtwork", "spCurrentChannelLogo", "spShowArt", "spBubbleMode",
         "spPreset", "spPresetChannelNumbers", "spStarsOnly"]
 
@@ -117,6 +117,8 @@ extension AppDelegate {
     @objc var spAudioStarted: Bool { radio.audioStarted }
     /// Seconds into the song that's playing, or -1 when it isn't known (what the time-synced lyrics follow).
     @objc var spTrackPosition: Int { radio.trackPosition.map { Int($0.rounded()) } ?? -1 }
+    /// What the lyric aligner measured for the song playing now, in words.
+    @objc var spLyricSync: String { LyricSync.shared.report }
     @objc var spCurrentChannelCategory: String { radio.current?.category ?? "" }
     @objc var spCategories: [String] {
         var seen = Set<String>()

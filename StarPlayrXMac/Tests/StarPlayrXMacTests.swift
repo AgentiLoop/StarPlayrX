@@ -152,20 +152,33 @@ final class LogicTests: XCTestCase {
         return values
     }
 
+    /// Real lyrics don't come at a steady beat; evenly spaced ones align just as well a line out,
+    /// which is the ambiguity the margin test is there to refuse.
+    private let songLines: [Double] = {
+        var t = 11.4
+        var out = [Double]()
+        for gap in [3.1, 4.7, 2.6, 5.9, 3.4, 8.2, 2.9, 4.1, 6.3, 3.7, 2.8, 5.2, 4.4, 3.3, 7.1,
+                    2.7, 4.9, 3.6, 5.5, 3.2, 6.8, 4.2, 3.9, 5.1] {
+            out.append(t)
+            t += gap
+        }
+        return out
+    }()
+
     func testAlignerFindsTheShiftTheStationIsUsing() {
-        let lines = stride(from: 12.0, to: 180.0, by: 7).map { $0 }
+        let lines = songLines
         let start = Date(timeIntervalSince1970: 1_000_000)
         for truth in [-4.0, -1.5, 0.0, 2.5, 5.0] {
             let curve = onsetCurve(lineTimes: lines, shift: truth)
             let found = LyricsPane.alignment(lineTimes: lines, songStart: start,
                                              onsets: (start, 1.0 / 86.0, curve))
             XCTAssertNotNil(found, "no alignment for \(truth)")
-            XCTAssertEqual(found?.shift ?? 0, truth, accuracy: 0.2, "shift for \(truth)")
+            XCTAssertEqual(found?.shift ?? 0, truth, accuracy: 0.5, "shift for \(truth)")   // half a second: a sung line is three to four
         }
     }
 
     func testAlignerWalksAwayWhenTheAudioSaysNothing() {
-        let lines = stride(from: 12.0, to: 180.0, by: 7).map { $0 }
+        let lines = songLines
         let start = Date(timeIntervalSince1970: 1_000_000)
         // Flat: every shift scores the same, so there is nothing to find.
         let flat = [Float](repeating: 0.5, count: 86 * 200)
@@ -173,6 +186,10 @@ final class LogicTests: XCTestCase {
         // Too few lines inside the audio we have.
         let curve = onsetCurve(lineTimes: lines, shift: 1)
         XCTAssertNil(LyricsPane.alignment(lineTimes: [12, 19], songStart: start, onsets: (start, 1.0 / 86.0, curve)))
+        // Enough lines, but all inside one chorus: too narrow a spread to place the whole song.
+        let huddled = stride(from: 40.0, to: 70.0, by: 2).map { $0 }
+        XCTAssertNil(LyricsPane.alignment(lineTimes: huddled, songStart: start,
+                                          onsets: (start, 1.0 / 86.0, onsetCurve(lineTimes: huddled, shift: 1))))
     }
 
     func testCachedLinesSurviveTheRoundTrip() {

@@ -176,8 +176,11 @@ final class SpectrumTimeline: @unchecked Sendable {
             expected += 1
             for frame in chunk.frames {
                 var flux: Float = 0
-                if let previous, previous.count == frame.count {
-                    for i in 0..<frame.count { flux += max(0, frame[i] - previous[i]) }
+                if let previous, previous.count == frame.count, frame.count > 4 {
+                    // The middle bands only. The bottom ones are the kick and bass, which pound
+                    // away all the way through a song and would drown out the thing being looked
+                    // for: a voice arriving. The top ones are mostly cymbals and hiss.
+                    for i in 2..<(frame.count - 2) { flux += max(0, frame[i] - previous[i]) }
                 }
                 values.append(flux)
                 previous = frame
