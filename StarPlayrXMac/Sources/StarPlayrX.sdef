@@ -20,7 +20,7 @@
             <property name="status" code="SPst" type="text" access="r" description="Sign-in status text (shown in the menu when signed out).">
                 <cocoa key="spStatus"/>
             </property>
-            <property name="canada" code="SPca" type="boolean" description="The Canada region checkbox.">
+            <property name="canada" code="SPca" type="boolean" description="The Canada checkbox on the sign-in screen (Canadian account; takes effect at the next sign in).">
                 <cocoa key="spCanada"/>
             </property>
             <property name="current channel" code="SPcc" type="text" description="Number of the current channel (empty when none). Setting it plays that channel.">
@@ -113,12 +113,6 @@
             </property>
             <property name="bubble mode" code="SPbm" type="bubble mode" description="Bubbles in the equalizer bars (clicking the bars cycles bubbles → soft bubbles → no bubbles). Remembered.">
                 <cocoa key="spBubbleMode"/>
-            </property>
-            <property name="modern live" code="SPml" type="boolean" description="Whether live channels play through the modern SiriusXM API (the switch under the version number). Setting it retunes the current live channel. Always true after a modern sign in.">
-                <cocoa key="spModernLive"/>
-            </property>
-            <property name="modern sign in" code="SPmg" type="boolean" access="r" description="Whether the session was signed in through the modern API only (the sign-in screen checkbox). Pass &quot;modern&quot; to sign in to change it.">
-                <cocoa key="spModernSignIn"/>
             </property>
             <property name="preset" code="SPpr" type="boolean" description="Whether the current channel is starred (the star beside the play button). Presets are kept on this Mac, under the same key as the iOS app.">
                 <cocoa key="spPreset"/>
@@ -217,9 +211,6 @@
             </parameter>
             <parameter name="password" code="SPpw" type="text" optional="yes" description="Password.">
                 <cocoa key="password"/>
-            </parameter>
-            <parameter name="modern" code="SPmo" type="boolean" optional="yes" description="Sign in through the modern SiriusXM API only (the sign-in screen checkbox): no legacy session, every channel from the modern API. Remembered; omit to keep the last choice.">
-                <cocoa key="modern"/>
             </parameter>
             <result type="boolean"/>
         </command>

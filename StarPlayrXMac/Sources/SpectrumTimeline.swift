@@ -12,7 +12,7 @@ import AVFoundation
 import Accelerate
 
 /// Bar heights worked out ahead of time, while the audio is decoded before it plays: live segments
-/// as the local server hands them to the player, Xtra tracks as soon as they are downloaded.
+/// as LiveLoader fetches them for the player, Xtra tracks as soon as they are downloaded.
 /// Every 1024 samples get one frame, stamped with its place in the stream, so the bars are read
 /// at the player's exact position: no recording permission, and they can't fall behind the music.
 final class SpectrumTimeline: @unchecked Sendable {
@@ -33,18 +33,12 @@ final class SpectrumTimeline: @unchecked Sendable {
     private var startSlot: Int?   // the segment slot playback started on, in the item's timeline
     /// Segment the player was last in: (sequence, its start in the item's timeline, its length).
     private var cursor: (sequence: Int, time: Double, duration: Double)?
-    /// Tagged segment length (EXTINF): 10 s from the local server, ~9.75 s from the modern API (LiveLoader).
+    /// Tagged segment length (EXTINF): ~9.75 s from the API (LiveLoader); read from the playlist.
     private var nominal = 10.0
     private var live = [Chunk]()
     private var tracks = [URL: Track]()
 
-    /// Hooks into the local server; call before it starts.
-    func observeServer() {
-        livePlaylistObserver = { [unowned self] in playlist($0) }
-        liveSegmentObserver = { [unowned self] name, data, key in queue.async { self.segment(name, data, key) } }
-    }
-
-    /// The same feed for live channels tuned through the modern API (LiveLoader), which skip the local server.
+    /// Live channels: LiveLoader hands over each playlist and the newest segments as it fetches them.
     func livePlaylist(_ text: String) { playlist(text) }
     func liveSegment(_ name: String, _ data: Data, _ key: Data?, iv: Data? = nil) { queue.async { self.segment(name, data, key, iv: iv) } }
 

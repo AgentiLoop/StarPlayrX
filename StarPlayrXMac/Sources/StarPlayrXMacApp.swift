@@ -55,14 +55,10 @@ enum CredentialPrompt {
             let canada = NSButton(checkboxWithTitle: "Canada", target: nil, action: nil)
             canada.frame = NSRect(x: 0, y: 0, width: 100, height: 20)
             canada.state = Radio.shared.localeIsCA ? .on : .off
-            let modern = NSButton(checkboxWithTitle: "Modern API sign-in", target: nil, action: nil)
-            modern.frame = NSRect(x: 120, y: 0, width: 160, height: 20)
-            modern.state = Radio.shared.modernLogin ? .on : .off
             let stack = NSView(frame: NSRect(x: 0, y: 0, width: 280, height: 104))
             stack.addSubview(user)
             stack.addSubview(pass)
             stack.addSubview(canada)
-            stack.addSubview(modern)
             alert.accessoryView = stack
             alert.window.initialFirstResponder = user.stringValue.isEmpty ? user : pass
 
@@ -73,7 +69,7 @@ enum CredentialPrompt {
             let u = user.stringValue.trimmingCharacters(in: .whitespaces)
             let p = pass.stringValue
             if u.isEmpty || p.isEmpty { message = "Username and password are required."; continue }
-            if await Radio.shared.login(user: u, pass: p, modern: modern.state == .on) { return }
+            if await Radio.shared.login(user: u, pass: p) { return }
             message = Radio.shared.status
         }
     }

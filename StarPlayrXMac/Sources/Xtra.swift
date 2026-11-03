@@ -11,8 +11,8 @@ import Foundation
 import CommonCrypto
 import AVFoundation
 
-/// SiriusXM Xtra channels. They exist only in SiriusXM's current API (api.edge-gateway.siriusxm.com),
-/// not the legacy player API that StarPlayrRadioKit uses, so they are fetched and played here.
+/// SiriusXM's API (api.edge-gateway.siriusxm.com): sign-in, the channel list, live channels and Xtra channels.
+/// The same API serves US and Canadian accounts (can.siriusxm.com is the same web player); Canada only changes the locale.
 /// An Xtra channel is a queue of individual tracks; each track is an encrypted HLS clip with its own key.
 
 struct XtraChannel {
@@ -62,6 +62,10 @@ actor XtraClient {
     private var expires = Date.distantPast
     private var lookAroundChannels = [String: [String: Any]]()
     private var lookAroundFetched = Date.distantPast
+    private var locale = "en-US"
+
+    /// "en-US" or "en-CA" (what www. and can.siriusxm.com send); applies to the next channel list.
+    func setLocale(_ locale: String) { self.locale = locale }
 
     // MARK: Sign in
 
@@ -147,7 +151,7 @@ actor XtraClient {
             .init(name: "containerId", value: Self.allChannelsContainer),
             .init(name: "maxResponses", value: "30"),
             .init(name: "offset", value: String(offset)),
-            .init(name: "locale", value: "en-US"),
+            .init(name: "locale", value: locale),
             .init(name: "useCuratedContext", value: "false"),
             .init(name: "supportedMediaType", value: "AUDIO"),
             .init(name: "setStyle", value: "small_list"),
@@ -211,7 +215,7 @@ actor XtraClient {
         return (tracks, tune["sequenceToken"] as? String)
     }
 
-    /// EXPERIMENT: a live (channel-linear) channel tuned through the modern API, the way the web player does.
+    /// A live (channel-linear) channel, tuned the way the web player does.
     /// Returns the signed master playlist (AES-128 HLS, ~5 h DVR) and the bearer its key URI needs.
     func liveStream(channelID: String) async throws -> (url: URL, bearer: String) {
         let auth = try await bearer()
@@ -447,12 +451,11 @@ extension Data {
     }
 }
 
-// MARK: Live (modern API) playback — EXPERIMENT
+// MARK: Live playback
 
-/// Serves a modern-API live stream to AVPlayer. The playlists are fetched here (scheme `sxmlive`) so the key URI
+/// Serves a live stream to AVPlayer. The playlists are fetched here (scheme `sxmlive`) so the key URI
 /// can be pointed at `sxmkey`, which answers with the raw AES key (the real endpoint needs a bearer and returns JSON).
-/// Segments stay plain https URLs that AVPlayer loads itself; the newest ones are also fetched here for the EQ,
-/// which the legacy local server used to feed (SpectrumTimeline.observeServer).
+/// Segments stay plain https URLs that AVPlayer loads itself; the newest ones are also fetched here for the EQ.
 final class LiveLoader: NSObject, AVAssetResourceLoaderDelegate {
     let client: XtraClient
     init(client: XtraClient) { self.client = client }

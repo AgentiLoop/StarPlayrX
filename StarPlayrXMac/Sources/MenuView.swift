@@ -256,22 +256,7 @@ struct MenuView: View {
             if menu.detached {
                 Button("Close") { menu.hide() }
             }
-            // Click for the Modern API switch. Not offered after a modern sign-in: there is no
-            // legacy session to switch to.
-            if radio.modernLogin {
-                Text(Self.version).font(.caption).foregroundStyle(.tertiary).offset(y: 2)
-            } else {
-                Menu {
-                    Toggle("Modern API for live channels", isOn: Binding(
-                        get: { radio.modernLive }, set: { radio.setModernLive($0) }))
-                } label: {
-                    Text(Self.version).font(.caption).foregroundStyle(.tertiary)
-                }
-                .menuStyle(.borderlessButton)
-                .menuIndicator(.hidden)
-                .fixedSize()
-                .offset(y: 2)
-            }
+            Text(Self.version).font(.caption).foregroundStyle(.tertiary).offset(y: 2)
             Spacer()
             if radio.isLoggedIn {
                 Button("Sign Out") { radio.signOut() }

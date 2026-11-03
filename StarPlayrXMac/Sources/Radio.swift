@@ -71,16 +71,11 @@ final class Radio: ObservableObject {
         if presets.contains(id) { presets.remove(id) } else { presets.insert(id) }
         UserDefaults.standard.set(Array(presets).sorted { Int($0) ?? 0 < Int($1) ?? 0 }, forKey: "SPXPresets")
     }
+    /// Canadian account: the API is the same, the request locale is en-CA (as can.siriusxm.com sends).
     @Published var localeIsCA = UserDefaults.standard.bool(forKey: "localeIsCA")
-    /// Live channels through the modern API (as Xtra) instead of the legacy local server. Click the version number to switch.
-    @Published var modernLive = UserDefaults.standard.object(forKey: "modernLive") as? Bool ?? true
-    /// Signed in through the modern API only (no legacy session): live channels must play through it.
-    @Published var modernLogin = UserDefaults.standard.bool(forKey: "modernLogin")
-    /// True once sign-in has finished loading every channel, Xtra included (or Xtra failed).
+    /// True once sign-in has finished loading every channel, Xtra included.
     @Published var channelsLoaded = false
 
-    private var port: UInt16 = 9999
-    private var serverStarted = false
     private let player = AVPlayer()
     private var pdtTimer: Timer?
 
@@ -95,10 +90,8 @@ final class Radio: ObservableObject {
     private var xtraPeekedAt = [String: Date]()
     private var xtraPeekedTrack = [String: XtraTrack]()  // what the channel list shows, played first on tune
     private var xtraPeeking = false
-    private var liveLoader: LiveLoader?   // EXPERIMENT: keeps the modern live stream's resource loader alive
+    private var liveLoader: LiveLoader?   // keeps the live stream's resource loader alive
     private let xtraFolder = FileManager.default.temporaryDirectory.appendingPathComponent("StarPlayrXtra")
-
-    private var base: String { "http://127.0.0.1:\(port)/api/v3" }
 
     private init() {
         setupRemoteCommands()
@@ -107,91 +100,18 @@ final class Radio: ObservableObject {
             .sink { _ in Task { @MainActor in Radio.shared.xtraItemChanged() } }
     }
 
-    // MARK: Server
-
-    private func startServerIfNeeded() async {
-        if serverStarted, await text("ping") == "pong" { return }
-        for p in port..<65000 where portIsOpen(UInt16(p)) {
-            port = UInt16(p)
-            break
-        }
-        realSegmentDurations = true
-        SpectrumTimeline.shared.observeServer()
-        startServer(port)
-        preflightConfig(location: localeIsCA ? "CA" : "US")
-        for _ in 0..<20 {
-            if await text("ping") == "pong" { break }
-            try? await Task.sleep(nanoseconds: 100_000_000)
-        }
-        serverStarted = true
-    }
-
     // MARK: Login
 
-    func login(user: String, pass: String, modern: Bool? = nil) async -> Bool {
+    /// Signs in to the SiriusXM API; every channel (live and Xtra) comes from XtraClient.channels().
+    func login(user: String, pass: String) async -> Bool {
         isBusy = true
         channelsLoaded = false
         defer { isBusy = false }
-        if let modern {
-            modernLogin = modern
-            UserDefaults.standard.set(modern, forKey: "modernLogin")
-        }
-        if modernLogin { return await loginModern(user: user, pass: pass) }
-        status = "Starting…"
-        await startServerIfNeeded()
-        _ = await text(localeIsCA ? "ca" : "us")
-
-        status = "Signing in…"
-        let result = await post("login", ["user": user, "pass": pass])
-        // StarPlayrRadioKit caches the password in UserDefaults; the Mac app keeps it only in the Keychain.
-        UserDefaults.standard.removeObject(forKey: "pass")
-
-        guard let result, result["success"] as? Bool == true else {
-            status = (result?["message"] as? String) ?? "Login failed. Check your connection."
-            return false
-        }
-        Keychain.save(user: user, pass: pass)
-
-        status = "Loading channels…"
-        _ = await post("session", ["channelid": "siriushits1"])
-        guard let data = await post("channels", ["channeltype": ""])?["data"] as? [String: Any], !data.isEmpty else {
-            status = "Error reading channels."
-            return false
-        }
-
-        channels = data.compactMap { key, value in
-            guard let v = value as? [String: Any],
-                  let number = v["channelNumber"] as? String,
-                  var name = v["name"] as? String else { return nil }
-            for prefix in ["SiriusXM ", "Sirius XM ", "Sirius ", "SXM ", "SPX "] {
-                name = name.replacingOccurrences(of: prefix, with: "")
-            }
-            return Channel(id: number, name: name,
-                           category: v["category"] as? String ?? "",
-                           imageURL: v["mediumImage"] as? String ?? "")
-        }
-        .sorted { $0.id.localizedStandardCompare($1.id) == .orderedAscending }
-
-        isLoggedIn = true
-        status = "Signed in"
-        if let last = UserDefaults.standard.string(forKey: "lastChannel") {
-            current = channels.first { $0.id == last }
-            // Auto play the last channel played (Xtra channels auto play once they load below).
-            if let current, !isPlaying { play(current) }
-        }
-        await updatePDT()
-        startPDTTimer()
-        Task { await loadXtraChannels(user: user, pass: pass) }
-        return true
-    }
-
-    /// Sign in through the modern API only: no local server, every channel (live and Xtra) from
-    /// XtraClient.channels(), live playback forced through LiveLoader.
-    private func loginModern(user: String, pass: String) async -> Bool {
         status = "Signing in…"
         UserDefaults.standard.removeObject(forKey: "pass")
         let all: [XtraChannel]
         do {
+            await xtra.setLocale(localeIsCA ? "en-CA" : "en-US")
             try await xtra.signIn(user: user, pass: pass)
             status = "Loading channels…"
             all = try await xtra.channels()
@@ -217,37 +137,6 @@ final class Radio: ObservableObject {
         startPDTTimer()
         return true
     }
-    /// Xtra channels come from SiriusXM's newer API; if that fails the live channels still work.
-    private func loadXtraChannels(user: String, pass: String) async {
-        defer { if isLoggedIn { channelsLoaded = true } }
-        do {
-            try await xtra.signIn(user: user, pass: pass)
-            let all = try await xtra.channels()
-            let xtras = all.filter(\.isXtra).map {
-                Channel(id: $0.number, name: $0.name, category: $0.genre, imageURL: $0.imageURL, xtraID: $0.id)
-            }
-            // Live channels get the same full square tile art as Xtra channels when the newer API has it.
-            var tiles = [String: String]()
-            for ch in all where !ch.isXtra && !ch.imageURL.isEmpty { tiles[ch.number] = ch.imageURL }
-            guard isLoggedIn else { return }
-            liveIDs = Dictionary(all.filter { !$0.isXtra }.map { ($0.number, $0.id) }) { first, _ in first }
-            let withTiles = channels.map { ch in
-                tiles[ch.id].map { Channel(id: ch.id, name: ch.name, category: ch.category, imageURL: $0, xtraID: ch.xtraID) } ?? ch
-            }
-            let live = Set(withTiles.map(\.id))
-            channels = (withTiles + xtras.filter { !live.contains($0.id) })
-                .sorted { $0.id.localizedStandardCompare($1.id) == .orderedAscending }
-            let wasNil = current == nil
-            if let id = current?.id ?? UserDefaults.standard.string(forKey: "lastChannel") {
-                current = channels.first { $0.id == id }   // pick up the new art for the current channel too
-                // Auto play a last-played Xtra channel, which wasn't available at login.
-                if wasNil, let current, current.xtraID != nil, !isPlaying { play(current) }
-            }
-            await updatePDT()   // live rows from lookAround right away, not on the next 5 s tick
-        } catch {
-            print("Xtra channels unavailable: \(error.localizedDescription)")
-        }
-    }
 
     func signOut() {
         stop()
@@ -262,15 +151,10 @@ final class Radio: ObservableObject {
         status = "Not signed in"
     }
 
-    func setModernLive(_ on: Bool) {
-        modernLive = on
-        UserDefaults.standard.set(on, forKey: "modernLive")
-        if isPlaying, let current, current.xtraID == nil { play(current) }   // retune through the other path
-    }
+    /// Canada or US. Takes effect at the next sign-in.
     func setRegion(ca: Bool) {
         localeIsCA = ca
         UserDefaults.standard.set(ca, forKey: "localeIsCA")
-        if serverStarted { Task { _ = await text(ca ? "ca" : "us") } }
     }
 
     // MARK: Playback
@@ -290,19 +174,13 @@ final class Radio: ObservableObject {
             liveLoader = nil
             // Before the new item exists, so the EQ is dated from the first playlist that item loads.
             SpectrumTimeline.shared.resetLive()
-            let item: AVPlayerItem
-            // EXPERIMENT: tune live channels through the modern API (as Xtra does); legacy local server as fallback.
-            if modernLive || modernLogin, let liveID = liveIDs[channel.id],
-               let live = try? await xtra.liveStream(channelID: liveID) {
-                // Playlists and the AES key go through LiveLoader; the signed segment URLs load directly.
-                let (asset, loader) = LiveLoader.asset(for: live.url, client: xtra)
-                liveLoader = loader
-                item = AVPlayerItem(asset: asset)
-            } else {
-                await startServerIfNeeded()
-                guard let url = URL(string: "http://localhost:\(port)/api/v3/m3u/\(channel.id).m3u8") else { return }
-                item = AVPlayerItem(url: url)
-            }
+            guard let liveID = liveIDs[channel.id] else { status = "Channel \(channel.id) is not available."; stop(); return }
+            let live: (url: URL, bearer: String)
+            do { live = try await xtra.liveStream(channelID: liveID) } catch { status = error.localizedDescription; stop(); return }
+            // Playlists and the AES key go through LiveLoader; the signed segment URLs load directly.
+            let (asset, loader) = LiveLoader.asset(for: live.url, client: xtra)
+            liveLoader = loader
+            let item = AVPlayerItem(asset: asset)
             // Start as soon as a little audio is buffered instead of waiting to fill a large buffer.
             item.preferredForwardBufferDuration = 3
             // Stay paused until the start position is settled so the old position never plays
@@ -575,7 +453,7 @@ final class Radio: ObservableObject {
         // (once per dropout, once per recovery) with the timeline's state: `log show --predicate 'subsystem == "com.starplayrx.mac"'`.
         if (levels == nil) != eqDark {
             eqDark = levels == nil
-            Self.log.notice("live EQ \(self.eqDark ? "dark" : "back", privacy: .public) ch=\(current.id, privacy: .public) t=\(time, privacy: .public) modern=\(self.modernLive || self.modernLogin) \(SpectrumTimeline.shared.state, privacy: .public)")
+            Self.log.notice("live EQ \(self.eqDark ? "dark" : "back", privacy: .public) ch=\(current.id, privacy: .public) t=\(time, privacy: .public) \(SpectrumTimeline.shared.state, privacy: .public)")
         }
         return levels
     }
@@ -630,53 +508,4 @@ final class Radio: ObservableObject {
             return .success
         }
     }
-
-    // MARK: Local server HTTP helpers
-
-    private func text(_ path: String) async -> String? {
-        guard let url = URL(string: "\(base)/\(path)") else { return nil }
-        var req = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalAndRemoteCacheData, timeoutInterval: 2)
-        req.httpMethod = "GET"
-        guard let (data, _) = try? await URLSession.shared.data(for: req) else { return nil }
-        return String(data: data, encoding: .utf8)
-    }
-
-    private func get(_ path: String) async -> [String: Any]? {
-        guard let url = URL(string: "\(base)/\(path)") else { return nil }
-        let req = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalAndRemoteCacheData, timeoutInterval: 60)
-        guard let (data, _) = try? await URLSession.shared.data(for: req) else { return nil }
-        return (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
-    }
-
-    private func post(_ path: String, _ body: [String: Any]) async -> [String: Any]? {
-        guard let url = URL(string: "\(base)/\(path)") else { return nil }
-        var req = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalAndRemoteCacheData, timeoutInterval: 60)
-        req.httpMethod = "POST"
-        req.httpBody = try? JSONSerialization.data(withJSONObject: body)
-        req.addValue("application/json", forHTTPHeaderField: "Content-Type")
-        guard let (data, _) = try? await URLSession.shared.data(for: req) else { return nil }
-        return (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
-    }
-
-    // MARK: Port finder
-
-    private func portIsOpen(_ port: in_port_t) -> Bool {
-        let fd = socket(AF_INET, SOCK_STREAM, 0)
-        guard fd != -1 else { return false }
-        defer { Darwin.shutdown(fd, SHUT_RDWR); close(fd) }
-
-        var addr = sockaddr_in()
-        addr.sin_len = __uint8_t(MemoryLayout<sockaddr_in>.size)
-        addr.sin_family = sa_family_t(AF_INET)
-        addr.sin_port = port.bigEndian
-        addr.sin_addr = in_addr(s_addr: inet_addr("127.0.0.1"))
-
-        let bound = withUnsafePointer(to: &addr) {
-            $0.withMemoryRebound(to: sockaddr.self, capacity: 1) {
-                Darwin.bind(fd, $0, socklen_t(MemoryLayout<sockaddr_in>.size))
-            }
-        }
-        return bound != -1 && listen(fd, SOMAXCONN) != -1
-    }
 }
-

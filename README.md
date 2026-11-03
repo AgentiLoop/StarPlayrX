@@ -14,8 +14,8 @@ StarPlayrX was built for visually impaired listeners, a group of paying subscrib
 | --- | --- |
 | [`StarPlayrXMac/`](StarPlayrXMac) | **New:** a native SwiftUI menu bar app for macOS |
 | [`StarPlayrX/`](StarPlayrX) | The original Mac Catalyst App. May not work, unsupported, abandoned. |
-| `StarPlayrRadioKit/` | SiriusXM API layer and the local HLS streaming server. Its source is copied into each app ([Mac](StarPlayrXMac/Sources/StarPlayrRadioKit), [iOS](StarPlayrX/StarPlayrX/StarPlayrX/StarPlayrX/StarPlayrRadioKit))
-| `SwifterLite/` | Small embedded HTTP server used by StarPlayrRadioKit, copied into each app the same way ([Mac](StarPlayrXMac/Sources/SwifterLite), [iOS](StarPlayrX/StarPlayrX/StarPlayrX/StarPlayrX/SwifterLite)) |
+| `StarPlayrRadioKit/` | Legacy SiriusXM API layer and local HLS streaming server, still used by the iOS app ([iOS](StarPlayrX/StarPlayrX/StarPlayrX/StarPlayrX/StarPlayrRadioKit)). Removed from the Mac app; see the [`legacy-api`](https://github.com/AgentiLoop/StarPlayrX/tree/legacy-api) tag |
+| `SwifterLite/` | Small embedded HTTP server used by StarPlayrRadioKit ([iOS](StarPlayrX/StarPlayrX/StarPlayrX/StarPlayrX/SwifterLite)) |
 
 
 ## 🎛️ StarPlayrX for Mac (menu bar app)
@@ -68,16 +68,15 @@ StarPlayrX was built for visually impaired listeners, a group of paying subscrib
 
 - **Stars (presets):** every channel row has a star; click it to add the channel to your presets or take it out. The star beside the play button stars the playing channel, and the star beside the search field shows just your starred channels. Stars are kept on this Mac, under the same key and with the same starting set as the iOS app
 - **Liquid Glass** look on macOS 26 and later
-- **AppleScript support:** play, stop, resume, and step through channels, read what each channel shows and what's actually playing (artist, song, artwork), list channels by category, search, scroll, tear off, park, and shade the window, pick the bubble mode, and flip the modern API switches. Open the StarPlayrX dictionary in Script Editor to see every command
+- **AppleScript support:** play, stop, resume, and step through channels, read what each channel shows and what's actually playing (artist, song, artwork), list channels by category, search, scroll, tear off, park, and shade the window, pick the bubble mode. Open the StarPlayrX dictionary in Script Editor to see every command
 - Search channels, artists and songs
 - Shows what's playing on the current channel and every channel in the list, with album art that stays put for the whole song
 - **Now Playing matches what you hear:** on live channels the song shown is held back by how far the audio runs behind the live feed, so it changes when the song you hear changes. The channel list's song info refreshes 3 times a minute. Long titles scroll instead of getting cut off
 - Xtra channels (1000+), searchable with "xtra" or "music"; tuning in plays the song the list shows
-- **Modern API for live channels:** live channels stream through the same current SiriusXM API the Xtra channels use (the one the web player uses), so they tune in well under a second with no local server. On by default; click the version number at the bottom of the panel to switch it off and go back to the legacy player path
-- **Modern API sign-in:** a checkbox on the sign-in screen signs in through the current API only, with every channel (live and Xtra) coming from it. Leave it off to sign in the legacy way; the switch under the version number then picks how live channels play
+- **One API, no local server:** every channel, live and Xtra, comes from the same current SiriusXM API the web player uses, so live channels tune in well under a second
 - Play/pause from the keyboard media keys and Control Center, with the album art or channel art showing there too
 - Picks up where you left off: the last channel you played starts again when StarPlayrX opens
-- US and Canada channel lineups (pick Canada on the sign-in screen)
+- US and Canada accounts (pick Canada on the sign-in screen)
 - Your password is stored only in the macOS Keychain
 
 **Requirements:** macOS 13 Ventura or later, Apple Silicon or Intel, and an active SiriusXM subscription.
@@ -95,27 +94,25 @@ tell application "StarPlayrX"
     get {shown artwork, current channel logo}
     next channel                         -- step through the list (as filtered by search text)
     set bubble mode to no bubbles        -- bubbles / soft bubbles / no bubbles
-    set modern live to false             -- live channels through the legacy player path
-    sign in user "me@example.com" password "…" modern true
+    sign in user "me@example.com" password "…"
     park menu at upper right
     toggle shade
 end tell
 ```
 
-Every property and command is in the StarPlayrX dictionary (open the app in Script Editor): sign-in state, channels (numbers, names, categories, logos, Xtra or live), what each channel shows and plays, the panel (show, hide, tear off, reattach, park, shade, drag, search, scroll), the equalizer's bubble mode, show-art per channel, and the modern API switches.
+Every property and command is in the StarPlayrX dictionary (open the app in Script Editor): sign-in state, channels (numbers, names, categories, logos, Xtra or live), what each channel shows and plays, the panel (show, hide, tear off, reattach, park, shade, drag, search, scroll), the equalizer's bubble mode, and show-art per channel.
 
-### 🔌 Modern API and modern sign-in
+### 🔌 How it talks to SiriusXM
 
-StarPlayrX for Mac can talk to SiriusXM two ways:
+StarPlayrX for Mac uses only SiriusXM's current API (`api.edge-gateway.siriusxm.com`), the one the [SiriusXM web player](https://www.siriusxm.com/player/home) uses. Sign-in is a short chain (register a device → anonymous session → password → authenticated session) that yields a bearer token. Channels come from the same "All channels" grouping the web player shows, and a channel is tuned with one `tuneSource` call that returns signed HLS URLs. Xtra channels are played track by track (each track is an encrypted clip with its own key); live channels are an ordinary AES-128 HLS stream with about five hours of rewind.
 
-- **Legacy player API** (the original path): `StarPlayrRadioKit` runs a tiny local HTTP server inside the app, signs in to the old `player.siriusxm.com` API, and serves live channels to the player as rewritten HLS playlists. It handles the AES keys and feeds the equalizer as each segment goes by. Xtra channels don't exist in that API, so after a legacy sign-in the app also signs in to the modern API in the background to list and play them.
-- **Modern API** (`api.edge-gateway.siriusxm.com`): the API the [SiriusXM web player](https://www.siriusxm.com/player/home) uses. Sign-in is a short chain (register a device → anonymous session → password → authenticated session) that yields a bearer token. Channels come from the same "All channels" grouping the web player shows, and a channel is tuned with one `tuneSource` call that returns signed HLS URLs. Xtra channels are played track by track (each track is an encrypted clip with its own key); live channels are an ordinary AES-128 HLS stream with about five hours of rewind.
+For live channels the playlists and the key request go through the app (`LiveLoader`), because the key endpoint needs the bearer token and answers JSON rather than raw key bytes; the audio segments themselves are plain signed URLs the player fetches directly. The newest segments are also fetched and decoded in the background to drive the equalizer. Live channels tune in well under a second.
 
-**Modern API for live channels** (on by default) tunes live channels through the modern API instead of the local server. The playlists and the key request still go through the app (`LiveLoader`), because the key endpoint needs the bearer token and answers JSON rather than raw key bytes; the audio segments themselves are plain signed URLs the player fetches directly. The newest segments are also fetched and decoded in the background so the equalizer keeps working exactly as it does on the legacy path. Live channels tune in well under a second this way. Click the version number at the bottom of the panel to switch it off; the current channel retunes through the other path right away.
+**Canada:** the Canadian web player ([can.siriusxm.com](https://can.siriusxm.com/player/home)) is the same app on the same API; which channels you get is decided by your account. The Canada checkbox on the sign-in screen only switches the request locale to `en-CA`, as that player does.
 
-**Modern API sign-in** is a checkbox on the sign-in screen. With it on, the app never starts the local server or touches the legacy API: it signs in to the modern API once, builds the whole channel list (live and Xtra) from it, and plays live channels through it. The version-number switch is hidden in that mode, since there's no legacy session to switch back to. With it off (the default) sign-in works the way it always has, and the version-number switch picks how live channels play.
+Your username and password are kept only in the macOS Keychain, and what's-playing info for every live channel comes from the API's unauthenticated "look around" feed.
 
-Both choices are remembered. Either way your username and password are kept only in the macOS Keychain, and what's-playing info for every live channel comes from the modern API's unauthenticated "look around" feed.
+The last version with the old `player.siriusxm.com` path (`StarPlayrRadioKit` and its local HTTP server) is tagged [`legacy-api`](https://github.com/AgentiLoop/StarPlayrX/tree/legacy-api).
 
 ## 🛠️ Building
 

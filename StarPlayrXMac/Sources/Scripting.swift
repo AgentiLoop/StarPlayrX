@@ -23,7 +23,7 @@ extension AppDelegate {
         "spMenuPosition", "spMenuSize", "spSearchText", "spVisibleChannelNumbers",
         "spScrollPosition", "spTopVisibleChannel",
         "spVersion", "spChannelsLoaded", "spAudioStarted", "spCurrentChannelCategory", "spCategories",
-        "spShownArtwork", "spCurrentChannelLogo", "spShowArt", "spBubbleMode", "spModernLive", "spModernSignIn",
+        "spShownArtwork", "spCurrentChannelLogo", "spShowArt", "spBubbleMode",
         "spPreset", "spPresetChannelNumbers", "spStarsOnly"]
 
     func application(_ sender: NSApplication, delegateHandlesKey key: String) -> Bool {
@@ -136,11 +136,6 @@ extension AppDelegate {
         get { UserDefaults.standard.object(forKey: "bubbleStage") as? Int ?? 1 }
         set { UserDefaults.standard.set(newValue % 3, forKey: "bubbleStage") }
     }
-    @objc var spModernLive: Bool {
-        get { radio.modernLive || radio.modernLogin }
-        set { if !radio.modernLogin, newValue != radio.modernLive { radio.setModernLive(newValue) } }
-    }
-    @objc var spModernSignIn: Bool { radio.modernLogin }
     @objc var spPreset: Bool {
         get { radio.current.map { radio.presets.contains($0.id) } ?? false }
         set { if let id = radio.current?.id, newValue != spPreset { radio.togglePreset(id) } }
@@ -184,12 +179,11 @@ final class SPXCommand: NSScriptCommand {
         case "sign in":
             let user = evaluatedArguments?["user"] as? String
             let pass = evaluatedArguments?["password"] as? String
-            let modern = evaluatedArguments?["modern"] as? Bool
             guard let creds = user.map({ ($0, pass ?? "") }) ?? Keychain.load().map({ ($0.user, $0.pass) }) else {
                 return fail("No user given and no credentials in the Keychain.")
             }
             return later {
-                guard await radio.login(user: creds.0, pass: creds.1, modern: modern) else { throw ScriptFailure(radio.status) }
+                guard await radio.login(user: creds.0, pass: creds.1) else { throw ScriptFailure(radio.status) }
                 try await Self.ready()
                 return true
             }
