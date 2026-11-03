@@ -266,7 +266,7 @@ struct LyricsPane: View {
                 }
                 .frame(height: CachedArt<EmptyView>.listHeight)
                 .padding(.trailing, -12)
-                .onChange(of: current) { line in
+                .onValueChange(of: current) { line in
                     guard let line else { return }
                     withAnimation(.easeInOut(duration: 0.3)) { proxy.scrollTo(line, anchor: .center) }
                 }
@@ -283,5 +283,24 @@ struct LyricsPane: View {
             found = line.id
         }
         return found
+    }
+}
+
+/// `onChange` that hands over just the new value. The one-parameter form is deprecated in
+/// macOS 14 and the two-parameter one doesn't exist before it, and the app runs on macOS 13.
+private extension View {
+    @ViewBuilder
+    func onValueChange<V: Equatable>(of value: V, perform action: @escaping (V) -> Void) -> some View {
+        if #available(macOS 14, *) {
+            onChange(of: value) { _, new in action(new) }
+        } else {
+            legacyOnChange(of: value, perform: action)
+        }
+    }
+
+    /// Deprecated itself, so the macOS 13 fallback doesn't warn about the API it has to use.
+    @available(macOS, deprecated: 14.0)
+    func legacyOnChange<V: Equatable>(of value: V, perform action: @escaping (V) -> Void) -> some View {
+        onChange(of: value, perform: action)
     }
 }
