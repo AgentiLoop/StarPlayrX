@@ -62,7 +62,7 @@ struct MenuView: View {
             // list on unshade blocked the main thread and froze the equalizer.
             VStack(alignment: .leading, spacing: 10) {
                 if radio.isLoggedIn {
-                    HStack(spacing: 6) {
+                    HStack(spacing: 13.5) {
                         SearchField(text: $menu.search, placeholder: "Search channels, artists, songs")
                         // "All Stars" (as on iOS): the list shows only the starred channels.
                         Button { menu.starsOnly.toggle() } label: {
