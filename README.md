@@ -44,6 +44,30 @@ StarPlayrX was built for visually impaired listeners, a group of paying subscrib
   </tr>
 </table>
 
+### 🎤 New: time-synced lyrics
+
+<table align="center">
+  <tr>
+    <td align="center" valign="top" width="50%">
+      <img src="docs/screenshot-mac-lyrics.png" width="300" alt="StarPlayrX under the menu bar showing time-synced lyrics for Miss Independent by Kelly Clarkson on Unwell Music, with the line being sung in bold"><br>
+      <b>🎤 Sing along from the menu bar</b>
+    </td>
+    <td align="center" valign="top" width="50%">
+      <img src="docs/screenshot-mac-lyrics-2.png" width="300" alt="StarPlayrX under the menu bar showing time-synced lyrics for American Girls by Harry Styles on SiriusXM Hits 1"><br>
+      <b>📜 The lyrics follow the song</b>
+    </td>
+  </tr>
+</table>
+
+- **Click the song or artist** in Now Playing and the channel list turns into the lyrics for what's playing. **Channels** takes you back. The panel keeps its size, so nothing jumps
+- **Time-synced:** the line being sung is bold, the rest dim, and the pane scrolls itself to keep the current line in the middle. Verses and choruses are spaced apart, and ad-libs are tucked in
+- **In step on live radio, too:** live channels have no song clock, so StarPlayrX listens to the audio, finds where the singing starts on each line, and measures how far the lyrics need to shift for that song. It keeps checking every 15 seconds while the song plays. Xtra channels follow the song's own position
+- **Off by a bit? Click the line being sung** and the highlight jumps there; the rest of the song follows from it. On live channels StarPlayrX remembers that fix for the next time the song comes on
+- **Five lyric sources, no account or key:** LRCLIB first, then NetEase, QQ Music and Kugou, with lyrics.ovh as a last resort. It keeps looking until it finds timed lyrics, and a hit must match both the artist and the song
+- **Text only lyrics** say so in the header ("Text only lyrics - sync not available") and simply scroll
+- **AppleScript:** `track position` gives the seconds into the song the lyrics follow, and `lyric sync` reports what the aligner measured
+
+- Lives in the menu bar (📻) with no Dock icon. The icon shows whether something is playing:
 - Lives in the menu bar (📻) with no Dock icon. The icon shows whether something is playing:
 
 <table>
@@ -83,7 +107,7 @@ StarPlayrX was built for visually impaired listeners, a group of paying subscrib
 
 **Requirements:** macOS 13 Ventura or later, Apple Silicon or Intel, and an active SiriusXM subscription.
 
-**Download:** [StarPlayrX for Mac 1.1.18](https://github.com/AgentiLoop/StarPlayrX/releases/tag/mac-1.1.18) (signed and notarized). All builds are on the [Releases](https://github.com/AgentiLoop/StarPlayrX/releases) page.
+**Download:** [StarPlayrX for Mac 1.1.19](https://github.com/AgentiLoop/StarPlayrX/releases/tag/mac-1.1.19) (signed and notarized). All builds are on the [Releases](https://github.com/AgentiLoop/StarPlayrX/releases) page.
 
 ### 📜 AppleScript
 
