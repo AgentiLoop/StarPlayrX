@@ -25,8 +25,15 @@ final class MenuController: NSObject, ObservableObject {
 
     func install() {
         _ = panel
-        statusItem.button?.target = self
-        statusItem.button?.action = #selector(statusItemClicked)
+        if #available(macOS 27, *) {
+            // AppKit tracks the panel as this item's "expanded interface": it draws the real system
+            // highlight capsule for as long as the session lasts, and toggles it on click itself.
+            // Per the header, this replaces target/action for showing the interface.
+            statusItem.expandedInterfaceDelegate = self
+        } else {
+            statusItem.button?.target = self
+            statusItem.button?.action = #selector(statusItemClicked)
+        }
         playing = Radio.shared.$isPlaying.sink { [weak self] on in
             self?.statusItem.button?.image = NSImage(systemSymbolName: on ? "dot.radiowaves.left.and.right" : "radio",
                                                       accessibilityDescription: "StarPlayrX")
@@ -36,6 +43,11 @@ final class MenuController: NSObject, ObservableObject {
     /// Icon click: open under the menu bar, close if open there, or move a torn-off panel back under it.
     @objc func statusItemClicked() {
         if panel.isVisible && !detached { hide(); return }
+        showUnderMenuBar()
+    }
+
+    /// Puts the panel under the menu bar — gliding it back first if it was torn off.
+    private func showUnderMenuBar() {
         // Shaded and torn off: glide back still rolled up, then unroll once in place.
         let unshade = panel.isVisible && detached && shaded
         if !unshade {
@@ -43,6 +55,7 @@ final class MenuController: NSObject, ObservableObject {
             shaded = false
         }
         if let button = statusItem.button?.window?.frame {
+
             let screen = statusItem.button?.window?.screen?.visibleFrame ?? .infinite
             let x = min(button.minX, screen.maxX - panel.frame.width)
             let top = NSPoint(x: x, y: button.minY - 4)
@@ -99,6 +112,7 @@ final class MenuController: NSObject, ObservableObject {
         detached = true
         light(false)
         removeOutsideClick()
+        endSession()
     }
 
     func hide() {
@@ -109,13 +123,23 @@ final class MenuController: NSObject, ObservableObject {
         shaded = false
         light(false)
         removeOutsideClick()
+        endSession()
     }
 
-    /// The lit menu bar icon. Neither `NSStatusBarButton.highlight(_:)` nor its `state` sticks:
-    /// AppKit resets the button when the click it was set during ends (only a status item showing
-    /// an NSMenu keeps it). So the selection is painted as the button's layer background instead —
-    /// behind the icon, across the whole button, and under our control.
+    /// Tells AppKit the expanded interface is gone, so it drops the highlight. A no-op when no
+    /// session is running — including inside `statusItemDidEndExpandedInterfaceSession`, where
+    /// AppKit has already cleared it, so the hide this triggers can't come back round.
+    private func endSession() {
+        if #available(macOS 27, *) { statusItem.expandedInterfaceSession?.cancel() }
+    }
+
+    /// The lit menu bar icon. On macOS 27 AppKit draws the real system capsule itself for as long as
+    /// the expanded interface session lasts, so there is nothing to paint. Before that there is no
+    /// way to hold a status button lit — neither `NSStatusBarButton.highlight(_:)` nor its `state`
+    /// sticks past the click that set it — so the selection is painted as the button's layer
+    /// background instead.
     private func light(_ on: Bool) {
+        if #available(macOS 27, *) { return }
         guard let button = statusItem.button else { return }
         button.wantsLayer = true
         button.layer?.cornerRadius = 6
@@ -124,6 +148,7 @@ final class MenuController: NSObject, ObservableObject {
             button.layer?.backgroundColor = on ? NSColor.labelColor.withAlphaComponent(0.2).cgColor : nil
         }
     }
+
 
     private func removeOutsideClick() {
         if let outsideClick { NSEvent.removeMonitor(outsideClick) }
@@ -269,6 +294,23 @@ final class MenuController: NSObject, ObservableObject {
         scrollOffset = top - (clip - h) / 2
     }
 }
+
+/// macOS 27: AppKit owns the show/hide of a status item's "expanded interface" (our panel), and in
+/// return lights the icon with the genuine system highlight capsule and keeps keyboard navigation
+/// and menu tracking working. We only open and close the panel when told to.
+@available(macOS 27, *)
+extension MenuController: @preconcurrency NSStatusItemExpandedInterfaceDelegate {
+    func statusItem(_ statusItem: NSStatusItem, didBegin session: NSStatusItemExpandedInterfaceSession) {
+        showUnderMenuBar()
+    }
+
+    func statusItemDidEndExpandedInterfaceSession(_ statusItem: NSStatusItem, animated: Bool) {
+        // Torn off, it is no longer the icon's interface: it stays put and only the highlight ends.
+        guard panel.isVisible, !detached else { return }
+        hide()
+    }
+}
+
 
 /// Borderless panel with the translucent menu look, rounded corners and shadow.
 final class MenuPanel: NSPanel {
