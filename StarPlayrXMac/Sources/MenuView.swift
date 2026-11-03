@@ -87,7 +87,9 @@ struct MenuView: View {
             }
             .padding(.top, 10)
             .frame(height: shaded ? 0 : nil, alignment: .top)
-            .clipped()
+            // Clip only vertically (for shading): the channel list reaches into the 12pt window padding,
+            // and a plain .clipped() cut the playing row's squircle off at the content edges.
+            .mask { Rectangle().padding(.horizontal, -12) }
             .opacity(shaded ? 0 : 1)
             .allowsHitTesting(!shaded)
             .accessibilityHidden(shaded)
