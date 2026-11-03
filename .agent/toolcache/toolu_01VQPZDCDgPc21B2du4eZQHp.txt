@@ -1,6 +1,0 @@
-                        }
-                    }
-                    .overlay { if bubbleStrength > 0 { LavaBubbles(rise: viz.rise[i], seed: Double(i), color: light ? .black.opacity(0.7) : .white,   // dark bubbles at 70% strength, so they stay soft
-                                                  shade: Color(hue: h, saturation: 0.9, brightness: 1))   // the bar's pure colour, not contrast-darkened
-                        .opacity(bubbleStrength) } }
-                    .clipShape(RoundedRectangle(cornerRadius: 1.5))

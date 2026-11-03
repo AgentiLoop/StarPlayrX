@@ -1,5 +1,0 @@
-style.css:21:.glow { background: linear-gradient(90deg, var(--cyan), var(--blue) 25%, #7a5cff 50%, var(--blue) 75%, var(--cyan)); background-size: 200% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 0 22px #1e8bff88); animation: shimmer 6s linear infinite; }
-style.css:22:@keyframes shimmer { to { background-position: -200% 0; } }
-style.css:35:@keyframes float { 50% { transform: translateY(-14px); } }
-style.css:36:@keyframes pulse { 50% { transform: scale(1.08); opacity: .6; } }
-style.css:90:@media (prefers-reduced-motion: reduce) { *, .shot img, .ring, .glow { animation: none !important; } }

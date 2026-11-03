@@ -1,4 +1,0 @@
-166:    /// (seconds per frame, index of the first frame, frames). `emit` returns false to stop.
-221:            let top: Float = 372
-223:                let lo = Int(2 * pow(top / 2, Float(b) / Float(count)))
-224:                let hi = max(lo + 1, min(half, Int(2 * pow(top / 2, Float(b + 1) / Float(count)))))

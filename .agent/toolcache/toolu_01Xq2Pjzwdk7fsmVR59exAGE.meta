@@ -1,1 +1,0 @@
-{"tool":"user_shell","spilled":1793633236.1139941,"input":{"command":"sleep 12; pgrep -lf StarPlayrX; osascript -e 'tell application \"StarPlayrX\" to show menu' 2>&1; sleep 2; screencapture -x -R0,0,3000,1200 \/tmp\/sp1.png; sleep 0.5; screencapture -x -R0,0,3000,1200 \/tmp\/sp2.png; echo ok"}}

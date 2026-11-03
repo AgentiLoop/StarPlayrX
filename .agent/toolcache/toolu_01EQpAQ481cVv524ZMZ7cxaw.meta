@@ -1,1 +1,0 @@
-{"input":{"command":"cd \/Users\/toddbruss\/Documents\/GitHub\/StarPlayrX && grep -n \"port\" StarPlayrXMac\/Sources\/Radio.swift | head; lsof -iTCP -sTCP:LISTEN -n -P | grep -i starplay"},"tool":"user_shell","spilled":1793567875.1764622}

@@ -1,1 +1,0 @@
-{"tool":"batch","spilled":1793567875.1881762,"input":{"commands":"cd ~\/Documents\/GitHub\/starplayrx.com && git status --short | head && grep -n \"1\\.1\\.5\\|mac-1\\.1\" public\/index.html\ncd \/Users\/toddbruss\/Documents\/GitHub\/StarPlayrX && grep -n \"1\\.1\\.5\\|mac-1\\.1\" README.md"}}

@@ -1,1 +1,0 @@
-{"spilled":1793633236.1053319,"input":{"command":"cd \/Users\/toddbruss\/Documents\/GitHub\/StarPlayrX && git status --short | head; ls StarPlayrXMac; git -C . ls-files StarPlayrXMac | grep -i pbxproj; which xcodegen; sed -n 28,40p StarPlayrXMac\/Sources\/Info.plist"},"tool":"user_shell"}

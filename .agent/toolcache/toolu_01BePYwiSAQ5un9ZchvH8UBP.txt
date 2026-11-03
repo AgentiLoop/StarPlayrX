@@ -1,4 +1,0 @@
-1db668f checkpoint: now what's playing does not match PDT or what's playing a... — tool_outcomes.json, playlistRoute.swift, Global.swift +9 more
-ce58fd8 checkpoint: the PDT artist song data needs to be live / cirrect. if I... — Radio.swift, 559a33c6
-6ebecc5 checkpoint: we need to do all way can not half ass it — tool_outcomes.json, Radio.swift, Xtra.swift
-05d4fa3 checkpoint: if the now playing text overflows... scroll it horizintal... — tool_outcomes.json, MenuView.swift, toolu_016BMYd8KywLxkaR56wuf4c3.meta +1 more

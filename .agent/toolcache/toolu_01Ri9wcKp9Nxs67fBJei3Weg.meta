@@ -1,1 +1,0 @@
-{"tool":"user_shell","input":{"command":"cd \/Users\/toddbruss\/Documents\/GitHub\/StarPlayrX\/StarPlayrXMac\/Sources && grep -n \"bubble\\|Bubble\" *.swift; sed -n 54,60p Visualizer.swift; sed -n 186,215p Visualizer.swift"},"spilled":1793633236.163578}

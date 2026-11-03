@@ -1,8 +1,0 @@
-.agent/toolcache/toolu_016oeiDFYxh5apgrtXYZ9CJM.txt
-.agent/toolcache/toolu_017baBvzXSERk4N2Z7Jknk7e.txt
-.agent/toolcache/toolu_01E6pyQVoiwUkB46KdVT6rpg.txt
-.agent/toolcache/toolu_01UXGRW2xCiQrw23Y5sBFJkA.txt
-.agent/toolcache/toolu_01UTRnHienKdMLgjjhSg7dDh.txt
-134:    static func background(_ scheme: ColorScheme) -> Double { scheme == .dark ? 0.025 : 0.84 }
-180:        let bg = ContrastColor.background(scheme)
-190:                    .shadow(color: top.opacity(0.4 + 0.6 * viz.pulse), radius: 1 + 4 * viz.pulse)

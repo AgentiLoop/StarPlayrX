@@ -1,1 +1,0 @@
-{"input":{"command":"cd \/Users\/toddbruss\/Documents\/GitHub\/StarPlayrX && grep -rli \"glow\" .agent 2>\/dev\/null | head; grep -n \"shadow\\|ContrastColor.background\\|scheme ==\" StarPlayrXMac\/Sources\/Visualizer.swift"},"tool":"user_shell","spilled":1793633236.139647}

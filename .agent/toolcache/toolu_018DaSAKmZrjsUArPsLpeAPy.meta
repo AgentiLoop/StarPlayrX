@@ -1,1 +1,0 @@
-{"spilled":1793633236.2109308,"tool":"user_shell","input":{"command":"grep -E \"status: |Accepted|Invalid|source=|arm64|staple\" \/tmp\/spx-rel-118.log | head -12; perl -e 'alarm 10; exec @ARGV' -- osascript -e 'tell application \"StarPlayrX\" to park menu at upper right' >\/dev\/null 2>&1; true"}}

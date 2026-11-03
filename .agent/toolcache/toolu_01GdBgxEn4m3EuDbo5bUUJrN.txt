@@ -1,5 +1,0 @@
-25:    private var startSlot: Int?   // the segment slot playback started on, in the item's timeline
-54:        if channel != liveChannel { anchor = nil; startSlot = nil }
-106:        if startSlot == nil { startSlot = Int(time / Self.nominal) }
-107:        var slot = startSlot!
-146:        startSlot = nil

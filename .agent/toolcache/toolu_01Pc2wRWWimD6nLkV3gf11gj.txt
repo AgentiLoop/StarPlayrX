@@ -1,4 +1,0 @@
-200:                // A glow in the bar's own colour washes out on a light background; there it's the darkest shade
-214:                                                  shade: base) }
-243:    let shade: Color   // the bar's own colour, for the bubbles that cast a shadow
-270:                    ctx.fill(Path(ellipseIn: rect.offsetBy(dx: 1, dy: 1)), with: .color(shade.opacity(fade)))

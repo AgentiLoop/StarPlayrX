@@ -1,3 +1,0 @@
-Error: Could not open workspace at /Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrXMac/StarPlayrXMac.xcodeproj
-
-[error_code: build_failed] Fix the FIRST error listed (file:line) — later errors are often cascades. Don't start over.

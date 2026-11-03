@@ -1,1 +1,0 @@
-{"input":{"command":"cd \/Users\/toddbruss\/Documents\/GitHub\/StarPlayrX; sed -n 95,200p StarPlayrX\/StarPlayrX\/StarPlayrX\/StarPlayrX\/Model\/Player.swift; git show ce58fd8 --stat; git show ce58fd8 -- StarPlayrXMac\/Sources\/Radio.swift | head -60"},"spilled":1793567875.1789899,"tool":"user_shell"}

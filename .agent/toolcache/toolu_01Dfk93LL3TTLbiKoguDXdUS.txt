@@ -1,3 +1,0 @@
- M .agent/tool_outcomes.json
-cf5e1ec Mac EQ: click the bars to switch Bubbles / Soft Bubbles / No Bubbles with a chat-bubble label; defaults to Soft, saved in UserDefaults
-## mustang...origin/mustang [ahead 6]

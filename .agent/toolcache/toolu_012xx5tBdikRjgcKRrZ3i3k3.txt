@@ -1,8 +1,0 @@
-screenshot-mac-shade-bubbles.png
-screenshot-mac-shade-no-bubbles.png
-screenshot-mac-shade-soft-bubbles.png
-screenshot-mac-shade.png
-screenshot-mac-torn-off.png
-screenshot-mac.png
-## mustang...origin/mustang
-c57e770 README: Mac 1.1.8, new screenshots, lava-lamp bubbles and how to switch modes

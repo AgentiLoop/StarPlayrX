@@ -1,3 +1,0 @@
-/* inline-block + text-fill: Safari drops gradient (background-clip) text that wraps or gets repainted. */
-.glow { display: inline-block; -webkit-text-fill-color: transparent; background: linear-gradient(90deg, var(--cyan), var(--blue) 25%, #7a5cff 50%, var(--blue) 75%, var(--cyan)); background-size: 200% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 0 22px #1e8bff88); animation: shimmer 6s linear infinite; }
-Current Version ID: fa76a2ae-51dc-4926-b659-3282bec84c6f

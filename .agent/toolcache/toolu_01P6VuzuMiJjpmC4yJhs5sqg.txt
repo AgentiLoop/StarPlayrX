@@ -1,6 +1,0 @@
-zsh:1: no matches found: --include=*.md
-9f6e4f2 checkpoint: apply it. are we playing the 256K AAC or hirer? — tool_outcomes.json, Data.swift, audioRoute.swift +3 more
-dfb5246 checkpoint: if I single click here, scroll to that channel, if not al... — tool_outcomes.json, playlistRoute.swift, MenuView.swift +2 more
-f137c6e checkpoint: yes. also we are decoding it ahead of time so do it then — mac-release.md, tool_outcomes.json, audioRoute.swift +77 more
-2f22a6f memory: mac-1.1.7 release note
-fbc5021 Mac 1.1.7 (build 12): one live metadata source, start within 1 s of live, art look-ahead, scrolling row titles

@@ -1,6 +1,0 @@
-114:        <command name="drag menu" code="SPrxDrag" description="Drag the panel's header by {dx, dy} points (y down), like the mouse. Under the menu bar, more than 40 points tears it off; less snaps
-116-            <direct-parameter description="{dx, dy}">
-118-            </direct-parameter>
-212:        <command name="detach menu" code="SPrxDtch" description="Tear the panel off the menu bar (it stays where it is).">
-true, -340, 34
-1771 -340 34 340 575

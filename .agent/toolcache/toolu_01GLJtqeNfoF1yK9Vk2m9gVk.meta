@@ -1,1 +1,0 @@
-{"input":{"command":"cd \/Users\/toddbruss\/Documents\/GitHub\/StarPlayrX\/StarPlayrRadioKit\/Sources\/StarPlayrRadioKit; grep -n \"public var\\|^var\\|public func startServer\" Setup\/Global.swift Routes\/XserverRoutes.swift | head -20; grep -rn \"usePrime\" --include=*.swift . | head -3"},"tool":"user_shell","spilled":1793567875.1794271}

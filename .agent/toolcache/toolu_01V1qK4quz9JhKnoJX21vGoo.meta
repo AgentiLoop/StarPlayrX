@@ -1,1 +1,0 @@
-{"input":{"command":"cd \/Users\/toddbruss\/Documents\/GitHub\/StarPlayrX && ls; grep -rIl --exclude-dir=.git -E \"AVPlayer|m3u8\" . | head -30"},"spilled":1793567875.174063,"tool":"user_shell"}

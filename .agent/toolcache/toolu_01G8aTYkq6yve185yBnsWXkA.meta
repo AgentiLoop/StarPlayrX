@@ -1,1 +1,0 @@
-{"input":{"command":"cd \/Users\/toddbruss\/Documents\/GitHub\/StarPlayrX && grep -rnE \"ProcessTap|CATap|AudioTap|AVPlayer|AVAudioEngine|AudioCapture|installTap\" --include='*.swift' --include='*.plist' --include='*.yml' . | grep -v \"\/.build\/\" | head -40"},"spilled":1793633236.097173,"tool":"user_shell"}

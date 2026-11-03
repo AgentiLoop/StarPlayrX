@@ -1,7 +1,0 @@
-56:    <h2>New in 1.1.5. <span class="glow">Tear it off. Roll it up.</span></h2>
-77:    <h2>New in 1.1.8. <span class="glow">Lava-lamp bubbles.</span></h2>
-84:    <h3 class="how-title">How it works: <span class="glow">click the bars.</span></h3>
-89:    <h2>Small app. <span class="glow">Big sound.</span></h2>
-101:    <h2>Open source. <span class="glow">Build it yourself.</span></h2>
-109:    <h2>Releases. <span class="glow">Always the latest.</span></h2>
-20:h2 { font-size: clamp(32px, 4vw, 54px); font-weight: 800; letter-spacing: -1px; color: #fff; text-align: center; margin-bottom: 48px; }

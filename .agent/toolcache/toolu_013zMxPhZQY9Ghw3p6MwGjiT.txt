@@ -1,8 +1,0 @@
-        .animation(.linear(duration: 0.05), value: viz.levels)
-        .onAppear { viz.start() }
-        .onDisappear { viz.stop() }
-    }
-}
-
-
-⚠️ You've edited 3 times without building. Run xc(action:"build") now to catch errors early.

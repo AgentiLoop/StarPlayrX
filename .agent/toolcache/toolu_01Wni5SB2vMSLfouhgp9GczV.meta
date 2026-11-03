@@ -1,1 +1,0 @@
-{"spilled":1793633236.1950431,"tool":"user_shell","input":{"command":"cd \/Users\/toddbruss\/Documents\/GitHub\/StarPlayrX\/StarPlayrXMac\/Sources && sed -n 25,50p MenuView.swift; grep -n \"clipped\\|clipShape\\|masksToBounds\" MenuView.swift | head; grep -n \"struct ChatBubble\" -A22 Visualizer.swift"}}

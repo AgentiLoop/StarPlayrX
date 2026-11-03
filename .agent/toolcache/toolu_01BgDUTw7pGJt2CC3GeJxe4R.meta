@@ -1,1 +1,0 @@
-{"tool":"user_shell","input":{"command":"cd \/Users\/toddbruss\/Documents\/GitHub\/StarPlayrX && ls StarPlayrRadioKit\/Sources\/StarPlayrRadioKit\/* StarPlayrXMac\/Sources && grep -rniE \"decrypt|decode|AudioConverter|AVAudioFile|ExtAudio|prefetch|ahead\" StarPlayrRadioKit\/Sources StarPlayrXMac\/Sources | head -60"},"spilled":1793633236.0988579}

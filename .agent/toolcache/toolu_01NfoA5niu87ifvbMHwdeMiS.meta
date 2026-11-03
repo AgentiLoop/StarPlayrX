@@ -1,1 +1,0 @@
-{"tool":"user_shell","spilled":1793633236.159411,"input":{"command":"cd \/Users\/toddbruss\/Documents\/GitHub\/StarPlayrX && git status --short | grep -v \"^?? .agent\/toolcache\" ; git tag --sort=-creatordate | head -5; git log --oneline -3; git branch --show-current; git status -sb | head -1"}}

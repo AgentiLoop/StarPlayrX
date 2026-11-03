@@ -1,9 +1,0 @@
-Sources/Info.plist:	<key>CFBundleShortVersionString</key>
-Sources/Info.plist-	<string>1.1.8</string>
-Sources/Info.plist:	<key>CFBundleVersion</key>
-Sources/Info.plist-	<string>13</string>
-project.yml:        CFBundleShortVersionString: "1.1.8"
-project.yml:        CFBundleVersion: "13"
-project.yml-        LSUIElement: true
-Created project at /Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrXMac/StarPlayrXMac.xcodeproj
-## mustang...origin/mustang

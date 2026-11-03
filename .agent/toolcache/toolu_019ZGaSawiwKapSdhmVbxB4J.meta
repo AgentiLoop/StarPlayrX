@@ -1,1 +1,0 @@
-{"input":{"command":"cd \/Users\/toddbruss\/Documents\/GitHub\/StarPlayrX && gh release view mac-1.1.7 --json body,assets,name -q '.name, .body, (.assets[].name)'; ls ~\/Library\/Developer\/Xcode\/DerivedData | grep StarPlayr"},"spilled":1793633236.2041659,"tool":"user_shell"}

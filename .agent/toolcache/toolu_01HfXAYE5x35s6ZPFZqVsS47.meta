@@ -1,1 +1,0 @@
-{"input":{"command":"cd \/Users\/toddbruss\/Documents\/GitHub\/StarPlayrX && ls .agent\/memory; cat .agent\/memory\/lookaround-timing.md 2>\/dev\/null; git show 52ddd96 --stat | tail -5; git show 52ddd96 -- StarPlayrXMac\/Sources\/Radio.swift StarPlayrXMac\/Sources\/Xtra.swift | grep '^[+-]' | head -60"},"tool":"user_shell","spilled":1793633236.150183}

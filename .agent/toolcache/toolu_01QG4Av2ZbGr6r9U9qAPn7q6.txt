@@ -1,3 +1,0 @@
-214:    /// livePointIntervalMs 60000): the web player refetches the feed every 45 s; we do every 20 s. The music reaches the
-217:        if Date().timeIntervalSince(lookAroundFetched) > 20 {
-353:        pdtTimer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { _ in

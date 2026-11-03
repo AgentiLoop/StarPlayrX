@@ -1,6 +1,0 @@
-7:/// and adds the colour, glow and blob motion.
-16:    /// Bass kick above its recent average, 0...1: drives the glow and blob pulse.
-174:/// for contrast against the panel. Kicks also make the bars glow and a soft blob swell behind.
-193:                // A glow in the bar's own colour washes out on a light panel; there it's a deeper shade instead.
-194:                let glow = bg < 0.5 ? top : ContrastColor.color(hue: hue(h + 0.06 + 0.1 * level), saturation: 0.9, against: bg, minRatio: 8)
-204:                    .shadow(color: glow.opacity(0.4 + 0.6 * viz.pulse), radius: 1 + 4 * viz.pulse)

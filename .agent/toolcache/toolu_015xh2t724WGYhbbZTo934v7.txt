@@ -1,3 +1,0 @@
-d57d941 checkpoint: try all three but separate commits — tool_outcomes.json, Visualizer.swift
-701bcc5 checkpoint: try all three but separate commits — tool_outcomes.json, Visualizer.swift
-539aa23 checkpoint: try all three but separate commits — tool_outcomes.json, Visualizer.swift

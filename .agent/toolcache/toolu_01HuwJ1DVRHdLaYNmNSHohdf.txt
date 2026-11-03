@@ -1,9 +1,0 @@
-✅ BUILD SUCCEEDED
-/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrXMac/Sources/Radio.swift:581:80 [Warning] 'value' was deprecated in macOS 13.0: Use load(.value) instead
-```swift
-581	            let items = g.items.map { "\($0.identifier?.rawValue ?? "?")=\(($0.value as? Data).map { $0.map { String(format: "%02x", $0) }.joined() } ?? "\($0.value ?? "nil" as NSString)")" }
-```
-/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrXMac/Sources/Radio.swift:581:160 [Warning] 'value' was deprecated in macOS 13.0: Use load(.value) instead
-```swift
-581	            let items = g.items.map { "\($0.identifier?.rawValue ?? "?")=\(($0.value as? Data).map { $0.map { String(format: "%02x", $0) }.joined() } ?? "\($0.value ?? "nil" as NSString)")" }
-```

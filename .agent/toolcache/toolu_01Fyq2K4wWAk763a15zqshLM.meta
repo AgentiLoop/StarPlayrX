@@ -1,1 +1,0 @@
-{"spilled":1793633236.1372161,"tool":"safari","input":{"action":"execute_js","script":"JSON.stringify({url: location.href, title: document.title, m3u8: performance.getEntriesByType('resource').map(e=>e.name).filter(n=>\/m3u8|\\.aac|\\.m4s|playback\/i.test(n)).slice(0,20)})"}}

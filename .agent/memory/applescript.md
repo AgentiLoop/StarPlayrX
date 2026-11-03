@@ -1,8 +1,0 @@
-# StarPlayrXMac AppleScript (2026-10-31)
-- Sdef: StarPlayrXMac/Sources/StarPlayrX.sdef; impl: Sources/Scripting.swift (AppDelegate KVC keys sp*, one SPXCommand class dispatched by command name; async commands use suspendExecution/resumeExecution).
-- Add files → run `xcodegen generate` in StarPlayrXMac, then `git checkout` the xcscheme (xcodegen rewrites it).
-- Test Xtra shown-vs-played: `tell application id "com.starplayrx.mac" to test channel "1000" waiting up to 60` → "MATCH\t1000\tshown\tplayed". Loop over `xtra channel numbers` inside `with timeout of 120 seconds`.
-- Readiness (since deee1e6): channel commands wait for SPXCommand.isReady (isLoggedIn && Radio.channelsLoaded && !isBusy), else suspend up to 60 s; play channel/resume/select wait for Radio.audioStarted + playingNow + PDT. When already ready they answer synchronously (keeps unit tests sync). Tests must set channelsLoaded = true.
-- Unit tests: target StarPlayrXMacTests (StarPlayrXMac/Tests, hosted by the app; app skips auto sign-in under XCTest). Run: `xcodebuild test -project StarPlayrXMac/StarPlayrXMac.xcodeproj -scheme StarPlayrXMac -destination platform=macOS` (~20 s, 23 tests). Scheme now has testTargets — keep xcscheme changes from xcodegen that add the testable.
-- Live tour: `osascript StarPlayrXMac/Tests/ScriptedTour.applescript` (needs signed-in running app) → ok/FAIL lines. AppleScript gotchas: `before` is reserved; `item 1 of <app list property>` needs the list put in a variable first.
-- Launch the Debug build by running the binary directly (nohup …/Contents/MacOS/StarPlayrX &); `open` on it gave -609.

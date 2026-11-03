@@ -1,1 +1,0 @@
-{"data":{"app":"com.starplayrx.mac","count":1,"windows":[{"bounds":{"height":575,"width":340,"x":-340,"y":34},"ownerName":"StarPlayrX","ownerPID":5218,"role":"AXWindow","windowName":""}]},"success":true}

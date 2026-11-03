@@ -1,1 +1,0 @@
-{"tool":"user_shell","input":{"command":"cd \/Users\/toddbruss\/Documents\/GitHub\/StarPlayrX && git log --oneline -5 -- StarPlayrRadioKit\/Sources\/StarPlayrRadioKit\/Routes\/playlistRoute.swift; git log -1 --format='%h %ad %s' ; git show HEAD --stat | head"},"spilled":1793633236.1316659}

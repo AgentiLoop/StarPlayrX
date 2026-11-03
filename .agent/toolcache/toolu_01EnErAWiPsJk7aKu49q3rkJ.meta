@@ -1,1 +1,0 @@
-{"spilled":1793633236.2301579,"tool":"user_shell","input":{"command":"cd ~\/Documents\/GitHub\/starplayrx.com\/public && grep -n \"<h2\\|<h3 class\" index.html; grep -n \"^h2\\|h2 {\\|h2,\\|\\.showcase h2\\|\\.bubbles\" style.css"}}

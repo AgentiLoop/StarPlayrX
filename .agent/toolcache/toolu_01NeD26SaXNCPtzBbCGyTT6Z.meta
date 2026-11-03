@@ -1,1 +1,0 @@
-{"spilled":1793633236.2250371,"tool":"user_shell","input":{"command":"S() { perl -e 'alarm 40; exec @ARGV' -- osascript -e \"tell application \\\"StarPlayrX\\\" to $1\"; }; S 'toggle shade' >\/dev\/null; cd ~\/Documents\/GitHub\/starplayrx.com && sed -n 30,60p public\/style.css; grep -n \"@media\" public\/style.css | head"}}

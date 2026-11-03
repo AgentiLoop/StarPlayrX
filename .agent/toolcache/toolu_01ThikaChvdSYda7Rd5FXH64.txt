@@ -1,3 +1,0 @@
-Wrote 199 lines to /Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrXMac/Sources/SpectrumTimeline.swift
-
-⚠️ You've edited 3 times without building. Run xc(action:"build") now to catch errors early.

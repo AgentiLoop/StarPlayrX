@@ -1,1 +1,0 @@
-{"spilled":1793633236.199913,"input":{"command":"cd \/Users\/toddbruss\/Documents\/GitHub\/StarPlayrX\/StarPlayrXMac\/Sources && grep -n \"onTapGesture\" -B2 -A5 Visualizer.swift; grep -n \"bubbleStage\\b\\|@State\" Visualizer.swift | head"},"tool":"user_shell"}

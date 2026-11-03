@@ -1,4 +1,0 @@
-13:- **The equalizer now works on macOS 13 Ventura and later.** It used to need macOS 14.2 or later
-40:- macOS 13 Ventura or later
-## mustang...origin/mustang
-50:- **Lava-lamp color equalizer:** 60 fps bars worked out from the audio as it's decoded, before it plays, so they stay in step with the music and need no "record system audio" permission. Works on macOS 13 Ventura and later (it used to need macOS 14.2). Drifting colors, a glow that pulses on the beat, and a darker glow on light backgrounds

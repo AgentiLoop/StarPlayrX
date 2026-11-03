@@ -1,1 +1,0 @@
-{"tool":"batch","spilled":1793567875.1840692,"input":{"commands":"cd \/Users\/toddbruss\/Documents\/GitHub\/StarPlayrX; cat .agent\/memory\/mac-release.md; gh release view mac-1.1.5 --json body,assets -q '.body, (.assets[].name)'; git log --oneline mac-1.1.5..HEAD; git branch -a | head; git status --short | head"}}

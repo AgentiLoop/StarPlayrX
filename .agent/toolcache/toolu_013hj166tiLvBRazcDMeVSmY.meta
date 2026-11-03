@@ -1,1 +1,0 @@
-{"input":{"command":"cd \/Users\/toddbruss\/Documents\/GitHub\/StarPlayrX; git diff mac-1.1.5..HEAD -- StarPlayrXMac\/Sources\/MenuView.swift StarPlayrRadioKit\/Sources\/StarPlayrRadioKit\/Login\/Login.swift | grep \"^[+-]\" | grep -v \"^+++\\|^---\" | head -70"},"spilled":1793567875.1850538,"tool":"user_shell"}

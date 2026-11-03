@@ -1,1 +1,0 @@
-{"tool":"user_shell","spilled":1793633236.22258,"input":{"command":"cd ~\/Documents\/GitHub\/starplayrx.com && sed -n 55,86p public\/index.html; grep -n \"showcase\\|\\.shots\\|figure\\|figcaption\\|\\.side\\|\\.how\\|\\.pill\" public\/style.css | head -40"}}
