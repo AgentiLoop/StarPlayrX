@@ -105,6 +105,18 @@ final class LogicTests: XCTestCase {
         XCTAssertFalse(LyricsPane.isAdLib("I missed you in the basement"))
     }
 
+    func testSearchDropsTheBracketsLiveTitlesCarry() {
+        // The live channels tag titles with a decade; LRCLIB has no record under that name.
+        XCTAssertEqual(LyricsStore.withoutParentheses("Break Free (14)"), "Break Free")
+        XCTAssertEqual(LyricsStore.withoutParentheses("All She Wants To Do Is Dance (85)"), "All She Wants To Do Is Dance")
+        XCTAssertEqual(LyricsStore.withoutParentheses("Gold [Radio Edit]"), "Gold")
+        XCTAssertEqual(LyricsStore.withoutParentheses("I'm Good (Blue) (22)"), "I'm Good")
+        // Nothing to drop.
+        XCTAssertEqual(LyricsStore.withoutParentheses("Mrs. Robinson"), "Mrs. Robinson")
+        // Nothing but brackets: keep it, or there's nothing left to search for.
+        XCTAssertEqual(LyricsStore.withoutParentheses("(14)"), "(14)")
+    }
+
     func testCurrentLineIsTheLastStampThatPassed() {
         let lyrics = Lyrics(artist: "a", song: "b", lines: [
             LyricLine(id: 0, at: 10, text: "one"),
@@ -113,7 +125,8 @@ final class LogicTests: XCTestCase {
         XCTAssertNil(LyricsPane.line(of: lyrics, at: 9.9))
         XCTAssertEqual(LyricsPane.line(of: lyrics, at: 10), 0)
         XCTAssertEqual(LyricsPane.line(of: lyrics, at: 29.9), 1)
-        XCTAssertEqual(LyricsPane.line(of: lyrics, at: 400), 2)
+        XCTAssertEqual(LyricsPane.line(of: lyrics, at: 55), 2)       // still within 30 s of the last line
+        XCTAssertNil(LyricsPane.line(of: lyrics, at: 400))          // long past it: nothing
         // Unsynced lyrics never highlight.
         XCTAssertNil(LyricsPane.line(of: Lyrics(artist: "a", song: "b", lines: lyrics.lines, synced: false), at: 15))
     }
