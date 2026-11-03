@@ -21,7 +21,7 @@ StarPlayrX was built for visually impaired listeners, a group of paying subscrib
 ## 🎛️ StarPlayrX for Mac (menu bar app)
 
 <p align="center">
-  <img src="docs/starplayrx-mac-demo.gif" width="400" alt="StarPlayrX playing 90s on 9: click the menu bar icon, drag the panel off the menu bar into its own window, double-click the header to roll it up like a window shade and again to roll it down, then click the icon to glide it back under the menu bar">
+  <img src="docs/starplayrx-mac-demo.gif" width="400" alt="StarPlayrX playing BPM Workout: click the menu bar icon, drag the panel off the menu bar into its own window, double-click the header to roll it up like a window shade and again to roll it down, then click the icon to glide it back under the menu bar">
 </p>
 
 <table align="center">
@@ -73,7 +73,7 @@ StarPlayrX was built for visually impaired listeners, a group of paying subscrib
 - Shows what's playing on the current channel and every channel in the list, with album art that stays put for the whole song
 - **Now Playing matches what you hear:** on live channels the song shown is held back by how far the audio runs behind the live feed, so it changes when the song you hear changes. The channel list's song info refreshes 3 times a minute. Long titles scroll instead of getting cut off
 - Xtra channels (1000+), searchable with "xtra" or "music"; tuning in plays the song the list shows
-- **One API, no local server:** every channel, live and Xtra, comes from the same current SiriusXM API the web player uses, so live channels tune in well under a second
+- **Modern API, no local server:** every channel, live and Xtra, comes from one modern API; live audio plays straight from the stream (better sound, fewer things to troubleshoot) and tunes in well under a second
 - Play/pause from the keyboard media keys and Control Center, with the album art or channel art showing there too
 - Picks up where you left off: the last channel you played starts again when StarPlayrX opens
 - US and Canada accounts (pick Canada on the sign-in screen)
@@ -81,7 +81,7 @@ StarPlayrX was built for visually impaired listeners, a group of paying subscrib
 
 **Requirements:** macOS 13 Ventura or later, Apple Silicon or Intel, and an active SiriusXM subscription.
 
-**Download:** [StarPlayrX for Mac 1.1.14](https://github.com/AgentiLoop/StarPlayrX/releases/tag/mac-1.1.14) (signed and notarized). All builds are on the [Releases](https://github.com/AgentiLoop/StarPlayrX/releases) page.
+**Download:** [StarPlayrX for Mac 1.1.15](https://github.com/AgentiLoop/StarPlayrX/releases/tag/mac-1.1.15) (signed and notarized). All builds are on the [Releases](https://github.com/AgentiLoop/StarPlayrX/releases) page.
 
 ### 📜 AppleScript
 
@@ -102,17 +102,17 @@ end tell
 
 Every property and command is in the StarPlayrX dictionary (open the app in Script Editor): sign-in state, channels (numbers, names, categories, logos, Xtra or live), what each channel shows and plays, the panel (show, hide, tear off, reattach, park, shade, drag, search, scroll), the equalizer's bubble mode, and show-art per channel.
 
-### 🔌 How it talks to SiriusXM
+### 🔌 Modern API
 
-StarPlayrX for Mac uses only SiriusXM's current API (`api.edge-gateway.siriusxm.com`), the one the [SiriusXM web player](https://www.siriusxm.com/player/home) uses. Sign-in is a short chain (register a device → anonymous session → password → authenticated session) that yields a bearer token. Channels come from the same "All channels" grouping the web player shows, and a channel is tuned with one `tuneSource` call that returns signed HLS URLs. Xtra channels are played track by track (each track is an encrypted clip with its own key); live channels are an ordinary AES-128 HLS stream with about five hours of rewind.
+As of 1.1.15, StarPlayrX for Mac runs entirely on the Modern API: one sign-in, one channel list (live and Xtra), one way to play. The legacy player path (`StarPlayrRadioKit`, its embedded HTTP server and the playlist rewriting it did) is gone, about 3,500 lines of it. Live audio now reaches the player straight from the signed HLS stream instead of through a local proxy, so it sounds the way the source does, tunes in well under a second, and there is a lot less to go wrong (no local port, no server to restart, no second sign-in).
 
-For live channels the playlists and the key request go through the app (`LiveLoader`), because the key endpoint needs the bearer token and answers JSON rather than raw key bytes; the audio segments themselves are plain signed URLs the player fetches directly. The newest segments are also fetched and decoded in the background to drive the equalizer. Live channels tune in well under a second.
+Sign-in is a short chain (register a device → anonymous session → password → authenticated session) that yields a bearer token. A channel is tuned with one call that returns signed HLS URLs. Xtra channels are played track by track (each track is an encrypted clip with its own key); live channels are an ordinary AES-128 HLS stream with about five hours of rewind. For live channels the playlists and the key request go through the app (`LiveLoader`), because the key endpoint needs the bearer token; the audio segments themselves are plain signed URLs the player fetches directly. The newest segments are also decoded in the background to drive the equalizer.
 
-**Canada:** the Canadian web player ([can.siriusxm.com](https://can.siriusxm.com/player/home)) is the same app on the same API; which channels you get is decided by your account. The Canada checkbox on the sign-in screen only switches the request locale to `en-CA`, as that player does.
+**Canada:** the same API serves both countries; which channels you get is decided by your account. The Canada checkbox on the sign-in screen switches the request locale to `en-CA`.
 
-Your username and password are kept only in the macOS Keychain, and what's-playing info for every live channel comes from the API's unauthenticated "look around" feed.
+Your username and password are kept only in the macOS Keychain, and what's-playing info for every live channel comes from an unauthenticated "look around" feed.
 
-The last version with the old `player.siriusxm.com` path (`StarPlayrRadioKit` and its local HTTP server) is tagged [`legacy-api`](https://github.com/AgentiLoop/StarPlayrX/tree/legacy-api).
+The last version with the legacy path is tagged [`legacy-api`](https://github.com/AgentiLoop/StarPlayrX/tree/legacy-api).
 
 ## 🛠️ Building
 
