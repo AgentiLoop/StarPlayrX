@@ -460,8 +460,7 @@ struct LyricsPane: View {
     @EnvironmentObject var radio: Radio
     @ObservedObject private var menu = MenuController.shared
     @ObservedObject private var store = LyricsStore.shared
-    @State private var tipLine: Int?
-    @State private var tipTask: Task<Void, Never>?
+
 
     /// The song the pane is about: what's coming out of the speakers, else what the row shows.
     private var showing: NowPlaying? {
@@ -533,28 +532,7 @@ struct LyricsPane: View {
                                         // from it. Only means anything on timed lyrics.
                                         .contentShape(Rectangle())
                                         .onTapGesture { pin(line, in: lyrics, at: at) }
-                                        // A system .help tooltip can't be timed, so this one is drawn here
-                                        // and goes away 3 seconds after it appears.
-                                        .onHover { inside in
-                                            tipTask?.cancel()
-                                            guard inside, lyrics.synced else { tipLine = nil; return }
-                                            tipTask = Task { @MainActor in
-                                                try? await Task.sleep(nanoseconds: 700_000_000)
-                                                guard !Task.isCancelled else { return }
-                                                tipLine = line.id
-                                                try? await Task.sleep(nanoseconds: 3_000_000_000)
-                                                guard !Task.isCancelled else { return }
-                                                tipLine = nil
-                                            }
-                                        }
-                                        .overlay {
-                                            if tipLine == line.id {
-                                                Text("Click the line being sung to sync the lyrics")
-                                                    .font(.caption).padding(5)
-                                                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 4))
-                                                    .fixedSize().allowsHitTesting(false)
-                                            }
-                                        }
+
                                         .id(line.id)
                                 }
 
