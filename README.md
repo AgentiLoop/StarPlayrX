@@ -84,8 +84,6 @@ StarPlayrX was built for visually impaired listeners, a group of paying subscrib
 
 **Download:** [StarPlayrX for Mac 1.1.14](https://github.com/AgentiLoop/StarPlayrX/releases/tag/mac-1.1.14) (signed and notarized). All builds are on the [Releases](https://github.com/AgentiLoop/StarPlayrX/releases) page.
 
-> **Updating to 1.1.9?** Sign in once more after updating. Your login moves to a new, protected keychain that stops the repeated Mac password prompts, so StarPlayrX asks for your SiriusXM email and password one time.
-
 ### 📜 AppleScript
 
 ```applescript
