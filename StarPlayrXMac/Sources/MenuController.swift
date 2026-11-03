@@ -9,6 +9,9 @@
 
 import SwiftUI
 import Combine
+import os
+
+let menuLog = Logger(subsystem: "com.starplayrx.mac", category: "menu")
 
 /// Owns the menu bar item and the one panel used both under the menu bar and torn off.
 @MainActor
@@ -59,6 +62,7 @@ final class MenuController: NSObject, ObservableObject {
 
     /// Puts the panel under the menu bar — gliding it back first if it was torn off.
     private func showUnderMenuBar() {
+        menuLog.log("show visible=\(self.panel.isVisible) detached=\(self.detached)")
         // Shaded and torn off: glide back still rolled up, then unroll once in place.
         let unshade = panel.isVisible && detached && shaded
         if !unshade {
@@ -132,6 +136,7 @@ final class MenuController: NSObject, ObservableObject {
     }
 
     func hide() {
+        menuLog.log("hide visible=\(self.panel.isVisible)")
         glide?.invalidate()
         glide = nil
         panel.orderOut(nil)
@@ -302,6 +307,7 @@ final class MenuController: NSObject, ObservableObject {
 @available(macOS 27, *)
 extension MenuController: @preconcurrency NSStatusItemExpandedInterfaceDelegate {
     func statusItem(_ statusItem: NSStatusItem, didBegin session: NSStatusItemExpandedInterfaceSession) {
+        menuLog.log("didBegin visible=\(self.panel.isVisible) detached=\(self.detached) sinceEnd=\(CACurrentMediaTime() - self.lastSessionEnd)")
         // A click on the icon while the panel is under the menu bar means close, not open. AppKit
         // starts a fresh session for that click either way: sometimes without ending the old one,
         // sometimes right after ending it (which already hid the panel below). Both have to end
@@ -319,6 +325,7 @@ extension MenuController: @preconcurrency NSStatusItemExpandedInterfaceDelegate 
     }
 
     func statusItemDidEndExpandedInterfaceSession(_ statusItem: NSStatusItem, animated: Bool) {
+        menuLog.log("didEnd visible=\(self.panel.isVisible) detached=\(self.detached) animated=\(animated)")
         // Torn off, it is no longer the icon's interface: it stays put and only the highlight ends.
         guard panel.isVisible, !detached else { return }
         lastSessionEnd = CACurrentMediaTime()
