@@ -49,7 +49,6 @@ struct SpectrumView: View {
                 // Names the new stage in a chat bubble whose pointer tip is on the mouse.
                 BubblePopup.shared.show(["Bubbles", "Soft Bubbles", "No Bubbles"][bubbleStage], at: NSEvent.mouseLocation)
             }
-            .help(["Bubbles", "Soft Bubbles", "No Bubbles"][bubbleStage % 3])
             // One element with a name: without it VoiceOver lands on an unlabeled Metal view.
             .accessibilityElement()
             .accessibilityAddTraits(.isButton)

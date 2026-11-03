@@ -62,7 +62,6 @@ struct MenuView: View {
                     .accessibilityLabel("Now Playing")
                     .accessibilityHint("Drag to tear off, double-click to roll up")
                     .modifier(PanelActions())
-                    .help("Drag to tear off (⌘T) · Double-click to roll up (⌘R)")
                 } else {
                     Text(radio.status).foregroundStyle(.secondary)
                     Button(radio.isBusy ? "Signing in…" : "Sign In…") {
