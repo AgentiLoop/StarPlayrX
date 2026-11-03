@@ -38,8 +38,13 @@ enum LyricAligner {
     /// Two peaks closer together than this are the same peak, not a rival.
     static let peakSpacing = 2.5
     /// A line's stamp and the moment it is actually sung are a few tenths apart (and LRC files are
-    /// typed by hand), so each point on the curve carries this much of its neighbours.
-    static let smoothing = 0.35
+    /// typed by hand), so a line counts as arriving if the music opens up anywhere inside this much
+    /// of the stamp. It is the width of the window either side that the arrival score compares.
+    static let arrival = 0.35
+    /// The curve is jagged at 11 ms a frame. This much of each point's neighbours takes that jitter
+    /// out without blunting the edge the arrival score is looking for — the slack for a hand-typed
+    /// stamp is `arrival`'s job, and a window has it without softening the moment it happens.
+    static let smoothing = 0.04
 
     struct Alignment: Equatable {
         /// Seconds to add to the position worked out from the cut's stamp.
@@ -74,6 +79,11 @@ enum LyricAligner {
         let offset = songStart.timeIntervalSince(onsets.start) / onsets.step
         let frames = lineTimes.map { offset + $0 / onsets.step }
         let curve = normalized(smoothed(onsets.values, radius: Int(smoothing / onsets.step)))
+        // Running totals, so comparing a window either side of a stamp costs four lookups whatever
+        // the window's width, instead of sixty adds per line per shift.
+        var sums = [Double](repeating: 0, count: curve.count + 1)
+        for i in 0..<curve.count { sums[i + 1] = sums[i] + Double(curve[i]) }
+        let window = max(1, Int(arrival / onsets.step))
 
         var scores = [(shift: Double, score: Double, lines: Int)]()
         var shift = search.lowerBound
@@ -85,8 +95,19 @@ enum LyricAligner {
             var last = -Double.infinity
             for (i, frame) in frames.enumerated() {
                 let index = Int((frame + delta).rounded())
-                guard index >= 0, index < curve.count else { continue }
-                total += Double(curve[index])
+                guard index - window >= 0, index + window <= curve.count else { continue }
+                // How much the music OPENS UP on the stamp, not how loud it is there: the window
+                // after the line starts, against the window before it. A busy bar now scores
+                // nothing unless the busyness ARRIVES on the stamp, which is what the start of a
+                // sung line is. This is the difference between landing on the line and landing
+                // near it: the level is just as high for half a second either side of the voice
+                // coming in, and half a second is the word or two the highlight was out by, while
+                // the rise is only at the frame it actually happens.
+                let before = sums[index] - sums[index - window]
+                let after = sums[index + window] - sums[index]
+                // Floored at nothing: a line that lands on a fade-out says nothing about the
+                // shift, and mustn't pay for the lines that did land on a voice.
+                total += max(0, (after - before) / Double(window))
                 counted += 1
                 first = min(first, lineTimes[i])
                 last = max(last, lineTimes[i])
@@ -98,7 +119,9 @@ enum LyricAligner {
             }
             shift += step
         }
-        guard scores.count > 2, let best = scores.max(by: { $0.score < $1.score }) else { return nil }
+        guard scores.count > 2,
+              let top = scores.indices.max(by: { scores[$0].score < scores[$1].score }) else { return nil }
+        let best = scores[top]
         let values = scores.map(\.score)
         let mean = values.reduce(0, +) / Double(values.count)
         let variance = values.reduce(0) { $0 + ($1 - mean) * ($1 - mean) } / Double(values.count)
@@ -109,7 +132,25 @@ enum LyricAligner {
         let rival = scores.filter { abs($0.shift - best.shift) >= peakSpacing }.map(\.score).max() ?? 0
         let margin = rival > 0 ? best.score / rival : .infinity
         guard confidence >= minimumConfidence, margin >= minimumMargin else { return nil }
-        return Alignment(shift: best.shift, confidence: confidence, margin: margin, lines: best.lines)
+        return Alignment(shift: refined(at: top, in: scores), confidence: confidence,
+                         margin: margin, lines: best.lines)
+    }
+
+    /// The search walks in `step`s, so on its own the winner is only right to within half a step.
+    /// The scores either side of it say where inside that step the peak really sits: three points
+    /// fix a parabola, and its top is the answer. Half a step is a syllable, so it is worth having.
+    static func refined(at top: Int, in scores: [(shift: Double, score: Double, lines: Int)]) -> Double {
+        let shift = scores[top].shift
+        // Only when the two neighbours really are one step either side — a shift whose lines fell
+        // outside the audio isn't in `scores` at all, so next in the array can be seconds away.
+        guard top > 0, top + 1 < scores.count,
+              abs(scores[top - 1].shift - shift + step) < step / 2,
+              abs(scores[top + 1].shift - shift - step) < step / 2 else { return shift }
+        let (low, peak, high) = (scores[top - 1].score, scores[top].score, scores[top + 1].score)
+        let curvature = low - 2 * peak + high
+        guard curvature < 0 else { return shift }
+        let delta = 0.5 * (low - high) / curvature
+        return abs(delta) <= 0.5 ? shift + delta * step : shift
     }
 
     /// A singer doesn't land on the exact millisecond of the stamp, and the curve is jagged at

@@ -30,8 +30,8 @@ final class MenuController: NSObject, ObservableObject {
         _ = panel
         if #available(macOS 27, *) {
             // AppKit tracks the panel as this item's "expanded interface": it draws the real system
-            // highlight capsule for as long as the session lasts, and toggles it on click itself.
-            // Per the header, this replaces target/action for showing the interface.
+            // highlight capsule for as long as the session lasts, and begins a session on each
+            // click. Per the header, this replaces target/action for showing the interface.
             statusItem.expandedInterfaceDelegate = self
         } else {
             statusItem.button?.target = self
@@ -309,7 +309,6 @@ extension MenuController: @preconcurrency NSStatusItemExpandedInterfaceDelegate 
         hide()
     }
 }
-
 
 /// Borderless panel with the translucent menu look, rounded corners and shadow.
 final class MenuPanel: NSPanel {
