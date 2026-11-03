@@ -224,7 +224,10 @@ struct MenuView: View {
                 }
             }
             .frame(height: CachedArt<EmptyView>.listHeight)
-            .padding(.trailing, -12)   // scroll bar sits at the window's right edge
+            // The list reaches 8pt past the content area on the left (room for the playing row's squircle,
+            // which sits 8pt from the window edge) and 12pt on the right (scroll bar at the window's edge).
+            .padding(.leading, -8)
+            .padding(.trailing, -12)
             .onAppear { if let id = radio.current?.id { proxy.scrollTo(id, anchor: .center) } }
         }
     }
@@ -322,7 +325,9 @@ private struct ChannelRow: View, Equatable {
             .accessibilityLabel(isStarred ? "Preset On, Channel \(channel.name)" : "Preset Off, Channel \(channel.name)")
         }
         .padding(.vertical, 4)
-        .padding(.horizontal, 4)
+        // The squircle reaches 8pt further out on each side than the row's content (8pt from the window
+        // edge, see channelList); the content itself keeps its place so the stars still line up.
+        .padding(.horizontal, 12)
         .padding(.trailing, 2)   // a little more room between the star and the squircle's edge
         // The playing channel's row sits on a Liquid Glass squircle (translucent tint before macOS 26):
         // white-based in dark mode, light gray in light mode.
@@ -337,10 +342,13 @@ private struct ChannelRow: View, Equatable {
             }
         }
         // Inset from the scroll view's edges so the squircle's corners are never clipped. The list
-        // extends 12pt past the clipped content area on the right (scroll bar at the window edge),
+        // extends 8pt past the content area on the left and 12pt on the right (scroll bar at the
+        // window edge), so the squircle ends 8pt from the window edge on both sides.
+        .padding(.leading, 4)
+        .padding(.trailing, 8)
         // so the trailing inset has to cover that plus the same 4pt margin as the leading side.
         .padding(.leading, 4)
-        .padding(.trailing, 16)
+        .padding(.trailing, 4)
         .contentShape(Rectangle())
     }
 
