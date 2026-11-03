@@ -75,25 +75,29 @@ struct MenuView: View {
             // list on unshade blocked the main thread and froze the equalizer.
             VStack(alignment: .leading, spacing: 10) {
                 if radio.isLoggedIn {
-                    HStack(spacing: 13.5) {
-                        SearchField(text: $menu.search, placeholder: "Search channels, artists, songs")
-                        // "All Stars" (as on iOS): the list shows only the starred channels.
-                        Button { menu.starsOnly.toggle() } label: {
-                            Image(menu.starsOnly ? "star_on" : "star_off")
-                                .renderingMode(menu.starsOnly ? .original : .template)
-                                .resizable()
-                                .scaledToFit()
-                                .frame(width: 16, height: 16)
-                                .foregroundStyle(Color.secondary)
+                    if menu.lyrics {
+                        LyricsPane()
+                    } else {
+                        HStack(spacing: 13.5) {
+                            SearchField(text: $menu.search, placeholder: "Search channels, artists, songs")
+                            // "All Stars" (as on iOS): the list shows only the starred channels.
+                            Button { menu.starsOnly.toggle() } label: {
+                                Image(menu.starsOnly ? "star_on" : "star_off")
+                                    .renderingMode(menu.starsOnly ? .original : .template)
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(width: 16, height: 16)
+                                    .foregroundStyle(Color.secondary)
+                            }
+                            .buttonStyle(.plain)
+                            // Same size and trailing edge as the row stars: a row's star ends 2pt inside the
+                            // content edge (12 outer trailing − 12 list overhang + 12 − 10 inner padding).
+                            .padding(.trailing, 2)
+                            .help(menu.starsOnly ? "Show every channel" : "Show only starred channels")
+                            .accessibilityLabel(menu.starsOnly ? "All Stars On" : "All Stars Off")
                         }
-                        .buttonStyle(.plain)
-                        // Same size and trailing edge as the row stars: a row's star ends 2pt inside the
-                        // content edge (12 outer trailing − 12 list overhang + 12 − 10 inner padding).
-                        .padding(.trailing, 2)
-                        .help(menu.starsOnly ? "Show every channel" : "Show only starred channels")
-                        .accessibilityLabel(menu.starsOnly ? "All Stars On" : "All Stars Off")
+                        channelList
                     }
-                    channelList
                 }
                 Divider()
                 footer
@@ -188,8 +192,9 @@ struct MenuView: View {
             // Channel, song and artist read as one line, then what a click does.
             .accessibilityElement(children: .combine)
             .accessibilityAddTraits(.isButton)
-            .accessibilityHint("Shows this channel in the list")
-            .simultaneousGesture(TapGesture().onEnded { revealCurrent() })
+            .accessibilityHint(menu.lyrics ? "Shows the channel list" : "Shows the song's lyrics")
+            // Click the song/artist: the lyrics take the channel list's place, and back again.
+            .simultaneousGesture(TapGesture().onEnded { menu.lyrics.toggle() })
             Button {
                 radio.togglePlayPause()
             } label: {

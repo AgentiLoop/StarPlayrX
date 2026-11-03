@@ -207,6 +207,8 @@ final class MenuController: NSObject, ObservableObject {
     @Published var search = ""
     /// The star beside the search field: only the starred channels are listed.
     @Published var starsOnly = false
+    /// Clicking the song/artist in Now Playing puts the lyrics where the channel list was.
+    @Published var lyrics = false
 
     /// The channels the list shows right now (after the search field and the stars filter).
     var visibleChannels: [Channel] {

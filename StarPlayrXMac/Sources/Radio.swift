@@ -475,6 +475,23 @@ final class Radio: ObservableObject {
         return NowPlaying(artist: track.artist, song: track.title, image: track.imageURL)
     }
 
+    /// Seconds into the song that's playing, for the time-synced lyrics. Only Xtra channels know it:
+    /// their tracks are whole files in the player. A live channel's stream has no song boundaries,
+    /// so its lyrics are shown unsynced.
+    var trackPosition: TimeInterval? {
+        guard isPlaying, current?.xtraID != nil, xtraPlayer.timeControlStatus != .paused,
+              let item = xtraPlayer.currentItem else { return nil }
+        let at = item.currentTime().seconds
+        return at.isFinite ? at : nil
+    }
+
+    /// Length of the Xtra track in the player, which sharpens LRCLIB's matching. Nil on live channels.
+    var trackDuration: TimeInterval? {
+        guard current?.xtraID != nil, let item = xtraPlayer.currentItem else { return nil }
+        let length = item.duration.seconds
+        return length.isFinite && length > 0 ? length : nil
+    }
+
     /// Whether the player for the current channel is actually producing audio (not just buffering).
     var audioStarted: Bool {
         guard isPlaying, let current else { return false }
