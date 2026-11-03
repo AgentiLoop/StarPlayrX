@@ -55,7 +55,6 @@ final class MenuController: NSObject, ObservableObject {
             shaded = false
         }
         if let button = statusItem.button?.window?.frame {
-
             let screen = statusItem.button?.window?.screen?.visibleFrame ?? .infinite
             let x = min(button.minX, screen.maxX - panel.frame.width)
             let top = NSPoint(x: x, y: button.minY - 4)
@@ -88,11 +87,10 @@ final class MenuController: NSObject, ObservableObject {
                 panel.setFrameTopLeftPoint(top)
             }
         }
-        // Like MenuBarExtra: the app becomes active (controls draw active, not greyed) and
-        // the menu bar icon stays highlighted while the panel hangs under it.
+        // Like MenuBarExtra: the app becomes active, so controls draw active rather than greyed.
         NSApp.activate(ignoringOtherApps: true)
         panel.makeKeyAndOrderFront(nil)
-        light(true)
+
         // Under the menu bar it behaves like a menu: a click in another app closes it.
         // Clicks on our own icon are left to statusItemClicked, or the two would fight
         // (monitor hides, then the click reopens).
@@ -110,7 +108,6 @@ final class MenuController: NSObject, ObservableObject {
     /// Torn off: the panel stays where it was dropped, until Close / Esc / the icon.
     func detach() {
         detached = true
-        light(false)
         removeOutsideClick()
         endSession()
     }
@@ -121,8 +118,8 @@ final class MenuController: NSObject, ObservableObject {
         panel.orderOut(nil)
         detached = false
         shaded = false
-        light(false)
         removeOutsideClick()
+
         endSession()
     }
 
@@ -132,23 +129,6 @@ final class MenuController: NSObject, ObservableObject {
     private func endSession() {
         if #available(macOS 27, *) { statusItem.expandedInterfaceSession?.cancel() }
     }
-
-    /// The lit menu bar icon. On macOS 27 AppKit draws the real system capsule itself for as long as
-    /// the expanded interface session lasts, so there is nothing to paint. Before that there is no
-    /// way to hold a status button lit — neither `NSStatusBarButton.highlight(_:)` nor its `state`
-    /// sticks past the click that set it — so the selection is painted as the button's layer
-    /// background instead.
-    private func light(_ on: Bool) {
-        if #available(macOS 27, *) { return }
-        guard let button = statusItem.button else { return }
-        button.wantsLayer = true
-        button.layer?.cornerRadius = 6
-        button.layer?.cornerCurve = .continuous
-        button.effectiveAppearance.performAsCurrentDrawingAppearance {
-            button.layer?.backgroundColor = on ? NSColor.labelColor.withAlphaComponent(0.2).cgColor : nil
-        }
-    }
-
 
     private func removeOutsideClick() {
         if let outsideClick { NSEvent.removeMonitor(outsideClick) }
@@ -310,7 +290,6 @@ extension MenuController: @preconcurrency NSStatusItemExpandedInterfaceDelegate 
         hide()
     }
 }
-
 
 /// Borderless panel with the translucent menu look, rounded corners and shadow.
 final class MenuPanel: NSPanel {
