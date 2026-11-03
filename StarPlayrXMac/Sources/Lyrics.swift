@@ -4,7 +4,8 @@
 //
 //  Copyright © 2026 Todd Bruss. All rights reserved.
 //
-//  Lyrics for the song that's playing, from LRCLIB (https://lrclib.net) — free, open, no API key.
+//  Lyrics for the song that's playing, from LRCLIB (https://lrclib.net) — free, open, no API key
+//  — falling back to NetEase and lyrics.ovh when LRCLIB is down or hasn't got the song.
 //  Clicking the song/artist in Now Playing swaps the channel list for the lyrics (see MenuView).
 //
 
@@ -87,7 +88,6 @@ final class LyricsStore: ObservableObject {
                 self.status = "Couldn't reach the lyrics servers: \(error.localizedDescription)"
             }
         }
-
     }
 
     /// Forgets which song is shown, so re-opening the pane fetches/looks up again.
@@ -123,7 +123,6 @@ final class LyricsStore: ObservableObject {
     /// `/api/get` first (the exact-match endpoint), then `/api/search` by title and artist for
     /// the live channels, whose song titles often don't match LRCLIB's exactly.
     private static func fetch(artist: String, song: String, duration: TimeInterval?) async throws -> Lyrics? {
-
         var get = [URLQueryItem(name: "track_name", value: song),
                    URLQueryItem(name: "artist_name", value: artist)]
         if let duration, duration >= 1, duration <= 3600 {
@@ -216,7 +215,6 @@ final class LyricsStore: ObservableObject {
         guard (response as? HTTPURLResponse)?.statusCode == 200 else { return nil }
         return try? JSONSerialization.jsonObject(with: data)
     }
-
 
     /// "Break Free (14)" -> "Break Free". Everything in brackets goes, and so do the spaces it
     /// leaves behind. A title that is nothing but brackets is kept as it was, so the search
@@ -351,7 +349,7 @@ struct LyricsPane: View {
         HStack {
             VStack(alignment: .leading, spacing: 1) {
                 Text("Lyrics").font(.headline)
-                Text(store.lyrics.map { "\($0.song) · \($0.artist)" } ?? "LRCLIB")
+                Text(store.lyrics.map { "\($0.song) · \($0.artist)" } ?? "LRCLIB · NetEase · lyrics.ovh")
                     .font(.caption).foregroundStyle(.secondary).lineLimit(1)
             }
             Spacer()
