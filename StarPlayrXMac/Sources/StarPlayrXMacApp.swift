@@ -36,36 +36,71 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 }
 
 /// Native username / password prompt. Credentials go straight from this dialog to the Keychain.
+/// Laid out by hand (not NSAlert, which re-lays out its buttons): Cancel and Sign In each take half
+/// the width, and there is room under the password field for its autofill popup to drop into.
 @MainActor
 enum CredentialPrompt {
     static func signIn() async {
         var message = "Sign in with your SiriusXM account.\n\nYour username and password are kept only in your Mac's Keychain."
         while true {
-            let alert = NSAlert()
-            alert.messageText = "Sign in to StarPlayrX"
-            alert.informativeText = message
-            alert.addButton(withTitle: "Sign In")
-            alert.addButton(withTitle: "Cancel")
+            let width: CGFloat = 320, margin: CGFloat = 20, gap: CGFloat = 12
+            let content = NSView(frame: NSRect(x: 0, y: 0, width: width + 2 * margin, height: 0))
 
-            let user = NSTextField(frame: NSRect(x: 0, y: 72, width: 280, height: 24))
+            // Bottom up. Buttons: half the width each.
+            let half = (width - gap) / 2
+            let cancel = NSButton(title: "Cancel", target: nil, action: nil)
+            cancel.bezelStyle = .rounded
+            cancel.keyEquivalent = "\u{1b}"
+            cancel.frame = NSRect(x: margin, y: margin, width: half, height: 32)
+            let signIn = NSButton(title: "Sign In", target: nil, action: nil)
+            signIn.bezelStyle = .rounded
+            signIn.keyEquivalent = "\r"
+            signIn.frame = NSRect(x: margin + half + gap, y: margin, width: half, height: 32)
+            // The password field's autofill popup drops ~70 pt below the field; keep the buttons clear of it.
+            var y = margin + 32 + 60
+            let canada = NSButton(checkboxWithTitle: "Canada", target: nil, action: nil)
+            canada.sizeToFit()
+            canada.state = Radio.shared.localeIsCA ? .on : .off
+            canada.frame.origin = NSPoint(x: margin + width - canada.frame.width, y: y)   // flush right
+            y += canada.frame.height + 10
+            let pass = NSSecureTextField(frame: NSRect(x: margin, y: y, width: width, height: 24))
+            pass.placeholderString = "Password"
+            y += 24 + 10
+            let user = NSTextField(frame: NSRect(x: margin, y: y, width: width, height: 24))
             user.placeholderString = "Username or email"
             user.stringValue = Keychain.load()?.user ?? UserDefaults.standard.string(forKey: "user") ?? ""
-            let pass = NSSecureTextField(frame: NSRect(x: 0, y: 38, width: 280, height: 24))
-            pass.placeholderString = "Password"
-            let canada = NSButton(checkboxWithTitle: "Canada", target: nil, action: nil)
-            // Flush right: the password field's autofill popup drops down over the left side.
-            canada.sizeToFit()
-            canada.frame.origin = NSPoint(x: 280 - canada.frame.width, y: 0)
-            canada.state = Radio.shared.localeIsCA ? .on : .off
-            let stack = NSView(frame: NSRect(x: 0, y: 0, width: 280, height: 104))
-            stack.addSubview(user)
-            stack.addSubview(pass)
-            stack.addSubview(canada)
-            alert.accessoryView = stack
-            alert.window.initialFirstResponder = user.stringValue.isEmpty ? user : pass
+            y += 24 + 16
+            let info = NSTextField(wrappingLabelWithString: message)
+            info.isSelectable = false
+            let infoHeight = info.cell?.cellSize(forBounds: NSRect(x: 0, y: 0, width: width, height: 10_000)).height ?? 40
+            info.frame = NSRect(x: margin, y: y, width: width, height: infoHeight)
+            y += infoHeight + 10
+            let title = NSTextField(labelWithString: "Sign in to StarPlayrX")
+            title.font = .boldSystemFont(ofSize: NSFont.systemFontSize)
+            title.sizeToFit()
+            title.frame.origin = NSPoint(x: margin, y: y)
+            y += title.frame.height + 14
+            let icon = NSImageView(frame: NSRect(x: margin, y: y, width: 64, height: 64))
+            icon.image = NSApp.applicationIconImage
+            y += 64 + 28   // top margin includes the (hidden) title bar
+            content.frame.size.height = y
+            for v in [icon, title, info, user, pass, canada, cancel, signIn] as [NSView] {
+                v.translatesAutoresizingMaskIntoConstraints = true
+                content.addSubview(v)
+            }
+
+            let window = NSWindow(contentRect: content.frame, styleMask: [.titled, .fullSizeContentView], backing: .buffered, defer: false)
+            window.title = "Sign in to StarPlayrX"
+            window.titleVisibility = .hidden
+            window.titlebarAppearsTransparent = true
+            window.isMovableByWindowBackground = true
+            window.isReleasedWhenClosed = false
+            for b in [NSWindow.ButtonType.closeButton, .miniaturizeButton, .zoomButton] { window.standardWindowButton(b)?.isHidden = true }
+            window.contentView = content
+            window.initialFirstResponder = user.stringValue.isEmpty ? user : pass
 
             NSApp.activate(ignoringOtherApps: true)
-            guard await present(alert) else { return }
+            guard await present(window, confirm: signIn, cancel: cancel) else { return }
 
             Radio.shared.setRegion(ca: canada.state == .on)
             let u = user.stringValue.trimmingCharacters(in: .whitespaces)
@@ -76,38 +111,16 @@ enum CredentialPrompt {
         }
     }
 
-    /// Shows the alert window without `runModal()`. A nested modal run loop on the main thread
+    /// Shows the window without `runModal()`. A nested modal run loop on the main thread
     /// blocks at user-interactive QoS while AppKit waits on lower-QoS work (priority inversion / hang risk).
-    private static func present(_ alert: NSAlert) async -> Bool {
-        alert.layout()
-        let window = alert.window
+    private static func present(_ window: NSWindow, confirm: NSButton, cancel: NSButton) async -> Bool {
         window.level = .modalPanel
         window.center()
         let responder = AlertResponder(window: window)
-        alert.buttons.first?.target = responder
-        alert.buttons.first?.action = #selector(AlertResponder.confirm(_:))
-        alert.buttons.last?.target = responder
-        alert.buttons.last?.action = #selector(AlertResponder.cancel(_:))
-        // Cancel and Sign In side by side, together as wide as the fields above them. The alert lays
-        // its buttons out with Auto Layout, so its horizontal constraints on them are replaced, not the frames.
-        if let signIn = alert.buttons.first, let cancel = alert.buttons.last, signIn !== cancel,
-           let fields = alert.accessoryView, let content = fields.superview {
-            let horizontal: Set<NSLayoutConstraint.Attribute> = [.leading, .trailing, .left, .right, .width, .centerX]
-            for c in content.constraints where (c.firstItem === signIn || c.firstItem === cancel || c.secondItem === signIn || c.secondItem === cancel)
-                && (horizontal.contains(c.firstAttribute) || horizontal.contains(c.secondAttribute)) {
-                c.isActive = false
-            }
-            for b in [signIn, cancel] {
-                for c in b.constraints where c.firstAttribute == .width { c.isActive = false }
-                b.translatesAutoresizingMaskIntoConstraints = false
-            }
-            NSLayoutConstraint.activate([
-                cancel.leadingAnchor.constraint(equalTo: fields.leadingAnchor),
-                signIn.trailingAnchor.constraint(equalTo: fields.trailingAnchor),
-                signIn.leadingAnchor.constraint(equalTo: cancel.trailingAnchor, constant: 12),
-                signIn.widthAnchor.constraint(equalTo: cancel.widthAnchor),
-            ])
-        }
+        confirm.target = responder
+        confirm.action = #selector(AlertResponder.confirm(_:))
+        cancel.target = responder
+        cancel.action = #selector(AlertResponder.cancel(_:))
         return await withCheckedContinuation { continuation in
             responder.continuation = continuation
             window.makeKeyAndOrderFront(nil)
