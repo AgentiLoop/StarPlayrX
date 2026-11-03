@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Scheme
    LastUpgradeVersion = "1430"
-   version = "1.3">
+   version = "1.7">
    <BuildAction
       parallelizeBuildables = "YES"
-      buildImplicitDependencies = "YES">
+      buildImplicitDependencies = "YES"
+      runPostActionsOnFailure = "NO">
       <BuildActionEntries>
          <BuildActionEntry
             buildForTesting = "YES"
@@ -15,7 +16,7 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "496E6E8D687E06E9885C2A02"
-               BuildableName = "StarPlayrX.app"
+               BuildableName = "StarPlayrXMac.app"
                BlueprintName = "StarPlayrXMac"
                ReferencedContainer = "container:StarPlayrXMac.xcodeproj">
             </BuildableReference>
@@ -26,28 +27,17 @@
       buildConfiguration = "Debug"
       selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
-      shouldUseLaunchSchemeArgsEnv = "NO">
+      shouldUseLaunchSchemeArgsEnv = "NO"
+      onlyGenerateCoverageForSpecifiedTargets = "NO">
       <MacroExpansion>
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "496E6E8D687E06E9885C2A02"
-            BuildableName = "StarPlayrX.app"
+            BuildableName = "StarPlayrXMac.app"
             BlueprintName = "StarPlayrXMac"
             ReferencedContainer = "container:StarPlayrXMac.xcodeproj">
          </BuildableReference>
       </MacroExpansion>
-      <EnvironmentVariables>
-         <EnvironmentVariable
-            key = "OS_ACTIVITY_DT_MODE"
-            value = "NO"
-            isEnabled = "YES">
-         </EnvironmentVariable>
-         <EnvironmentVariable
-            key = "OS_ACTIVITY_MODE"
-            value = "disable"
-            isEnabled = "YES">
-         </EnvironmentVariable>
-      </EnvironmentVariables>
       <Testables>
          <TestableReference
             skipped = "NO"
@@ -61,6 +51,20 @@
             </BuildableReference>
          </TestableReference>
       </Testables>
+      <CommandLineArguments>
+      </CommandLineArguments>
+      <EnvironmentVariables>
+         <EnvironmentVariable
+            key = "OS_ACTIVITY_DT_MODE"
+            value = "NO"
+            isEnabled = "YES">
+         </EnvironmentVariable>
+         <EnvironmentVariable
+            key = "OS_ACTIVITY_MODE"
+            value = "disable"
+            isEnabled = "YES">
+         </EnvironmentVariable>
+      </EnvironmentVariables>
    </TestAction>
    <LaunchAction
       buildConfiguration = "Debug"
@@ -77,11 +81,13 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "496E6E8D687E06E9885C2A02"
-            BuildableName = "StarPlayrX.app"
+            BuildableName = "StarPlayrXMac.app"
             BlueprintName = "StarPlayrXMac"
             ReferencedContainer = "container:StarPlayrXMac.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
+      <CommandLineArguments>
+      </CommandLineArguments>
       <EnvironmentVariables>
          <EnvironmentVariable
             key = "OS_ACTIVITY_DT_MODE"
@@ -106,11 +112,13 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "496E6E8D687E06E9885C2A02"
-            BuildableName = "StarPlayrX.app"
+            BuildableName = "StarPlayrXMac.app"
             BlueprintName = "StarPlayrXMac"
             ReferencedContainer = "container:StarPlayrXMac.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
+      <CommandLineArguments>
+      </CommandLineArguments>
       <EnvironmentVariables>
          <EnvironmentVariable
             key = "OS_ACTIVITY_DT_MODE"
