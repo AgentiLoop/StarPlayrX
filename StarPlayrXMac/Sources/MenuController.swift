@@ -125,8 +125,6 @@ final class MenuController: NSObject, ObservableObject {
         }
     }
 
-
-
     private func removeOutsideClick() {
         if let outsideClick { NSEvent.removeMonitor(outsideClick) }
         outsideClick = nil
