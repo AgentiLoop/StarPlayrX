@@ -526,8 +526,15 @@ struct LyricsPane: View {
                                         .foregroundStyle(current == nil || line.id == current ? .primary : .secondary)
                                         .padding(.leading, adLib ? 14 : 0)
                                         .frame(maxWidth: .infinity, alignment: .leading)
+                                        // Click a line to say that is what is being sung right now:
+                                        // the highlight moves there and the rest of the song follows
+                                        // from it. Only means anything on timed lyrics.
+                                        .contentShape(Rectangle())
+                                        .onTapGesture { pin(line, in: lyrics, at: at) }
+                                        .help(lyrics.synced ? "Click the line being sung to sync the lyrics" : "")
                                         .id(line.id)
                                 }
+
                             }
                         }
                     }
@@ -551,6 +558,21 @@ struct LyricsPane: View {
               let np = radio.nowPlaying[channel.id], let started = np.startedAt else { return }
         LyricSync.shared.update(lyrics: lyrics, key: LyricsStore.key(np.artist, np.song), songStart: started)
     }
+
+    /// The line the user clicked is the line being sung: the shift that makes the song's position
+    /// land on that line's timestamp replaces whatever the aligner had worked out, and nothing
+    /// measured later overrules it while this song plays. Live channels remember it for next time —
+    /// that is the same correction the aligner saves — an Xtra track's position is the file's own,
+    /// so its pin lasts only as long as the track does.
+    private func pin(_ line: LyricLine, in lyrics: Lyrics, at position: TimeInterval?) {
+        guard lyrics.synced, let target = line.at, let position, let np = showing else { return }
+        let live = radio.current?.xtraID == nil
+        let key = LyricsStore.key(np.artist, np.song)
+        let base = live ? (LyricSync.shared.shift(forKey: key) ?? Radio.liveLyricsLead)
+                        : (LyricSync.shared.pinnedShift(forKey: key) ?? 0)
+        LyricSync.shared.pin(shift: base + (target - position), forKey: key, remember: live)
+    }
+
 
     /// The lines grouped into sections, keeping every line's id (the highlight and the auto-scroll
     /// go by id). Blank lines are the breaks LRCLIB ships and are dropped; on synced lyrics more

@@ -23,6 +23,10 @@ final class LyricSync: ObservableObject {
     /// The song the shift belongs to, and the shift itself. Published so the pane can show it.
     @Published private(set) var key = ""
     @Published private(set) var shift: Double?
+    /// Set when the shift came from the user clicking a line rather than from the aligner. The
+    /// person listening is the better judge, so no later measurement overrules it; cleared when
+    /// the song changes.
+    @Published private(set) var isPinned = false
     /// The last measurement, for the `lyric sync` scripting property.
     private(set) var report = "no measurement yet"
     private var lastTry = Date.distantPast
@@ -31,6 +35,22 @@ final class LyricSync: ObservableObject {
     /// falls back to `Radio.liveLyricsLead`).
     func shift(forKey key: String) -> Double? { key == self.key ? shift : nil }
 
+    /// The shift the user pinned by clicking a line, for the players that have no measured shift
+    /// of their own (Xtra tracks, where the position comes straight out of the player).
+    func pinnedShift(forKey key: String) -> Double? { isPinned ? shift(forKey: key) : nil }
+
+    /// Takes the user's word for where the song is: the shift that puts the line they clicked
+    /// under the music playing at that moment. `remember` keeps it for the next time the song
+    /// turns up, which only means the same thing on a live channel — an Xtra track's position is
+    /// the file's own, not a cut's stamp.
+    func pin(shift: Double, forKey key: String, remember: Bool) {
+        self.key = key
+        self.shift = shift
+        isPinned = true
+        report = String(format: "pinned by hand %+.1fs", shift)
+        if remember { LyricsCache.shared.saveShift(shift, for: key) }
+    }
+
     /// Called on the lyrics pane's tick. Measures at most every `interval`, and only replaces what
     /// it has when the new measurement stands out further than the old one did.
     func update(lyrics: Lyrics, key: String, songStart: Date) {
@@ -38,9 +58,11 @@ final class LyricSync: ObservableObject {
             self.key = key
             shift = LyricsCache.shared.shift(for: key)
             report = shift.map { "remembered \(String(format: "%+.1f", $0))s" } ?? "no measurement yet"
+            isPinned = false
             lastTry = .distantPast
         }
-        guard lyrics.synced, Date().timeIntervalSince(lastTry) >= Self.interval else { return }
+        guard !isPinned, lyrics.synced, Date().timeIntervalSince(lastTry) >= Self.interval else { return }
+
         lastTry = Date()
         // Only lines the pane draws: an LRC times the gaps between verses as empty lines, and
         // nobody sings those, so they would drag the match towards silence.

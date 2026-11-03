@@ -497,8 +497,13 @@ final class Radio: ObservableObject {
         }
         guard xtraPlayer.timeControlStatus != .paused, let item = xtraPlayer.currentItem else { return nil }
         let at = item.currentTime().seconds
-        return at.isFinite ? at : nil
+        guard at.isFinite else { return nil }
+        // An Xtra track needs no measured shift — the player knows where it is — but a line the
+        // user clicked in the lyrics still moves the words against it.
+        guard let np = playingNow else { return at }
+        return at + (LyricSync.shared.pinnedShift(forKey: LyricsStore.key(np.artist, np.song)) ?? 0)
     }
+
 
     /// Broadcast time of the audio coming out of the speakers right now on a live channel: the
     /// player's own date for those frames, put back on the stream's real PROGRAM-DATE-TIME. This is
