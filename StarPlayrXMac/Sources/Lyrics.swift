@@ -5,7 +5,8 @@
 //  Copyright © 2026 Todd Bruss. All rights reserved.
 //
 //  Lyrics for the song that's playing, from LRCLIB (https://lrclib.net) — free, open, no API key
-//  — falling back to NetEase, QQ Music and lyrics.ovh when LRCLIB is down or hasn't got the song.
+//  — falling back to NetEase, QQ Music, Kugou and lyrics.ovh when LRCLIB is down or hasn't got
+//  the song. Only the timestamped ones are worth caching; see LyricsStore.show.
 //  Clicking the song/artist in Now Playing swaps the channel list for the lyrics (see MenuView).
 //
 
@@ -38,7 +39,8 @@ struct LyricsError: LocalizedError {
 // MARK: LRCLIB client
 
 /// One fetch per song, ever: in memory for this run and in a SQLite file under Application Support
-/// (`LyricsCache`) for every run after it. Misses are remembered too, for a day.
+/// (`LyricsCache`) for every run after it. Misses are remembered too, for a day. Plain text is
+/// shown but never kept, so a song that has only ever turned up as words is asked after again.
 @MainActor
 final class LyricsStore: ObservableObject {
     static let shared = LyricsStore()
@@ -79,9 +81,14 @@ final class LyricsStore: ObservableObject {
             do {
                 let found = try await Self.find(artist: artist, song: song, duration: duration)
                 guard !Task.isCancelled, self.key == k else { return }
-                self.cache[k] = found
-                // Kept in Application Support, so the next launch doesn't ask the servers again.
-                LyricsCache.shared.save(found, for: k, artist: artist, song: song)
+                // Only timestamped lyrics (and misses) are worth remembering. Plain text is what
+                // was left when no LRC source had the song, and keeping it would stop every later
+                // run from looking again for an LRC that may well have turned up since.
+                if found?.synced ?? true {
+                    self.cache[k] = found
+                    // Kept in Application Support, so the next launch doesn't ask the servers again.
+                    LyricsCache.shared.save(found, for: k, artist: artist, song: song)
+                }
                 self.lyrics = found
                 self.status = found == nil ? "No lyrics found for this song." : ""
             } catch is CancellationError {
@@ -104,13 +111,14 @@ final class LyricsStore: ObservableObject {
     private static let userAgent =
         "StarPlayrX \(MenuView.version) (https://github.com/AgentiLoop/StarPlayrX)"
 
-    /// LRCLIB first, then the backups, so a 503 or a missing record isn't the end of it:
-    /// NetEase and QQ Music (timestamped, like LRCLIB) and then lyrics.ovh (plain text only).
+    /// LRCLIB first, then the backups, so a 503 or a missing record isn't the end of it: three
+    /// more LRC sources — NetEase, QQ Music and Kugou, timestamped like LRCLIB — and after them
+    /// lyrics.ovh, which has only the words.
     /// An error is only raised when every source failed — a plain miss everywhere is nil.
     private static func find(artist: String, song: String, duration: TimeInterval?) async throws -> Lyrics? {
         var failure: Error?
         var plain: Lyrics?
-        for source in [fetch, netease, qqMusic, lyricsOVH] {
+        for source in [fetch, netease, qqMusic, kugou, lyricsOVH] {
             do {
                 if let found = try await source(artist, song, duration) {
                     // Timestamps win: a source that only has the words doesn't end the search, or a
@@ -194,7 +202,7 @@ final class LyricsStore: ObservableObject {
             (hit["artists"] as? [[String: Any]] ?? []).contains { matches(plainArtist, name: $0["name"] as? String ?? "") }
                 && isSong(plainSong, name: hit["name"] as? String ?? "")
         }
-        guard let best = mine.min(by: { gap($0, duration) < gap($1, duration) }),
+        guard let best = mine.min(by: { gap($0, "duration", 1000, duration) < gap($1, "duration", 1000, duration) }),
               let id = best["id"] as? Int else { return nil }
         var lyric = URLComponents(string: "https://music.163.com/api/song/lyric")!
         lyric.queryItems = [URLQueryItem(name: "id", value: String(id)),
@@ -209,14 +217,18 @@ final class LyricsStore: ObservableObject {
                       song: best["name"] as? String ?? song, lines: lines, synced: true)
     }
 
-    /// Seconds between a NetEase hit and the track we're playing; 0 when the length is unknown.
-    private static func gap(_ hit: [String: Any], _ duration: TimeInterval?) -> TimeInterval {
-        guard let duration, let ms = hit["duration"] as? Int else { return 0 }
-        return abs(Double(ms) / 1000 - duration)
+    /// Seconds between a hit's length and the track we're playing; 0 when either is unknown.
+    /// `key` is the field the source keeps the length in and `scale` what it counts in: NetEase
+    /// milliseconds, QQ Music and Kugou whole seconds.
+    private static func gap(_ hit: [String: Any], _ key: String, _ scale: Double,
+                            _ duration: TimeInterval?) -> TimeInterval {
+        guard let duration, let length = hit[key] as? Int else { return 0 }
+        return abs(Double(length) / scale - duration)
     }
 
     /// NetEase puts the writing credits ("作词 : …") in the first timestamped lines of the LRC, and
-    /// QQ Music the same ("Lyrics by：…"), always on a fullwidth colon no lyric line would carry.
+    /// QQ Music and Kugou the same ("Lyrics by：…"), always on a fullwidth colon no lyric line
+    /// would carry.
     private static func isCredit(_ text: String) -> Bool {
         text.contains("：") || ["作词", "作曲", "编曲", "制作人", "混音", "录音"].contains { text.contains($0) }
     }
@@ -242,7 +254,7 @@ final class LyricsStore: ObservableObject {
             (hit["singer"] as? [[String: Any]] ?? []).contains { matches(plainArtist, name: $0["name"] as? String ?? "") }
                 && isSong(plainSong, name: hit["songname"] as? String ?? "")
         }
-        guard let best = mine.min(by: { interval($0, duration) < interval($1, duration) }),
+        guard let best = mine.min(by: { gap($0, "interval", 1, duration) < gap($1, "interval", 1, duration) }),
               let mid = best["songmid"] as? String else { return nil }
         var lyric = URLComponents(string: "https://c.y.qq.com/lyric/fcgi-bin/fcg_query_lyric_new.fcg")!
         lyric.queryItems = [URLQueryItem(name: "songmid", value: mid),
@@ -250,19 +262,64 @@ final class LyricsStore: ObservableObject {
                             URLQueryItem(name: "nobase64", value: "1")]
         // A song it has no words for comes back 200 with a retcode and no `lyric` — same as a miss.
         guard let text = (try await json(lyric.url!, referer: qq) as? [String: Any])?["lyric"] as? String else { return nil }
-        var lines = timed(text).filter { !isCredit($0.text) }
-        // Its LRC opens with its own "<song> - <artist>" header, on the song's first instant.
-        if let first = lines.first, (first.at ?? 0) < 1, first.text.contains(" - ") { lines.removeFirst() }
-        let numbered = lines.enumerated().map { LyricLine(id: $0.offset, at: $0.element.at, text: $0.element.text) }
-        guard !numbered.isEmpty else { return nil }
+        let lines = lrcLines(text)
+        guard !lines.isEmpty else { return nil }
         return Lyrics(artist: (best["singer"] as? [[String: Any]])?.first?["name"] as? String ?? artist,
-                      song: best["songname"] as? String ?? song, lines: numbered, synced: true)
+                      song: best["songname"] as? String ?? song, lines: lines, synced: true)
     }
 
-    /// Seconds between a QQ Music hit (whose `interval` is in seconds) and the track we're playing.
-    private static func interval(_ hit: [String: Any], _ duration: TimeInterval?) -> TimeInterval {
-        guard let duration, let seconds = hit["interval"] as? Int else { return 0 }
-        return abs(Double(seconds) - duration)
+    /// Kugou: the third timestamped source, in three steps — find the recording, ask which lyric
+    /// goes with it, download that. Its search matches one field at a time, so the keyword is the
+    /// title on its own and the artist is matched against the hits, as with the other two.
+    private static func kugou(artist: String, song: String, duration: TimeInterval?) async throws -> Lyrics? {
+        let plainSong = withoutParentheses(song), plainArtist = withoutParentheses(artist)
+        var search = URLComponents(string: "https://songsearch.kugou.com/song_search_v2")!
+        search.queryItems = [URLQueryItem(name: "keyword", value: plainSong),
+                             URLQueryItem(name: "page", value: "1"),
+                             URLQueryItem(name: "pagesize", value: "20")]
+        guard let data = (try await json(search.url!) as? [String: Any])?["data"] as? [String: Any],
+              let hits = data["lists"] as? [[String: Any]], !hits.isEmpty else { return nil }
+        let mine = hits.filter { hit in
+            matches(plainArtist, name: hit["SingerName"] as? String ?? "")
+                && isSong(plainSong, name: hit["SongName"] as? String ?? "")
+        }
+        guard let best = mine.min(by: { gap($0, "Duration", 1, duration) < gap($1, "Duration", 1, duration) }),
+              let hash = best["FileHash"] as? String, let length = best["Duration"] as? Int else { return nil }
+        // Which lyric goes with the recording is a question about the recording, not the words:
+        // the file's hash and length are the whole query, and the live version of a song gets the
+        // live version's timings.
+        var candidates = URLComponents(string: "https://krcs.kugou.com/search")!
+        candidates.queryItems = [URLQueryItem(name: "ver", value: "1"),
+                                 URLQueryItem(name: "man", value: "yes"),
+                                 URLQueryItem(name: "client", value: "mobi"),
+                                 URLQueryItem(name: "duration", value: String(length * 1000)),
+                                 URLQueryItem(name: "hash", value: hash)]
+        guard let list = (try await json(candidates.url!) as? [String: Any])?["candidates"] as? [[String: Any]],
+              let pick = list.first, let id = pick["id"] as? String,
+              let accessKey = pick["accesskey"] as? String else { return nil }
+        var download = URLComponents(string: "https://lyrics.kugou.com/download")!
+        download.queryItems = [URLQueryItem(name: "ver", value: "1"),
+                               URLQueryItem(name: "client", value: "pc"),
+                               URLQueryItem(name: "id", value: id),
+                               URLQueryItem(name: "accesskey", value: accessKey),
+                               URLQueryItem(name: "fmt", value: "lrc"),
+                               URLQueryItem(name: "charset", value: "utf8")]
+        // Even asked for as an LRC, the words come back Base64'd.
+        guard let encoded = (try await json(download.url!) as? [String: Any])?["content"] as? String,
+              let decoded = Data(base64Encoded: encoded),
+              let text = String(data: decoded, encoding: .utf8) else { return nil }
+        let lines = lrcLines(text)
+        guard !lines.isEmpty else { return nil }
+        return Lyrics(artist: best["SingerName"] as? String ?? artist,
+                      song: best["SongName"] as? String ?? song, lines: lines, synced: true)
+    }
+
+    /// The words out of a QQ Music or Kugou LRC, which both open with their own
+    /// "<song> - <artist>" header on the song's first instant, then the writing credits.
+    private static func lrcLines(_ text: String) -> [LyricLine] {
+        var lines = timed(text).filter { !isCredit($0.text) }
+        if let first = lines.first, (first.at ?? 0) < 1, first.text.contains(" - ") { lines.removeFirst() }
+        return lines.enumerated().map { LyricLine(id: $0.offset, at: $0.element.at, text: $0.element.text) }
     }
 
     /// lyrics.ovh: plain text only, no timestamps, but it has songs the other two don't. Last resort.
@@ -423,7 +480,7 @@ struct LyricsPane: View {
         HStack {
             VStack(alignment: .leading, spacing: 1) {
                 Text("Lyrics").font(.headline)
-                Text(store.lyrics.map { "\($0.song) · \($0.artist)" } ?? "LRCLIB · NetEase · QQ · lyrics.ovh")
+                Text(store.lyrics.map { "\($0.song) · \($0.artist)" } ?? "LRCLIB · NetEase · QQ · Kugou")
                     .font(.caption).foregroundStyle(.secondary).lineLimit(1)
             }
             Spacer()
