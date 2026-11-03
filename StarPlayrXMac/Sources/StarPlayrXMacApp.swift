@@ -53,8 +53,9 @@ enum CredentialPrompt {
             let pass = NSSecureTextField(frame: NSRect(x: 0, y: 38, width: 280, height: 24))
             pass.placeholderString = "Password"
             let canada = NSButton(checkboxWithTitle: "Canada", target: nil, action: nil)
-            // Right-aligned: the password field's autofill popup drops down over the left side.
-            canada.frame = NSRect(x: 180, y: 0, width: 100, height: 20)
+            // Flush right: the password field's autofill popup drops down over the left side.
+            canada.sizeToFit()
+            canada.frame.origin = NSPoint(x: 280 - canada.frame.width, y: 0)
             canada.state = Radio.shared.localeIsCA ? .on : .off
             let stack = NSView(frame: NSRect(x: 0, y: 0, width: 280, height: 104))
             stack.addSubview(user)
@@ -87,6 +88,16 @@ enum CredentialPrompt {
         alert.buttons.first?.action = #selector(AlertResponder.confirm(_:))
         alert.buttons.last?.target = responder
         alert.buttons.last?.action = #selector(AlertResponder.cancel(_:))
+        // Cancel and Sign In side by side, together as wide as the dialog's content.
+        if let signIn = alert.buttons.first, let cancel = alert.buttons.last, signIn !== cancel,
+           let content = alert.accessoryView?.superview {
+            let left = alert.accessoryView?.frame.minX ?? content.bounds.minX
+            let right = alert.accessoryView?.frame.maxX ?? content.bounds.maxX
+            let gap: CGFloat = 12
+            let width = (right - left - gap) / 2
+            cancel.frame = NSRect(x: left, y: cancel.frame.minY, width: width, height: cancel.frame.height)
+            signIn.frame = NSRect(x: left + width + gap, y: signIn.frame.minY, width: width, height: signIn.frame.height)
+        }
         return await withCheckedContinuation { continuation in
             responder.continuation = continuation
             window.makeKeyAndOrderFront(nil)
