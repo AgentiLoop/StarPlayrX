@@ -217,6 +217,25 @@ final class LogicTests: XCTestCase {
         }
     }
 
+    /// The lyrics we were handed belong to a different cut of the record — LRCLIB's "Wild Wild West
+    /// (Album Version With Intro)" against the radio edit 90s on 9 plays — so every line is stamped
+    /// most of half a minute out. The ordinary search can only look at the wrong half-minute and
+    /// finds nothing; the wide look that follows it has to come back with the whole intro.
+    func testAlignerCatchesTheWrongCutOfTheRecord() {
+        let lines = songLines
+        let start = Date(timeIntervalSince1970: 1_000_000)
+        for truth in [-24.3, -21.4, 28.0] {
+            let curve = sungCurve(lineTimes: lines, shift: truth, seconds: 300)
+            XCTAssertNil(LyricAligner.align(lineTimes: lines, songStart: start,
+                                            onsets: (start, 1.0 / 86.0, curve),
+                                            over: LyricAligner.search),
+                         "the ordinary search isn't supposed to reach \(truth)")
+            let found = LyricsPane.alignment(lineTimes: lines, songStart: start,
+                                             onsets: (start, 1.0 / 86.0, curve))
+            XCTAssertNotNil(found, "no alignment for \(truth)")
+            XCTAssertEqual(found?.shift ?? 0, truth, accuracy: 0.15, "shift for \(truth)")
+        }
+    }
 
 
     func testAlignerWalksAwayWhenTheAudioSaysNothing() {
