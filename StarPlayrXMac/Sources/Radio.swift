@@ -511,7 +511,7 @@ final class Radio: ObservableObject {
     /// by ear against the live channels; `defaults write com.starplayrx.mac lyricsLiveLead -float 3`
     /// changes it without a rebuild.
     static var liveLyricsLead: TimeInterval {
-        UserDefaults.standard.object(forKey: "lyricsLiveLead") as? Double ?? 2
+        UserDefaults.standard.object(forKey: "lyricsLiveLead") as? Double ?? 0.5
     }
 
     /// Length of the Xtra track in the player, which sharpens LRCLIB's matching. Nil on live channels.
