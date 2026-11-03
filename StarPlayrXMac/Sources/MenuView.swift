@@ -419,11 +419,11 @@ private struct ChannelRow: View, Equatable {
 /// thicker knob plus a visible track. The channel list's bar sits at the window's edge with no room
 /// for that, so this one keeps the resting width and draws the same knob whether or not it's grabbed.
 final class SkinnyScroller: NSScroller {
-    private static let barWidth: CGFloat = 11      // the overlay scroller's resting width
+    private static let barWidth: CGFloat = 13      // the width the list's bar rests at (AppKit's regular overlay is 17)
     private static let knobWidth: CGFloat = 5
     private static let knobInset: CGFloat = 2      // keeps the knob's ends off the bar's ends
 
-    /// AppKit asks the class how wide to be — for the expanded state too, so one answer fixes both.
+    /// AppKit asks the class how wide to be, for the expanded state too, so one answer covers both.
     override class func scrollerWidth(for controlSize: NSControl.ControlSize,
                                       scrollerStyle: NSScroller.Style) -> CGFloat { barWidth }
 
