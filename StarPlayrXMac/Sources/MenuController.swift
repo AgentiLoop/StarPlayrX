@@ -25,6 +25,7 @@ final class MenuController: NSObject, ObservableObject {
 
     func install() {
         _ = panel
+        statusItem.button?.setButtonType(.pushOnPushOff)   // so `state` paints the system capsule
         statusItem.button?.target = self
         statusItem.button?.action = #selector(statusItemClicked)
         playing = Radio.shared.$isPlaying.sink { [weak self] on in
@@ -111,18 +112,12 @@ final class MenuController: NSObject, ObservableObject {
         removeOutsideClick()
     }
 
-    /// The lit menu bar icon. `NSStatusBarButton.highlight(_:)` does nothing on macOS 27
-    /// (FB23330269) and on older systems AppKit clears it again when the click ends, so the
-    /// selection is painted as the button's layer background — behind the icon, under our control.
+    /// The lit menu bar icon: the button's own on-state capsule, the same one AppKit draws for a
+    /// status item showing a menu, so it is the system's width and shape rather than a drawn copy.
     private func light(_ on: Bool) {
-        guard let button = statusItem.button else { return }
-        button.wantsLayer = true
-        button.layer?.cornerRadius = 6
-        button.layer?.cornerCurve = .continuous
-        button.effectiveAppearance.performAsCurrentDrawingAppearance {
-            button.layer?.backgroundColor = on ? NSColor.labelColor.withAlphaComponent(0.2).cgColor : nil
-        }
+        statusItem.button?.state = on ? .on : .off
     }
+
 
     private func removeOutsideClick() {
         if let outsideClick { NSEvent.removeMonitor(outsideClick) }
