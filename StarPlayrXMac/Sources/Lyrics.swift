@@ -227,9 +227,6 @@ struct LyricsPane: View {
     @EnvironmentObject var radio: Radio
     @ObservedObject private var menu = MenuController.shared
     @ObservedObject private var store = LyricsStore.shared
-    /// Seconds added to the song position before the lines are matched: the listener's own
-    /// correction for a cut whose start doesn't line up with the recording. Remembered.
-    @AppStorage("lyricsOffset") private var offset = 0.0
 
     /// The song the pane is about: what's coming out of the speakers, else what the row shows.
     private var showing: NowPlaying? {
@@ -259,32 +256,13 @@ struct LyricsPane: View {
     }
 
     private var header: some View {
-        HStack(spacing: 6) {
+        HStack {
             VStack(alignment: .leading, spacing: 1) {
                 Text("Lyrics").font(.headline)
                 Text(store.lyrics.map { "\($0.song) · \($0.artist)" } ?? "LRCLIB")
                     .font(.caption).foregroundStyle(.secondary).lineLimit(1)
             }
             Spacer()
-            // Live cuts start when the broadcast says they do, which isn't always where the
-            // recording starts (talk-ups, cross-fades, radio edits), so the lines can run early
-            // or late. These nudge them half a second at a time, and the offset is remembered.
-            if store.lyrics?.synced == true, radio.trackPosition != nil {
-                Button("−") { offset -= 0.5 }
-                    .help("The lines are running late: show them half a second earlier")
-                    .accessibilityLabel("Lyrics half a second earlier")
-                Text(offset == 0 ? "sync" : String(format: "%+.1fs", offset))
-                    .font(.caption).monospacedDigit()
-                    .foregroundStyle(offset == 0 ? .tertiary : .secondary)
-                    .frame(width: 44)
-                    .onTapGesture { offset = 0 }
-                    .help(offset == 0 ? "The lines follow the music" : "Click to put the lines back in step")
-                    .accessibilityLabel(offset == 0 ? "In sync" : "Offset \(String(format: "%+.1f", offset)) seconds")
-                    .accessibilityHint("Puts the lines back in step")
-                Button("+") { offset += 0.5 }
-                    .help("The lines are running early: show them half a second later")
-                    .accessibilityLabel("Lyrics half a second later")
-            }
             Button("Channels") { menu.lyrics = false }
                 .help("Back to the channel list")
         }
@@ -297,7 +275,7 @@ struct LyricsPane: View {
     private func lines(_ lyrics: Lyrics) -> some View {
         // 0.25 s is close enough for a sung line and costs almost nothing to redraw.
         TimelineView(.periodic(from: .now, by: 0.25)) { _ in
-            let at = radio.trackPosition.map { $0 + offset }
+            let at = radio.trackPosition
             let current = at.flatMap { Self.line(of: lyrics, at: $0) }
             ScrollViewReader { proxy in
                 ScrollView {

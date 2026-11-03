@@ -482,14 +482,28 @@ final class Radio: ObservableObject {
     var trackPosition: TimeInterval? {
         guard isPlaying else { return nil }
         guard current?.xtraID != nil else {
-            guard let started = current.flatMap({ nowPlaying[$0.id] })?.startedAt else { return nil }
-            let at = Date().addingTimeInterval(-streamLag).timeIntervalSince(started)
+            guard let started = current.flatMap({ nowPlaying[$0.id] })?.startedAt,
+                  let playerDate = player.currentItem?.currentDate() else { return nil }
+            // Where the audio really is, not where the wall clock is: the player's date for the
+            // frames coming out now, put back on real broadcast time (the same correction the song
+            // list uses). Pausing, buffering and rewinding all move this; `Date()` wouldn't notice,
+            // and the lines would run that far ahead for the rest of the song.
+            let heard = SpectrumTimeline.shared.realDate(at: playerDate) ?? playerDate.addingTimeInterval(-streamLag)
+            let at = heard.timeIntervalSince(started) + Self.liveLyricsLead
             // A talk segment or a stale cut can run for hours; past that these aren't its lyrics.
             return (0...900).contains(at) ? at : nil
         }
         guard xtraPlayer.timeControlStatus != .paused, let item = xtraPlayer.currentItem else { return nil }
         let at = item.currentTime().seconds
         return at.isFinite ? at : nil
+    }
+
+    /// A live cut is stamped when the metadata system publishes it, a few seconds after the song
+    /// really starts, so the lines run that far behind the singing. This puts them back. Measured
+    /// by ear against the live channels; `defaults write com.starplayrx.mac lyricsLiveLead -float 3`
+    /// changes it without a rebuild.
+    static var liveLyricsLead: TimeInterval {
+        UserDefaults.standard.object(forKey: "lyricsLiveLead") as? Double ?? 2
     }
 
     /// Length of the Xtra track in the player, which sharpens LRCLIB's matching. Nil on live channels.
