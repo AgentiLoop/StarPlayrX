@@ -261,12 +261,10 @@ struct MenuView: View {
 
     private var footer: some View {
         HStack {
-            // Torn off: Close sits left-most, like a window's close control.
-            if menu.detached {
-                Button("Close") { menu.hide() }
-            }
             Text(Self.version).font(.caption).foregroundStyle(.tertiary).offset(y: 2)
             Spacer()
+            // Close: under the menu bar it just hides the panel; torn off it closes the window.
+            Button("Close") { menu.hide() }
             if radio.isLoggedIn {
                 Button("Sign Out") { radio.signOut() }
             }
