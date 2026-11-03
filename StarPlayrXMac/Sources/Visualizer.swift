@@ -167,10 +167,6 @@ final class Visualizer {
     }
 }
 
-private extension Double {
-    var clamped: Double { Swift.min(1, Swift.max(0, self)) }
-}
-
 /// Picks bar colours that always stand out from the panel: WCAG relative luminance and
 /// contrast ratio, lightening (dark mode) or darkening (light mode) a hue only as far as
 /// needed to reach `minRatio`, so saturated colours survive wherever they already contrast.
