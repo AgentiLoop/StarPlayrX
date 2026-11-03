@@ -108,7 +108,6 @@ final class Radio: ObservableObject {
         channelsLoaded = false
         defer { isBusy = false }
         status = "Signing in…"
-        UserDefaults.standard.removeObject(forKey: "pass")
         let all: [XtraChannel]
         do {
             await xtra.setLocale(localeIsCA ? "en-CA" : "en-US")
@@ -175,10 +174,10 @@ final class Radio: ObservableObject {
             // Before the new item exists, so the EQ is dated from the first playlist that item loads.
             SpectrumTimeline.shared.resetLive()
             guard let liveID = liveIDs[channel.id] else { status = "Channel \(channel.id) is not available."; stop(); return }
-            let live: (url: URL, bearer: String)
+            let live: URL
             do { live = try await xtra.liveStream(channelID: liveID) } catch { status = error.localizedDescription; stop(); return }
             // Playlists and the AES key go through LiveLoader; the signed segment URLs load directly.
-            let (asset, loader) = LiveLoader.asset(for: live.url, client: xtra)
+            let (asset, loader) = LiveLoader.asset(for: live, client: xtra)
             liveLoader = loader
             let item = AVPlayerItem(asset: asset)
             // Start as soon as a little audio is buffered instead of waiting to fill a large buffer.

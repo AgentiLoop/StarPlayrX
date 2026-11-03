@@ -21,7 +21,7 @@ struct XtraChannel {
     let name: String
     let genre: String
     let imageURL: String
-    var isXtra = true       // false: a live channel, listed only for its square tile art
+    var isXtra = true       // false: a live (channel-linear) channel
 }
 
 struct XtraTrack {
@@ -216,17 +216,16 @@ actor XtraClient {
     }
 
     /// A live (channel-linear) channel, tuned the way the web player does.
-    /// Returns the signed master playlist (AES-128 HLS, ~5 h DVR) and the bearer its key URI needs.
-    func liveStream(channelID: String) async throws -> (url: URL, bearer: String) {
-        let auth = try await bearer()
+    /// Returns the signed master playlist (AES-128 HLS, ~5 h DVR).
+    func liveStream(channelID: String) async throws -> URL {
         let tune = try await json("POST", "/playback/play/v1/tuneSource",
                                   body: ["id": channelID, "type": "channel-linear", "hlsVersion": "V3",
                                          "manifestVariant": "WEB", "mtcVersion": "V2"],
-                                  bearer: auth)
+                                  bearer: try await bearer())
         let urls = (tune["streams"] as? [[String: Any]])?.first?["urls"] as? [[String: Any]] ?? []
         guard let s = (urls.first { $0["isPrimary"] as? Bool == true } ?? urls.first)?["url"] as? String,
               let url = URL(string: s) else { throw XtraError.badResponse("live stream url") }
-        return (url, auth)
+        return url
     }
 
     /// The raw 16-byte AES key for a key id (the endpoint answers JSON with the key in base64).

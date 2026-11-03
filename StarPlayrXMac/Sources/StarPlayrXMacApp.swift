@@ -69,7 +69,7 @@ enum CredentialPrompt {
             y += 24 + 10
             let user = NSTextField(frame: NSRect(x: margin, y: y, width: width, height: 24))
             user.placeholderString = "Username or email"
-            user.stringValue = Keychain.load()?.user ?? UserDefaults.standard.string(forKey: "user") ?? ""
+            user.stringValue = Keychain.load()?.user ?? ""
             y += 24 + 16
             let info = NSTextField(wrappingLabelWithString: message)
             info.isSelectable = false

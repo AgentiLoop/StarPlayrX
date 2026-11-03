@@ -62,7 +62,7 @@ final class SpectrumTimeline: @unchecked Sendable {
                 date = f.date(from: stamp) ?? plain.date(from: stamp)
             } else if !line.hasPrefix("#"), let d = date, let name = line.split(separator: "/").last {
                 dates[String(name)] = d
-                // The modern API tags only the first segment; the rest follow at their EXTINF lengths.
+                // Only the first segment is tagged; the rest follow at their EXTINF lengths.
                 date = d.addingTimeInterval(duration)
             }
         }
