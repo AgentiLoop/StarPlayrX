@@ -342,6 +342,10 @@ private struct ChannelRow: View, Equatable {
                 } else {
                     shape.fill(Self.highlight)
                 }
+                // Darkens toward the right so the blue star stands out against the highlight.
+                shape.fill(LinearGradient(colors: [.clear, .black.opacity(0.35)],
+                                          startPoint: .leading, endPoint: .trailing))
+                    .allowsHitTesting(false)
             }
         }
         // Inset from the scroll view's edges so the squircle's corners are never clipped. The list
