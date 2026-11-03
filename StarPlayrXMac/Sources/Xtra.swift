@@ -14,37 +14,6 @@ import AVFoundation
 /// SiriusXM's API (api.edge-gateway.siriusxm.com): sign-in, the channel list, live channels and Xtra channels.
 /// The same API serves US and Canadian accounts (can.siriusxm.com is the same web player); Canada only changes the locale.
 /// An Xtra channel is a queue of individual tracks; each track is an encrypted HLS clip with its own key.
-
-struct XtraChannel {
-    let id: String          // entity id (guid)
-    let number: String
-    let name: String
-    let genre: String
-    let imageURL: String
-    var isXtra = true       // false: a live (channel-linear) channel
-}
-
-struct XtraTrack {
-    let id: String
-    let artist: String
-    let title: String
-    let url: String         // master playlist
-    let keyID: String
-    let imageURL: String
-    let startOffset: Double // seconds; non-zero only for the track already playing when tuned
-}
-
-enum XtraError: LocalizedError {
-    case http(Int, String)
-    case badResponse(String)
-    var errorDescription: String? {
-        switch self {
-        case .http(let code, let path): return "Xtra request failed (\(code)): \(path)"
-        case .badResponse(let what): return "Unexpected Xtra response: \(what)"
-        }
-    }
-}
-
 actor XtraClient {
     private static let api = "https://api.edge-gateway.siriusxm.com"
     private static let imageService = "https://imgsrv-sxm-prod-device.streaming.siriusxm.com/"

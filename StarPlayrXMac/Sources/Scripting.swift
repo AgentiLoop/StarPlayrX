@@ -147,12 +147,6 @@ extension AppDelegate {
     }
 }
 
-/// A script error with a message (raised to AppleScript as error -10000).
-struct ScriptFailure: Error {
-    let message: String
-    init(_ message: String) { self.message = message }
-}
-
 @objc(SPXCommand)
 final class SPXCommand: NSScriptCommand {
     override func performDefaultImplementation() -> Any? {

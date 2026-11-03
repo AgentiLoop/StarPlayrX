@@ -18,6 +18,7 @@
 		97E3C433757ED71D95CB2524 /* MenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9CF5EC7805BCA42169AF4ECE /* MenuView.swift */; };
 		A31CE963BD060610EDFBBD19 /* Spectrum.metal in Sources */ = {isa = PBXBuildFile; fileRef = DA977B1658B9908A1857CA86 /* Spectrum.metal */; };
 		AAF02C1F2D58A6F4F585EDF7 /* StarPlayrX.sdef in Resources */ = {isa = PBXBuildFile; fileRef = 9AE9931B956CB2DA3D48715B /* StarPlayrX.sdef */; };
+		B3FBAAFC677025C233D50C76 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4005321465BF3F5704ABBA35 /* Models.swift */; };
 		B6FECCF24C354B0733A16988 /* ArtCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7FAE59B5C9E7F2FA47E63AE0 /* ArtCache.swift */; };
 		B92350C46BD992AC2AA8DDCA /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 6E8F68BA0D44926EF37BBB62 /* Assets.xcassets */; };
 		C1BBBCF52CBE121D9E31AE22 /* StarPlayrXMacApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47D0341DA36FCC82C2C684B6 /* StarPlayrXMacApp.swift */; };
@@ -41,6 +42,7 @@
 		1DF942F978B6D6B616311D33 /* StarPlayrXMac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = StarPlayrXMac.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		2110CDF4A0912E48922BDC87 /* StarPlayrXMacTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = StarPlayrXMacTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		24B9C2880FFCDCA06B056FF3 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		4005321465BF3F5704ABBA35 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
 		40AD17AD1A89E96BF1D207E3 /* Xtra.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Xtra.swift; sourceTree = "<group>"; };
 		47D0341DA36FCC82C2C684B6 /* StarPlayrXMacApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StarPlayrXMacApp.swift; sourceTree = "<group>"; };
 		5AACB58C22D23FF75DF15D1A /* StarPlayrXMacTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StarPlayrXMacTests.swift; sourceTree = "<group>"; };
@@ -80,6 +82,7 @@
 				AFC2175A4B9226A8F1E4A18B /* MarqueeText.swift */,
 				95A1B6D05467A2297EAAE180 /* MenuController.swift */,
 				9CF5EC7805BCA42169AF4ECE /* MenuView.swift */,
+				4005321465BF3F5704ABBA35 /* Models.swift */,
 				A828F86C0FE74B3D990CC160 /* Radio.swift */,
 				6E4311F836AD4A7A0120E737 /* Scripting.swift */,
 				74DCB8300E5FAB44FC58A9F8 /* SearchField.swift */,
@@ -221,6 +224,7 @@
 				70ED440C2742A2523849C564 /* MarqueeText.swift in Sources */,
 				C1DCC21623D246122B6DAB6F /* MenuController.swift in Sources */,
 				97E3C433757ED71D95CB2524 /* MenuView.swift in Sources */,
+				B3FBAAFC677025C233D50C76 /* Models.swift in Sources */,
 				F9A9498FC10093CAB657AD06 /* Radio.swift in Sources */,
 				78D07A43295425FB93CF8574 /* Scripting.swift in Sources */,
 				8489F0CE3E44B23D8B984C16 /* SearchField.swift in Sources */,

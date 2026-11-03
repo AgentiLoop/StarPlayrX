@@ -13,23 +13,6 @@ import MediaPlayer
 import Combine
 import os
 
-struct Channel: Identifiable, Hashable {
-    let id: String          // channel number
-    let name: String
-    let category: String
-    let imageURL: String
-    var xtraID: String? = nil   // set for Xtra channels (streamed track by track)
-}
-
-struct NowPlaying: Equatable {
-    var artist = ""
-    var song = ""
-    var image = ""
-    /// The show's artwork (often a text title card), shown instead of the channel logo only when the
-    /// user picks it for that channel; see `Radio.displayed(_:)`.
-    var showImage = ""
-}
-
 @MainActor
 final class Radio: ObservableObject {
     static let shared = Radio()
