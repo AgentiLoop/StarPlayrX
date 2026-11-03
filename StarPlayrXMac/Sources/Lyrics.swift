@@ -141,26 +141,38 @@ final class LyricsStore: ObservableObject {
 
     /// `/api/get` first (the exact-match endpoint), then `/api/search` by title and artist for
     /// the live channels, whose song titles often don't match LRCLIB's exactly.
+    /// Each ask stands on its own: LRCLIB answers 503 "ServerOverloaded" whenever it feels like it,
+    /// and one of those used to end this source's turn before the asks that had the song.
     private static func fetch(artist: String, song: String, duration: TimeInterval?) async throws -> Lyrics? {
+        var failure: Error?
+        func ask(_ path: String, _ query: [URLQueryItem]) async throws -> Any? {
+            do { return try await request(path, query) }
+            catch is CancellationError { throw CancellationError() }
+            catch { failure = error; return nil }
+        }
         var get = [URLQueryItem(name: "track_name", value: song),
                    URLQueryItem(name: "artist_name", value: artist)]
         if let duration, duration >= 1, duration <= 3600 {
             get.append(URLQueryItem(name: "duration", value: String(Int(duration.rounded()))))
         }
-        if let record = try await request("/api/get", get) as? [String: Any] {
+        if let record = try await ask("/api/get", get) as? [String: Any] {
             return lyrics(from: record, artist: artist, song: song)
         }
         // The live channels tack a decade or a note onto the title ("Break Free (14)",
         // "All She Wants To Do Is Dance (85)"), which no LRCLIB record has. Ask again without it.
         let plainSong = withoutParentheses(song), plainArtist = withoutParentheses(artist)
         if plainSong != song || plainArtist != artist,
-           let record = try await request("/api/get", [URLQueryItem(name: "track_name", value: plainSong),
-                                                       URLQueryItem(name: "artist_name", value: plainArtist)]) as? [String: Any] {
+           let record = try await ask("/api/get", [URLQueryItem(name: "track_name", value: plainSong),
+                                                   URLQueryItem(name: "artist_name", value: plainArtist)]) as? [String: Any] {
             return lyrics(from: record, artist: artist, song: song)
         }
-        let found = try await request("/api/search", [URLQueryItem(name: "track_name", value: plainSong),
-                                                     URLQueryItem(name: "artist_name", value: plainArtist)])
-        guard let records = found as? [[String: Any]], !records.isEmpty else { return nil }
+        let found = try await ask("/api/search", [URLQueryItem(name: "track_name", value: plainSong),
+                                                  URLQueryItem(name: "artist_name", value: plainArtist)])
+        guard let records = found as? [[String: Any]], !records.isEmpty else {
+            // Nothing from any of the three: a miss only if none of them was an error.
+            if let failure { throw failure }
+            return nil
+        }
         // Only a record that really is this song. The search endpoint answers with whatever it has
         // (a search for Ed Sheeran's "Don't" came back as a Chinese song that happened to carry
         // timestamps), and the wrong lyrics are worse than none, so artist and title must both fit.
