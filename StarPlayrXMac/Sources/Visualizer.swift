@@ -67,6 +67,8 @@ final class Visualizer {
     /// Called by every visible Metal view each frame. Steps the state when 1/30 s has passed and
     /// returns how far the frame is between the previous step and the current one (0...1).
     func tick(now: CFTimeInterval) -> Float {
+        // Paused: freeze the frame (bars, bubbles and colours) where the music stopped.
+        guard Radio.shared.isPlaying else { lastStep = now; return 1 }
         if running, now - lastStep >= Self.step - 0.004 {
             previous = (levels, rise, pulse, blobX)
             history.removeFirst()

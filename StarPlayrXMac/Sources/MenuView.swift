@@ -45,9 +45,10 @@ struct MenuView: View {
                         nowPlaying
                         // Tucked up under the artwork: the bar area is 40 pt tall but mostly empty when the
                         // music is quiet, so a full gap above it left a big hole. Loud bars may rise beside the art.
-                        // Stopped: keep the bars' space so the window doesn't change size.
+                        // Paused: the bars stay, frozen where the music stopped. Before anything has
+                        // played, keep their space so the window doesn't change size.
                         Group {
-                            if radio.isPlaying { SpectrumView() }
+                            if radio.current != nil { SpectrumView() }
                             else { Color.clear.frame(height: CGFloat(SpectrumRenderer.barHeight)) }
                         }
                         .padding(.top, -5)

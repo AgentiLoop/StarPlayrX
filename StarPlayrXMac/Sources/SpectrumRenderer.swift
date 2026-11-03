@@ -46,6 +46,7 @@ final class SpectrumRenderer: NSObject, MTKViewDelegate {
     private var blobColour = SIMD4<Float>(1, 1, 1, 1)
     private var builtGeneration = -1
     private var builtStyle = [Double]()
+    private var clock = 0.0
 
     private static func hue(_ x: Double) -> Double { (x.truncatingRemainder(dividingBy: 1) + 1).truncatingRemainder(dividingBy: 1) }
 
@@ -60,6 +61,8 @@ final class SpectrumRenderer: NSObject, MTKViewDelegate {
               let pipeline, let commands = queue?.makeCommandBuffer(), let encoder = commands.makeRenderCommandEncoder(descriptor: pass) else { return }
         let viz = Visualizer.shared
         let f = viz.tick(now: CACurrentMediaTime())
+        // The bubbles breathe on this clock; paused, it stands still with everything else.
+        if Radio.shared.isPlaying { clock = Date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 3600) }
         let style = [fixed, bg, light ? 1 : 0]
         if viz.generation != builtGeneration || style != builtStyle {
             builtGeneration = viz.generation
@@ -88,7 +91,7 @@ final class SpectrumRenderer: NSObject, MTKViewDelegate {
         blob.w = Float(0.075 + 0.175 * pulse)
         var globals = Globals(
             view: [Float(view.bounds.width) - 2 * Self.pad, Self.barHeight, Float(view.drawableSize.width / view.bounds.width), Self.pad],
-            state: [Float(pulse), light ? 1 : 0, Float(bubbles), Float(Date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 3600))],
+            state: [Float(pulse), light ? 1 : 0, Float(bubbles), Float(clock)],
             bubble: light ? [0, 0, 0, 0.7] : [1, 1, 1, 1],   // dark bubbles at 70% strength, so they stay soft
             blob: blob,
             blobShape: [Float(80 * blobX), Float(0.6 + 0.3 * sin(viz.phase * 2 * .pi * 2)), Float(0.6 + 0.5 * pulse), 13],   // last: glow moved 13 pt down
