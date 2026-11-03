@@ -132,16 +132,23 @@ final class MenuController: NSObject, ObservableObject {
         if #available(macOS 27, *), statusItem.expandedInterfaceSession != nil {} else { keepLit() }
 
         // Under the menu bar it behaves like a menu: a click in another app closes it.
-        // Clicks on our own icon are left to statusItemClicked, or the two would fight
-        // (monitor hides, then the click reopens).
+        // On macOS 27 the menu bar belongs to MenuBarAgent, and a click on our icon while a session
+        // is running is passed to no one (no button action, no delegate call) — it only shows up
+        // here. So a click on the icon closes too; the session that click may begin is cancelled
+        // by didBegin, which sees clickWasOpen.
         if outsideClick == nil {
             outsideClick = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
                 let point = NSEvent.mouseLocation
                 Task { @MainActor in
-                    guard let self else { return }
-                    menuLog.log("globalDown point=\(point.x),\(point.y) onIcon=\(self.isOnStatusItem(point)) rect=\(String(describing: self.statusItem.button?.window?.frame))")
-                    guard !self.isOnStatusItem(point) else { return }
-                    self.lastOutsideHide = Date()
+                    guard let self, self.panel.isVisible, !self.detached else { return }
+                    menuLog.log("globalDown onIcon=\(self.isOnStatusItem(point))")
+                    if self.isOnStatusItem(point) {
+                        self.clickWasOpen = true
+                        self.clickAt = CACurrentMediaTime()
+                        self.clickHandled = true
+                    } else {
+                        self.lastOutsideHide = Date()
+                    }
                     self.hide()
                 }
             }
