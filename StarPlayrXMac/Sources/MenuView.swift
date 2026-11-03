@@ -156,6 +156,10 @@ struct MenuView: View {
             }
             .frame(width: 64, height: 64)
             .clipShape(RoundedRectangle(cornerRadius: 14.5, style: .continuous))   // squircle, app-icon ratio
+            .accessibilityElement()
+            .accessibilityAddTraits(.isButton)
+            .accessibilityLabel(radio.current.map { isAlbumArt ? "Album art, \($0.name)" : "Channel art, \($0.name)" } ?? "StarPlayrX")
+            .accessibilityHint("Switches between the channel logo and the show art")
             .simultaneousGesture(TapGesture().onEnded {
                 // Click the artwork: channel logo ⇄ show art, remembered per channel. When there's nothing
                 // to switch (song art, or no show art) it scrolls the list to the channel as before.
@@ -174,6 +178,10 @@ struct MenuView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .contentShape(Rectangle())
+            // Channel, song and artist read as one line, then what a click does.
+            .accessibilityElement(children: .combine)
+            .accessibilityAddTraits(.isButton)
+            .accessibilityHint("Shows this channel in the list")
             .simultaneousGesture(TapGesture().onEnded { revealCurrent() })
             Button {
                 radio.togglePlayPause()
@@ -183,6 +191,8 @@ struct MenuView: View {
             }
             .buttonStyle(.plain)
             .disabled(radio.current == nil)
+            .help(radio.isPlaying ? "Pause" : "Play")
+            .accessibilityLabel(radio.isPlaying ? "Pause" : "Play")
             // The star (as the iOS "All Star" button): the current channel in or out of the presets.
             // Outside the play button, same size and trailing edge as the search-bar and row stars.
             if let ch = radio.current {
@@ -198,7 +208,7 @@ struct MenuView: View {
                 .buttonStyle(.plain)
                 .padding(.trailing, 2)
                 .help(starred ? "Remove from stars" : "Add to stars")
-                .accessibilityLabel(starred ? "Preset On, Channel \(ch.name)" : "Preset Off")
+                .accessibilityLabel(starred ? "Preset On, Channel \(ch.name)" : "Preset Off, Channel \(ch.name)")
             }
         }
     }
@@ -226,6 +236,12 @@ struct MenuView: View {
                                 .equatable()
                         }
                         .buttonStyle(.plain)
+                        .accessibilityHint("Plays this channel")
+                        // The row is one element (its star is inside the button's label, so VoiceOver
+                        // can't click it): offer the star as an action on the row instead.
+                        .accessibilityAction(named: radio.presets.contains(ch.id) ? "Remove from stars" : "Add to stars") {
+                            radio.togglePreset(ch.id)
+                        }
                         .id(ch.id)
                         .onAppear { prefetchArt(around: index, in: list) }
                     }
@@ -262,6 +278,7 @@ struct MenuView: View {
     private var footer: some View {
         HStack {
             Text(Self.version).font(.caption).foregroundStyle(.tertiary).offset(y: 2)
+                .accessibilityLabel("Version \(Self.version.dropFirst())")
             Spacer()
             // Close: under the menu bar it just hides the panel; torn off it closes the window.
             Button("Close") { menu.hide() }
@@ -285,6 +302,7 @@ private struct ChannelRow: View, Equatable {
     var body: some View {
         HStack {
             Text(channel.id).monospacedDigit().foregroundStyle(.secondary).frame(width: 34, alignment: .trailing)
+                .accessibilityLabel("Channel \(channel.id)" + (isPlaying ? ", playing" : isCurrent ? ", current channel" : ""))
             // Album art when the channel has it, else the channel logo, else the StarPlayrX logo.
             let albumArt = nowPlaying?.image.isEmpty == false
             CachedArt(url: (albumArt ? nowPlaying?.image : channel.imageURL) ?? "", size: 32, isAlbumArt: albumArt) { art, albumArt in
@@ -310,6 +328,7 @@ private struct ChannelRow: View, Equatable {
             }
             .frame(width: 32, height: 32)
             .clipShape(RoundedRectangle(cornerRadius: 7.25, style: .continuous))
+            .accessibilityHidden(true)   // the row already says the channel, song and artist
             VStack(alignment: .leading) {
                 // Same as Now Playing: text that doesn't fit scrolls instead of ending in "…".
                 MarqueeText(text: channel.name, font: isCurrent ? .body.bold() : .body).id(channel.name)

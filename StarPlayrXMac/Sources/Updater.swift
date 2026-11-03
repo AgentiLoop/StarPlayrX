@@ -298,6 +298,7 @@ enum UpdatePrompt {
         y += heading.frame.height + 14
         let icon = NSImageView(frame: NSRect(x: margin, y: y, width: 64, height: 64))
         icon.image = NSApp.applicationIconImage
+        icon.setAccessibilityElement(false)   // decoration: the heading says what this is about
         y += 64 + 28
         content.frame.size.height = y
         for v in views + [info, heading, icon] {
@@ -314,6 +315,8 @@ enum UpdatePrompt {
         window.contentView = content
         window.level = .modalPanel
         window.center()
+        // Keyboard and VoiceOver start on the default button (Update / OK).
+        window.initialFirstResponder = controls.first
         let responder = Responder(window: window)
         for b in controls {
             b.target = responder
@@ -363,12 +366,14 @@ final class ProgressWindow: NSObject, URLSessionDownloadDelegate {
         bar.minValue = 0
         bar.maxValue = 1
         bar.isIndeterminate = true
+        bar.setAccessibilityLabel(title)
         let content = NSView(frame: NSRect(x: 0, y: 0, width: width + 2 * margin, height: margin * 2 + 48 + 10))
         for v in [label, bar] as [NSView] {
             v.translatesAutoresizingMaskIntoConstraints = true
             content.addSubview(v)
         }
         window = NSWindow(contentRect: content.frame, styleMask: [.titled, .fullSizeContentView], backing: .buffered, defer: false)
+        window.title = title
         window.titleVisibility = .hidden
         window.titlebarAppearsTransparent = true
         window.isReleasedWhenClosed = false
@@ -388,6 +393,8 @@ final class ProgressWindow: NSObject, URLSessionDownloadDelegate {
 
     @MainActor func set(text: String, indeterminate: Bool) {
         label.stringValue = text
+        window.title = text
+        bar.setAccessibilityLabel(text)
         bar.isIndeterminate = indeterminate
         if indeterminate { bar.startAnimation(nil) }
     }

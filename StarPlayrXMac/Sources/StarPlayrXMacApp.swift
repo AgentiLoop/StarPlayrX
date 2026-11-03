@@ -67,9 +67,11 @@ enum CredentialPrompt {
             y += canada.frame.height + 10
             let pass = NSSecureTextField(frame: NSRect(x: margin, y: y, width: width, height: 24))
             pass.placeholderString = "Password"
+            pass.setAccessibilityLabel("Password")
             y += 24 + 10
             let user = NSTextField(frame: NSRect(x: margin, y: y, width: width, height: 24))
             user.placeholderString = "Username or email"
+            user.setAccessibilityLabel("Username or email")
             user.stringValue = Keychain.load()?.user ?? ""
             y += 24 + 16
             let info = NSTextField(wrappingLabelWithString: message)
@@ -84,6 +86,7 @@ enum CredentialPrompt {
             y += title.frame.height + 14
             let icon = NSImageView(frame: NSRect(x: margin, y: y, width: 64, height: 64))
             icon.image = NSApp.applicationIconImage
+            icon.setAccessibilityElement(false)   // decoration: the title says which app this is
             y += 64 + 28   // top margin includes the (hidden) title bar
             content.frame.size.height = y
             for v in [icon, title, info, user, pass, canada, cancel, signIn] as [NSView] {

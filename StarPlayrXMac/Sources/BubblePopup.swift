@@ -21,6 +21,10 @@ final class BubblePopup {
     private var shown = 0
 
     func show(_ text: String, at point: NSPoint) {
+        // The bubble is a transient, mouse-ignoring panel: VoiceOver never lands on it, so say the
+        // new mode out loud instead.
+        NSAccessibility.post(element: NSApp as Any, notification: .announcementRequested,
+                             userInfo: [.announcement: text, .priority: NSAccessibilityPriorityLevel.medium.rawValue])
         // One hosting view, reused. It must not drive the window's size itself (sizingOptions = []):
         // swapping in a new hosting view each click and letting it resize the window threw AppKit's
         // "too many Update Constraints passes" exception, which crashed the app.

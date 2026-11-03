@@ -50,6 +50,11 @@ struct MarqueeText: View {
                 }
                 .clipped()
             }
+            // One VoiceOver element with the whole line: the measuring copy and the second
+            // copy the scrolling strip repeats would otherwise be read as extra text.
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(text.trimmingCharacters(in: .whitespaces))
+            .accessibilityHidden(text.trimmingCharacters(in: .whitespaces).isEmpty)
     }
 }
 

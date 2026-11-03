@@ -18,6 +18,7 @@ struct SearchField: NSViewRepresentable {
     func makeNSView(context: Context) -> NSSearchField {
         let field = NSSearchField()
         field.placeholderString = placeholder
+        field.setAccessibilityLabel(placeholder)
         field.contentType = nil
         field.isAutomaticTextCompletionEnabled = false
         field.sendsSearchStringImmediately = true

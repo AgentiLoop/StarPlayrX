@@ -50,6 +50,11 @@ struct SpectrumView: View {
                 BubblePopup.shared.show(["Bubbles", "Soft Bubbles", "No Bubbles"][bubbleStage], at: NSEvent.mouseLocation)
             }
             .help(["Bubbles", "Soft Bubbles", "No Bubbles"][bubbleStage % 3])
+            // One element with a name: without it VoiceOver lands on an unlabeled Metal view.
+            .accessibilityElement()
+            .accessibilityAddTraits(.isButton)
+            .accessibilityLabel("Equalizer, \(["Bubbles", "Soft Bubbles", "No Bubbles"][bubbleStage % 3])")
+            .accessibilityHint("Changes the bubbles in the bars")
             .onAppear { viz.start() }
             .onDisappear { viz.stop() }
     }

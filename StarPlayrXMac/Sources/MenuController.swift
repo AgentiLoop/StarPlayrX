@@ -284,6 +284,7 @@ final class MenuPanel: NSPanel {
                               styleMask: [.borderless, .nonactivatingPanel, .fullSizeContentView],
                               backing: .buffered, defer: false)
         panel.isFloatingPanel = true
+        panel.title = "StarPlayrX"   // borderless: no title bar, but VoiceOver reads this
         panel.level = .floating
         panel.hidesOnDeactivate = false
         panel.isReleasedWhenClosed = false
