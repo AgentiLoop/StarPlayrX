@@ -368,8 +368,8 @@ private struct ChannelRow: View, Equatable {
             : NSColor(white: 0.75, alpha: 0.5)
     })
 
-    /// Right end of the highlight's darkening gradient: 35% black in dark mode, 10% in light mode.
+    /// Right end of the highlight's darkening gradient: 35% black in dark mode, 5% in light mode.
     private static let shade = Color(nsColor: NSColor(name: nil) { appearance in
-        NSColor(white: 0, alpha: appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? 0.35 : 0.10)
+        NSColor(white: 0, alpha: appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? 0.35 : 0.05)
     })
 }
