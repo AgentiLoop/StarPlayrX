@@ -422,6 +422,7 @@ final class SkinnyScroller: NSScroller {
     private static let barWidth: CGFloat = 11      // stays skinny: a wider bar would push the knob inward
     private static let knobWidth: CGFloat = 5
     private static let knobInset: CGFloat = 2      // keeps the knob's ends off the bar's ends
+    private static let edgeMargin: CGFloat = 3     // gap between the knob and the window's edge
 
     /// AppKit asks the class how wide to be, for the expanded state too, so one answer covers both.
     override class func scrollerWidth(for controlSize: NSControl.ControlSize,
@@ -433,10 +434,11 @@ final class SkinnyScroller: NSScroller {
     /// The track is only drawn in the expanded state; skipping it is what keeps a grabbed bar skinny.
     override func drawKnobSlot(in slotRect: NSRect, highlight flag: Bool) {}
 
-    /// Our own capsule, centred in the bar, the same size grabbed or not (AppKit's grows on grab).
+    /// Our own capsule. Its x comes from the scroller's own right edge, never from AppKit's knob rect:
+    /// that rect gets inset in the expanded (grabbed) state, which is what walked the knob inward.
     override func drawKnob() {
         let knob = rect(for: .knob)
-        let capsule = NSRect(x: knob.midX - Self.knobWidth / 2,
+        let capsule = NSRect(x: bounds.maxX - Self.edgeMargin - Self.knobWidth,
                              y: knob.minY + Self.knobInset,
                              width: Self.knobWidth,
                              height: max(knob.height - Self.knobInset * 2, Self.knobWidth))
@@ -444,6 +446,7 @@ final class SkinnyScroller: NSScroller {
             ? NSColor(white: 1, alpha: 0.35) : NSColor(white: 0, alpha: 0.35)).setFill()
         NSBezierPath(roundedRect: capsule, xRadius: Self.knobWidth / 2, yRadius: Self.knobWidth / 2).fill()
     }
+
 }
 
 /// Puts a `SkinnyScroller` on the NSScrollView SwiftUI makes for the channel list. Lives inside the
