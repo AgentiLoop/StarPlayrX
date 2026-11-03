@@ -106,9 +106,16 @@ final class LyricsStore: ObservableObject {
     /// An error is only raised when every source failed — a plain miss everywhere is nil.
     private static func find(artist: String, song: String, duration: TimeInterval?) async throws -> Lyrics? {
         var failure: Error?
+        var plain: Lyrics?
         for source in [fetch, netease, lyricsOVH] {
             do {
-                if let found = try await source(artist, song, duration) { return found }
+                if let found = try await source(artist, song, duration) {
+                    // Timestamps win: a source that only has the words doesn't end the search, or a
+                    // rate-limited LRCLIB would cost the whole song its highlight when the next
+                    // source along has the same lyrics with times on them.
+                    if found.synced { return found }
+                    plain = plain ?? found
+                }
             } catch is CancellationError {
                 throw CancellationError()
             } catch {
@@ -116,6 +123,7 @@ final class LyricsStore: ObservableObject {
             }
             try Task.checkCancellation()
         }
+        if let plain { return plain }
         if let failure { throw failure }
         return nil
     }
