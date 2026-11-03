@@ -253,6 +253,8 @@ struct MenuView: View {
                         .onAppear { prefetchArt(around: index, in: list) }
                     }
                 }
+                // Keeps the scroll bar the same skinny width when the pointer grabs it.
+                .background(SkinnyScrollers().frame(width: 0, height: 0))
             }
             .frame(height: CachedArt<EmptyView>.listHeight)
             // The list reaches 8pt past the content area on the left (room for the playing row's squircle,
@@ -411,4 +413,57 @@ private struct ChannelRow: View, Equatable {
     private static let shade = Color(nsColor: NSColor(name: nil) { appearance in
         NSColor(white: 0, alpha: appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? 0.35 : 0.05)
     })
+}
+
+/// An overlay scroll bar normally fattens up the moment the pointer is over it or dragging it: a
+/// thicker knob plus a visible track. The channel list's bar sits at the window's edge with no room
+/// for that, so this one keeps the resting width and draws the same knob whether or not it's grabbed.
+final class SkinnyScroller: NSScroller {
+    private static let barWidth: CGFloat = 11      // the overlay scroller's resting width
+    private static let knobWidth: CGFloat = 5
+    private static let knobInset: CGFloat = 2      // keeps the knob's ends off the bar's ends
+
+    /// AppKit asks the class how wide to be — for the expanded state too, so one answer fixes both.
+    override class func scrollerWidth(for controlSize: NSControl.ControlSize,
+                                      scrollerStyle: NSScroller.Style) -> CGFloat { barWidth }
+
+    /// Without this AppKit won't give a custom subclass the overlay (fades away) behaviour.
+    override class var isCompatibleWithOverlayScrollers: Bool { true }
+
+    /// The track is only drawn in the expanded state; skipping it is what keeps a grabbed bar skinny.
+    override func drawKnobSlot(in slotRect: NSRect, highlight flag: Bool) {}
+
+    /// Our own capsule, centred in the bar, the same size grabbed or not (AppKit's grows on grab).
+    override func drawKnob() {
+        let knob = rect(for: .knob)
+        let capsule = NSRect(x: knob.midX - Self.knobWidth / 2,
+                             y: knob.minY + Self.knobInset,
+                             width: Self.knobWidth,
+                             height: max(knob.height - Self.knobInset * 2, Self.knobWidth))
+        (effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+            ? NSColor(white: 1, alpha: 0.35) : NSColor(white: 0, alpha: 0.35)).setFill()
+        NSBezierPath(roundedRect: capsule, xRadius: Self.knobWidth / 2, yRadius: Self.knobWidth / 2).fill()
+    }
+}
+
+/// Puts a `SkinnyScroller` on the NSScrollView SwiftUI makes for the channel list. Lives inside the
+/// `ScrollView`'s content, which is where `enclosingScrollView` can reach it, and re-applies itself
+/// if SwiftUI ever rebuilds the scroll view (the scroller it made would be AppKit's again).
+struct SkinnyScrollers: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSView {
+        let view = NSView(frame: .zero)
+        view.isHidden = true   // nothing to draw and nothing to click: it's only here to find the scroll view
+        return view
+    }
+
+    func updateNSView(_ view: NSView, context: Context) {
+        // Next pass of the run loop: during `updateNSView` the view isn't in the hierarchy yet.
+        DispatchQueue.main.async {
+            guard let scrollView = view.enclosingScrollView,
+                  !(scrollView.verticalScroller is SkinnyScroller) else { return }
+            scrollView.scrollerStyle = .overlay
+            scrollView.verticalScroller = SkinnyScroller()
+            scrollView.hasVerticalScroller = true
+        }
+    }
 }
