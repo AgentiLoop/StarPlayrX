@@ -23,6 +23,7 @@ extension AppDelegate {
         "spMenuPosition", "spMenuSize", "spSearchText", "spVisibleChannelNumbers",
         "spScrollPosition", "spTopVisibleChannel",
         "spVersion", "spChannelsLoaded", "spAudioStarted", "spCurrentChannelCategory", "spCategories",
+        "spTrackPosition",
         "spShownArtwork", "spCurrentChannelLogo", "spShowArt", "spBubbleMode",
         "spPreset", "spPresetChannelNumbers", "spStarsOnly"]
 
@@ -114,6 +115,8 @@ extension AppDelegate {
     @objc var spVersion: String { String(MenuView.version.dropFirst()) }   // "v1.1.13-dev" -> "1.1.13-dev"
     @objc var spChannelsLoaded: Bool { radio.channelsLoaded }
     @objc var spAudioStarted: Bool { radio.audioStarted }
+    /// Seconds into the song that's playing, or -1 when it isn't known (what the time-synced lyrics follow).
+    @objc var spTrackPosition: Int { radio.trackPosition.map { Int($0.rounded()) } ?? -1 }
     @objc var spCurrentChannelCategory: String { radio.current?.category ?? "" }
     @objc var spCategories: [String] {
         var seen = Set<String>()

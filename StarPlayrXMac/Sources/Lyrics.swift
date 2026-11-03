@@ -68,25 +68,26 @@ final class LyricsStore: ObservableObject {
         }
         if let cached = cache[k] {
             lyrics = cached
-            status = cached == nil ? "No lyrics for this song on LRCLIB." : ""
+            status = cached == nil ? "No lyrics found for this song." : ""
             return
         }
         lyrics = nil
-        status = "Searching LRCLIB…"
+        status = "Searching for lyrics…"
         task = Task {
             do {
-                let found = try await Self.fetch(artist: artist, song: song, duration: duration)
+                let found = try await Self.find(artist: artist, song: song, duration: duration)
                 guard !Task.isCancelled, self.key == k else { return }
                 self.cache[k] = found
                 self.lyrics = found
-                self.status = found == nil ? "No lyrics for this song on LRCLIB." : ""
+                self.status = found == nil ? "No lyrics found for this song." : ""
             } catch is CancellationError {
             } catch {
                 guard self.key == k else { return }
                 self.lyrics = nil
-                self.status = "Couldn't reach LRCLIB: \(error.localizedDescription)"
+                self.status = "Couldn't reach the lyrics servers: \(error.localizedDescription)"
             }
         }
+
     }
 
     /// Forgets which song is shown, so re-opening the pane fetches/looks up again.
@@ -100,9 +101,29 @@ final class LyricsStore: ObservableObject {
     private static let userAgent =
         "StarPlayrX \(MenuView.version) (https://github.com/AgentiLoop/StarPlayrX)"
 
+    /// LRCLIB first, then the backups, so a 503 or a missing record isn't the end of it:
+    /// NetEase (timestamped, like LRCLIB) and then lyrics.ovh (plain text only).
+    /// An error is only raised when every source failed — a plain miss everywhere is nil.
+    private static func find(artist: String, song: String, duration: TimeInterval?) async throws -> Lyrics? {
+        var failure: Error?
+        for source in [fetch, netease, lyricsOVH] {
+            do {
+                if let found = try await source(artist, song, duration) { return found }
+            } catch is CancellationError {
+                throw CancellationError()
+            } catch {
+                failure = error
+            }
+            try Task.checkCancellation()
+        }
+        if let failure { throw failure }
+        return nil
+    }
+
     /// `/api/get` first (the exact-match endpoint), then `/api/search` by title and artist for
     /// the live channels, whose song titles often don't match LRCLIB's exactly.
     private static func fetch(artist: String, song: String, duration: TimeInterval?) async throws -> Lyrics? {
+
         var get = [URLQueryItem(name: "track_name", value: song),
                    URLQueryItem(name: "artist_name", value: artist)]
         if let duration, duration >= 1, duration <= 3600 {
@@ -130,6 +151,73 @@ final class LyricsStore: ObservableObject {
         return lyrics(from: best, artist: artist, song: song)
     }
 
+    // MARK: Backup engines
+
+    /// NetEase Cloud Music: a search, then the lyric of the best hit. No key, and its records are
+    /// timestamped like LRCLIB's, so a song LRCLIB hasn't got can still scroll with the music.
+    private static func netease(artist: String, song: String, duration: TimeInterval?) async throws -> Lyrics? {
+        let plainSong = withoutParentheses(song), plainArtist = withoutParentheses(artist)
+        var search = URLComponents(string: "https://music.163.com/api/search/get")!
+        search.queryItems = [URLQueryItem(name: "s", value: "\(plainSong) \(plainArtist)"),
+                             URLQueryItem(name: "type", value: "1"),
+                             URLQueryItem(name: "limit", value: "5")]
+        guard let result = (try await json(search.url!) as? [String: Any])?["result"] as? [String: Any],
+              let hits = result["songs"] as? [[String: Any]], !hits.isEmpty else { return nil }
+        // Its search is loose enough to hand back covers and karaoke, so keep this artist's hits,
+        // and of those take the one closest to the track's length.
+        let mine = hits.filter { hit in
+            (hit["artists"] as? [[String: Any]] ?? []).contains { matches(plainArtist, name: $0["name"] as? String ?? "") }
+        }
+        guard let best = (mine.isEmpty ? hits : mine).min(by: { gap($0, duration) < gap($1, duration) }),
+              let id = best["id"] as? Int else { return nil }
+        var lyric = URLComponents(string: "https://music.163.com/api/song/lyric")!
+        lyric.queryItems = [URLQueryItem(name: "id", value: String(id)),
+                            URLQueryItem(name: "lv", value: "1"),
+                            URLQueryItem(name: "tv", value: "-1")]
+        guard let lrc = (try await json(lyric.url!) as? [String: Any])?["lrc"] as? [String: Any],
+              let text = lrc["lyric"] as? String else { return nil }
+        let lines = timed(text).filter { !isCredit($0.text) }
+            .enumerated().map { LyricLine(id: $0.offset, at: $0.element.at, text: $0.element.text) }
+        guard !lines.isEmpty else { return nil }
+        return Lyrics(artist: (best["artists"] as? [[String: Any]])?.first?["name"] as? String ?? artist,
+                      song: best["name"] as? String ?? song, lines: lines, synced: true)
+    }
+
+    /// Seconds between a NetEase hit and the track we're playing; 0 when the length is unknown.
+    private static func gap(_ hit: [String: Any], _ duration: TimeInterval?) -> TimeInterval {
+        guard let duration, let ms = hit["duration"] as? Int else { return 0 }
+        return abs(Double(ms) / 1000 - duration)
+    }
+
+    /// NetEase puts the writing credits ("作词 : …") in the first timestamped lines of the LRC.
+    private static func isCredit(_ text: String) -> Bool {
+        ["作词", "作曲", "编曲", "制作人", "混音", "录音"].contains { text.contains($0) }
+    }
+
+    /// lyrics.ovh: plain text only, no timestamps, but it has songs the other two don't. Last resort.
+    private static func lyricsOVH(artist: String, song: String, duration: TimeInterval?) async throws -> Lyrics? {
+        let escape = { (text: String) in text.addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? text }
+        let plainSong = withoutParentheses(song), plainArtist = withoutParentheses(artist)
+        guard let url = URL(string: "https://api.lyrics.ovh/v1/\(escape(plainArtist))/\(escape(plainSong))"),
+              let text = (try await json(url) as? [String: Any])?["lyrics"] as? String else { return nil }
+        let lines = text.components(separatedBy: .newlines).enumerated()
+            .map { LyricLine(id: $0.offset, at: nil, text: $0.element.trimmingCharacters(in: .whitespaces)) }
+        guard lines.contains(where: { !$0.text.isEmpty }) else { return nil }
+        return Lyrics(artist: artist, song: song, lines: lines, synced: false)
+    }
+
+    /// Decoded JSON, or nil on anything but a 200. The backups have no error contract worth
+    /// retrying — if one doesn't answer, the next source gets its turn.
+    private static func json(_ url: URL) async throws -> Any? {
+        var request = URLRequest(url: url)
+        request.setValue(userAgent, forHTTPHeaderField: "User-Agent")
+        request.timeoutInterval = 15
+        let (data, response) = try await session.data(for: request)
+        guard (response as? HTTPURLResponse)?.statusCode == 200 else { return nil }
+        return try? JSONSerialization.jsonObject(with: data)
+    }
+
+
     /// "Break Free (14)" -> "Break Free". Everything in brackets goes, and so do the spaces it
     /// leaves behind. A title that is nothing but brackets is kept as it was, so the search
     /// still has something to go on.
@@ -150,7 +238,11 @@ final class LyricsStore: ObservableObject {
 
     private static func matches(_ artist: String, _ record: [String: Any]) -> Bool {
         guard let name = record["artistName"] as? String else { return false }
-        return name.localizedCaseInsensitiveContains(artist) || artist.localizedCaseInsensitiveContains(name)
+        return matches(artist, name: name)
+    }
+
+    private static func matches(_ artist: String, name: String) -> Bool {
+        !name.isEmpty && (name.localizedCaseInsensitiveContains(artist) || artist.localizedCaseInsensitiveContains(name))
     }
 
     /// The decoded JSON, or nil on 404 (no record). Honors `Retry-After` once on 429/503.

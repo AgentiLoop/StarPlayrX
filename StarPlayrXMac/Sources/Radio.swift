@@ -391,7 +391,11 @@ final class Radio: ObservableObject {
            let real = SpectrumTimeline.shared.realDate(at: at) {
             streamLag = max(0, at.timeIntervalSince(real))
         }
-        if let live = try? await xtra.liveNowPlaying(behind: streamLag) {
+        // How far behind the live feed the audio really is: the player's own date for the frames
+        // coming out now, not the wall clock. Buffering, a pause or a rewind puts the music further
+        // back without changing `streamLag`, and the song titles would run that far ahead of it.
+        let behind = heardDate.map { max(0, Date().timeIntervalSince($0)) } ?? streamLag
+        if let live = try? await xtra.liveNowPlaying(behind: behind) {
             for (number, id) in liveIDs {
                 guard let la = live[id] else { continue }
                 lookAround[number] = Self.keepingArt(la, of: lookAround[number])
@@ -483,12 +487,7 @@ final class Radio: ObservableObject {
         guard isPlaying else { return nil }
         guard current?.xtraID != nil else {
             guard let started = current.flatMap({ nowPlaying[$0.id] })?.startedAt,
-                  let playerDate = player.currentItem?.currentDate() else { return nil }
-            // Where the audio really is, not where the wall clock is: the player's date for the
-            // frames coming out now, put back on real broadcast time (the same correction the song
-            // list uses). Pausing, buffering and rewinding all move this; `Date()` wouldn't notice,
-            // and the lines would run that far ahead for the rest of the song.
-            let heard = SpectrumTimeline.shared.realDate(at: playerDate) ?? playerDate.addingTimeInterval(-streamLag)
+                  let heard = heardDate else { return nil }
             let at = heard.timeIntervalSince(started) + Self.liveLyricsLead
             // A talk segment or a stale cut can run for hours; past that these aren't its lyrics.
             return (0...900).contains(at) ? at : nil
@@ -496,6 +495,15 @@ final class Radio: ObservableObject {
         guard xtraPlayer.timeControlStatus != .paused, let item = xtraPlayer.currentItem else { return nil }
         let at = item.currentTime().seconds
         return at.isFinite ? at : nil
+    }
+
+    /// Broadcast time of the audio coming out of the speakers right now on a live channel: the
+    /// player's own date for those frames, put back on the stream's real PROGRAM-DATE-TIME. This is
+    /// what both the song list and the lyrics are matched against, so neither runs ahead of the
+    /// music when the player buffers, is paused, or is rewound.
+    private var heardDate: Date? {
+        guard current?.xtraID == nil, let at = player.currentItem?.currentDate() else { return nil }
+        return SpectrumTimeline.shared.realDate(at: at) ?? at.addingTimeInterval(-streamLag)
     }
 
     /// A live cut is stamped when the metadata system publishes it, a few seconds after the song
