@@ -352,7 +352,7 @@ extension MenuController: @preconcurrency NSStatusItemExpandedInterfaceDelegate 
         // starts a fresh session for that click either way: sometimes without ending the old one,
         // sometimes right after ending it (which already hid the panel below). Both have to end
         // here, or the click that dismissed the panel would open it straight back up.
-        if CACurrentMediaTime() - closingClick < 1 {
+        if CACurrentMediaTime() - closingClick < 0.3 {
             closingClick = 0
             session.cancel()
             return
