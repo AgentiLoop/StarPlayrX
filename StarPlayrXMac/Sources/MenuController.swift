@@ -23,41 +23,28 @@ final class MenuController: NSObject, ObservableObject {
     private(set) lazy var panel = MenuPanel.make()
     private lazy var statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
     private var outsideClick: Any?
-    /// When the outside-click monitor last closed the panel, so the click that did it isn't also
-    /// taken as "open it again" by `statusItemClicked`.
-    private var lastOutsideHide = Date.distantPast
     private var glide: Timer?
     private var lit: Timer?
     private var playing: AnyCancellable?
-    /// One icon click, decided once: was the panel open under the icon when the mouse went down?
-    /// AppKit ends and begins expanded interface sessions for a click in no fixed order (and the
-    /// button action may or may not follow), so every callback for the click goes by this answer.
-    private var clickWasOpen = false
-    private var clickAt = 0.0
-    /// A session callback already opened or closed the panel for the current click.
-    private var clickHandled = false
-    private var iconDown: Any?
-
-    private var inClick: Bool { CACurrentMediaTime() - clickAt < 1 }
+    /// The mouse press that just closed the panel (on the icon or anywhere else) is still down:
+    /// a session AppKit begins for that same press is its echo and is cancelled. Cleared when that
+    /// press is released — not on a timer, so a quick next click opens again.
+    private var closingPress = false
+    private var closingPressAt = 0.0
+    private var pressRelease: Any?
 
     func install() {
         _ = panel
-        statusItem.button?.target = self
-        statusItem.button?.action = #selector(iconClicked)
-        statusItem.button?.sendAction(on: .leftMouseUp)
         if #available(macOS 27, *) {
             // AppKit tracks the panel as this item's "expanded interface" and draws the real system
             // highlight capsule for as long as the session lasts. A highlight() set by hand is wiped
-            // by the menu bar, so this is the only way it stays on.
+            // by the menu bar, so this is the only way it stays on. A left click sends no button
+            // action once this is set.
             statusItem.expandedInterfaceDelegate = self
-        }
-        iconDown = NSEvent.addLocalMonitorForEvents(matching: .leftMouseDown) { [weak self] event in
-            guard let self, self.isOnStatusItem(NSEvent.mouseLocation) else { return event }
-            self.clickWasOpen = self.panel.isVisible && !self.detached
-            self.clickAt = CACurrentMediaTime()
-            self.clickHandled = false
-            menuLog.log("iconDown wasOpen=\(self.clickWasOpen)")
-            return event
+        } else {
+            statusItem.button?.target = self
+            statusItem.button?.action = #selector(statusItemClicked)
+            statusItem.button?.sendAction(on: .leftMouseUp)
         }
         playing = Radio.shared.$isPlaying.sink { [weak self] on in
             self?.statusItem.button?.image = NSImage(systemSymbolName: on ? "dot.radiowaves.left.and.right" : "radio",
@@ -65,16 +52,20 @@ final class MenuController: NSObject, ObservableObject {
         }
     }
 
-    /// The button's action, after the mouse comes up (or a VoiceOver / accessibility press, which
-    /// has no mouse-down). Toggles, unless a session callback already did it for this click.
-    @objc func iconClicked() {
-        menuLog.log("iconClicked inClick=\(self.inClick) handled=\(self.clickHandled) visible=\(self.panel.isVisible)")
-        let handled = inClick && clickHandled
-        let wasOpen = inClick ? clickWasOpen : (panel.isVisible && !detached)
-        clickAt = 0
-        clickHandled = false
-        if handled { return }
-        if wasOpen { hide() } else if !(panel.isVisible && !detached) { showUnderMenuBar() }
+    /// Ends `closingPress` once the press that closed the panel comes up.
+    private func awaitPressRelease() {
+        closingPress = true
+        closingPressAt = CACurrentMediaTime()
+        guard pressRelease == nil else { return }
+        pressRelease = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseUp, .rightMouseUp]) { [weak self] _ in
+            Task { @MainActor in
+                guard let self else { return }
+                if let monitor = self.pressRelease { NSEvent.removeMonitor(monitor) }
+                self.pressRelease = nil
+                // AppKit may begin the echo session right on mouse-up; let that run first.
+                DispatchQueue.main.async { self.closingPress = false }
+            }
+        }
     }
 
     /// Scripts and keyboard: open if hidden, close if visible.
@@ -131,35 +122,19 @@ final class MenuController: NSObject, ObservableObject {
         // In a session AppKit draws the real highlight itself; only light it by hand without one.
         if #available(macOS 27, *), statusItem.expandedInterfaceSession != nil {} else { keepLit() }
 
-        // Under the menu bar it behaves like a menu: a click in another app closes it.
-        // On macOS 27 the menu bar belongs to MenuBarAgent, and a click on our icon while a session
-        // is running is passed to no one (no button action, no delegate call) — it only shows up
-        // here. So a click on the icon closes too; the session that click may begin is cancelled
-        // by didBegin, which sees clickWasOpen.
+        // Under the menu bar it behaves like a menu: any click outside the panel closes it. On
+        // macOS 27 the menu bar belongs to MenuBarAgent, so a click on our own icon lands here too
+        // (it is passed to no button action or delegate) — and closing is what it should do. The
+        // session AppKit may begin for that same press is cancelled in didBegin.
         if outsideClick == nil {
             outsideClick = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
-                let point = NSEvent.mouseLocation
                 Task { @MainActor in
                     guard let self, self.panel.isVisible, !self.detached else { return }
-                    menuLog.log("globalDown onIcon=\(self.isOnStatusItem(point))")
-                    if self.isOnStatusItem(point) {
-                        self.clickWasOpen = true
-                        self.clickAt = CACurrentMediaTime()
-                        self.clickHandled = true
-                    } else {
-                        self.lastOutsideHide = Date()
-                    }
+                    self.awaitPressRelease()
                     self.hide()
                 }
             }
         }
-    }
-
-    /// Is this screen point on our menu bar icon? The button's own rectangle converted to the
-    /// screen, not the status bar window's frame, which on recent macOS is not the icon's.
-    private func isOnStatusItem(_ point: NSPoint) -> Bool {
-        guard let button = statusItem.button, let window = button.window else { return false }
-        return window.convertToScreen(button.convert(button.bounds, to: nil)).contains(point)
     }
 
     /// Torn off: the panel stays where it was dropped, until Close / Esc / the icon.
@@ -358,42 +333,24 @@ final class MenuController: NSObject, ObservableObject {
 @available(macOS 27, *)
 extension MenuController: @preconcurrency NSStatusItemExpandedInterfaceDelegate {
     func statusItem(_ statusItem: NSStatusItem, didBegin session: NSStatusItemExpandedInterfaceSession) {
-        menuLog.log("didBegin visible=\(self.panel.isVisible) detached=\(self.detached) inClick=\(self.inClick) wasOpen=\(self.clickWasOpen)")
-        if !inClick {
-            // AppKit also begins a session on its own just after the panel opens (from the button
-            // action): that is the highlight for the panel already showing — keep it.
-            if panel.isVisible, !detached { lit?.invalidate(); lit = nil; return }
-            // No mouse-down seen (keyboard navigation): this opens, and is recorded so the button
-            // action that may follow doesn't toggle a second time.
-            clickWasOpen = false
-            clickAt = CACurrentMediaTime()
-        } else if !clickWasOpen, panel.isVisible, !detached {
-            clickHandled = true
-            return
-        }
-        clickHandled = true
-        // The click that closed the panel from another app must not reopen it.
-        if Date().timeIntervalSince(lastOutsideHide) < 0.5 {
-            lastOutsideHide = .distantPast
+        menuLog.log("didBegin visible=\(self.panel.isVisible) detached=\(self.detached) closingPress=\(self.closingPress)")
+        // The press that just closed the panel can also begin a session: cancel it, or the click
+        // that closed the panel opens it straight back up. (If its mouse-up was somehow missed,
+        // don't stay stuck: a press can't last that long.)
+        if closingPress, CACurrentMediaTime() - closingPressAt < 2 {
             session.cancel()
             return
         }
-        if clickWasOpen {
-            // A click on the icon while the panel hangs under it means close.
-            if panel.isVisible { hide() }
-            session.cancel()
-            return
-        }
+        closingPress = false
+        // Already open under the icon: this session is the highlight for it — keep it.
+        if panel.isVisible, !detached { lit?.invalidate(); lit = nil; return }
         showUnderMenuBar()
     }
 
     func statusItemDidEndExpandedInterfaceSession(_ statusItem: NSStatusItem, animated: Bool) {
-        menuLog.log("didEnd visible=\(self.panel.isVisible) detached=\(self.detached) inClick=\(self.inClick) wasOpen=\(self.clickWasOpen)")
-        // An opening click can end a stale session first; that must not close what it opens.
-        if inClick && !clickWasOpen { return }
+        menuLog.log("didEnd visible=\(self.panel.isVisible) detached=\(self.detached)")
         // Torn off, it is no longer the icon's interface: it stays put and only the highlight ends.
         guard panel.isVisible, !detached else { return }
-        if inClick { clickHandled = true }
         hide()
     }
 }
