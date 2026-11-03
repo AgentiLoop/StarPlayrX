@@ -34,29 +34,18 @@ final class MenuController: NSObject, ObservableObject {
 
     func install() {
         _ = panel
-        if #available(macOS 27, *) {
-            // AppKit tracks the panel as this item's "expanded interface": it draws the real system
-            // highlight capsule for as long as the session lasts, and begins a session on each
-            // click. Per the header, this replaces target/action for showing the interface.
-            statusItem.expandedInterfaceDelegate = self
-        } else {
-            statusItem.button?.target = self
-            statusItem.button?.action = #selector(statusItemClicked)
-        }
+        statusItem.button?.target = self
+        statusItem.button?.action = #selector(statusItemClicked)
+        statusItem.button?.sendAction(on: .leftMouseUp)
         playing = Radio.shared.$isPlaying.sink { [weak self] on in
             self?.statusItem.button?.image = NSImage(systemSymbolName: on ? "dot.radiowaves.left.and.right" : "radio",
                                                       accessibilityDescription: "StarPlayrX")
         }
     }
 
-    /// Icon click: open under the menu bar, close if open there, or move a torn-off panel back under it.
+    /// Icon click: open if hidden, close if visible.
     @objc func statusItemClicked() {
-        if panel.isVisible && !detached { hide(); return }
-        // The same click that got here may have gone past the outside-click monitor first and
-        // closed the panel (the monitor sees the mouse go down, this runs when it comes up). That
-        // is one click, so it means hide — without this the panel closes and reopens and the icon
-        // looks like it does nothing.
-        if Date().timeIntervalSince(lastOutsideHide) < 0.5 { lastOutsideHide = .distantPast; return }
+        if panel.isVisible { hide(); return }
         showUnderMenuBar()
     }
 
