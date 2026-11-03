@@ -566,7 +566,10 @@ struct LyricsPane: View {
         var found: Int?
         for line in lyrics.lines {
             guard let at = line.at, at <= position else { break }
-            found = line.id
+            // Only a line the pane actually draws. LRC files time the gaps between verses as empty
+            // lines, and `sections(of:)` drops those: asking the scroll view for an id it hasn't
+            // got sends it to the bottom of the lyrics instead of to the line being sung.
+            if !line.text.isEmpty { found = line.id }
         }
         return found
     }

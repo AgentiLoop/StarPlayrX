@@ -117,6 +117,24 @@ final class LogicTests: XCTestCase {
         XCTAssertEqual(LyricsStore.withoutParentheses("(14)"), "(14)")
     }
 
+    func testHighlightSkipsTheTimedGapsBetweenVerses() {
+        // LRC files time the gap between verses as an empty line. The pane doesn't draw those, so
+        // the highlight must stay on the last line that is drawn — scrolling to an id the list
+        // hasn't got sends it to the bottom.
+        let lyrics = Lyrics(artist: "a", song: "b", lines: [
+            LyricLine(id: 0, at: 10, text: "last line of the verse"),
+            LyricLine(id: 1, at: 14, text: ""),
+            LyricLine(id: 2, at: 25, text: "first line of the chorus")], synced: true)
+        XCTAssertEqual(LyricsPane.line(of: lyrics, at: 12), 0)
+        XCTAssertEqual(LyricsPane.line(of: lyrics, at: 18), 0)   // in the gap: not the empty line
+        XCTAssertEqual(LyricsPane.line(of: lyrics, at: 26), 2)
+        // Every id the highlight can return is one the pane draws.
+        let drawn = Set(LyricsPane.sections(of: lyrics).flatMap { $0 }.map(\.id))
+        for at in stride(from: 0.0, through: 60.0, by: 0.5) {
+            if let line = LyricsPane.line(of: lyrics, at: at) { XCTAssertTrue(drawn.contains(line), "id \(line) at \(at)") }
+        }
+    }
+
     func testCachedLinesSurviveTheRoundTrip() {
         let lines = [LyricLine(id: 0, at: 11.07, text: "We don't have to worry bout nothing"),
                      LyricLine(id: 1, at: nil, text: "(fire fire fire)"),
