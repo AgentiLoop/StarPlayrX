@@ -78,8 +78,8 @@ final class MenuController: NSObject, ObservableObject {
         // Like MenuBarExtra: the app becomes active (controls draw active, not greyed) and
         // the menu bar icon stays highlighted while the panel hangs under it.
         NSApp.activate(ignoringOtherApps: true)
-        statusItem.button?.highlight(true)
         panel.makeKeyAndOrderFront(nil)
+        light(true)
         // Under the menu bar it behaves like a menu: a click in another app closes it.
         // Clicks on our own icon are left to statusItemClicked, or the two would fight
         // (monitor hides, then the click reopens).
@@ -97,7 +97,7 @@ final class MenuController: NSObject, ObservableObject {
     /// Torn off: the panel stays where it was dropped, until Close / Esc / the icon.
     func detach() {
         detached = true
-        statusItem.button?.highlight(false)
+        light(false)
         removeOutsideClick()
     }
 
@@ -107,8 +107,21 @@ final class MenuController: NSObject, ObservableObject {
         panel.orderOut(nil)
         detached = false
         shaded = false
-        statusItem.button?.highlight(false)
+        light(false)
         removeOutsideClick()
+    }
+
+    /// The lit menu bar icon. AppKit clears a status button's highlight when the click that set it
+    /// finishes (and when the panel takes key away from the status bar window), so the state is
+    /// re-applied on the next pass of the run loop — unless it has since changed again.
+    private var lit = false
+    private func light(_ on: Bool) {
+        lit = on
+        statusItem.button?.highlight(on)
+        DispatchQueue.main.async { [weak self] in
+            guard let self, self.lit == on else { return }
+            self.statusItem.button?.highlight(on)
+        }
     }
 
     private func removeOutsideClick() {
