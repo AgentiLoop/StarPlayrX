@@ -79,6 +79,45 @@ final class LogicTests: XCTestCase {
         XCTAssertEqual(Updater.pick(releases, newerThan: "1.1.15", prereleases: false)?.notes, "sixteen")
     }
 
+    func testLyricSectionsSplitOnBlankLinesAndLongGaps() {
+        // Plain lyrics: the blank line is the break, and it isn't shown as a line of its own.
+        let plain = Lyrics(artist: "Kiiara", song: "Gold", lines: [
+            LyricLine(id: 0, at: nil, text: "Roof was fallin'"),
+            LyricLine(id: 1, at: nil, text: "(Gold up in my teeth)"),
+            LyricLine(id: 2, at: nil, text: ""),
+            LyricLine(id: 3, at: nil, text: "I missed you in the basement")], synced: false)
+        let sections = LyricsPane.sections(of: plain)
+        XCTAssertEqual(sections.map { $0.map(\.id) }, [[0, 1], [3]])
+
+        // Synced lyrics: more than 4 s between two lines is a break too (an intro or a solo).
+        let synced = Lyrics(artist: "a", song: "b", lines: [
+            LyricLine(id: 0, at: 10, text: "one"),
+            LyricLine(id: 1, at: 12, text: "two"),
+            LyricLine(id: 2, at: 30, text: "after the solo"),
+            LyricLine(id: 3, at: 33, text: "and on")], synced: true)
+        XCTAssertEqual(LyricsPane.sections(of: synced).map { $0.map(\.id) }, [[0, 1], [2, 3]])
+    }
+
+    func testAdLibLinesAreTheOnesFullyInParentheses() {
+        XCTAssertTrue(LyricsPane.isAdLib("(Gold up in my teeth)"))
+        XCTAssertFalse(LyricsPane.isAdLib("Don't care what you say (to me)"))
+        XCTAssertFalse(LyricsPane.isAdLib("()"))
+        XCTAssertFalse(LyricsPane.isAdLib("I missed you in the basement"))
+    }
+
+    func testCurrentLineIsTheLastStampThatPassed() {
+        let lyrics = Lyrics(artist: "a", song: "b", lines: [
+            LyricLine(id: 0, at: 10, text: "one"),
+            LyricLine(id: 1, at: 20, text: "two"),
+            LyricLine(id: 2, at: 30, text: "three")], synced: true)
+        XCTAssertNil(LyricsPane.line(of: lyrics, at: 9.9))
+        XCTAssertEqual(LyricsPane.line(of: lyrics, at: 10), 0)
+        XCTAssertEqual(LyricsPane.line(of: lyrics, at: 29.9), 1)
+        XCTAssertEqual(LyricsPane.line(of: lyrics, at: 400), 2)
+        // Unsynced lyrics never highlight.
+        XCTAssertNil(LyricsPane.line(of: Lyrics(artist: "a", song: "b", lines: lyrics.lines, synced: false), at: 15))
+    }
+
     func testAlbumArtStaysUntilTheSongChanges() {
         let shown = NowPlaying(artist: "Boston", song: "Foreplay", image: "http://albumart.siriusxm.com/a_m.jpg")
         // Same song polled again without art: keep the album art.

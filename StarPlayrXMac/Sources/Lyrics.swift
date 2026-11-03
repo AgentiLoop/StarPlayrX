@@ -244,7 +244,8 @@ struct LyricsPane: View {
     }
 
     /// Synced lyrics scroll themselves and dim every line but the one being sung; plain lyrics
-    /// are just a scrolling block of text.
+    /// are just a scrolling block of text. Either way the lines are grouped into sections, so
+    /// verses and the chorus read apart instead of as one wall of text.
     private func lines(_ lyrics: Lyrics) -> some View {
         // 0.25 s is close enough for a sung line and costs almost nothing to redraw.
         TimelineView(.periodic(from: .now, by: 0.25)) { _ in
@@ -252,13 +253,19 @@ struct LyricsPane: View {
             let current = at.flatMap { Self.line(of: lyrics, at: $0) }
             ScrollViewReader { proxy in
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 6) {
-                        ForEach(lyrics.lines) { line in
-                            Text(line.text.isEmpty ? " " : line.text)
-                                .font(line.id == current ? .body.bold() : .body)
-                                .foregroundStyle(current == nil || line.id == current ? .primary : .secondary)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .id(line.id)
+                    VStack(alignment: .leading, spacing: 14) {
+                        ForEach(Self.sections(of: lyrics), id: \.first!.id) { section in
+                            VStack(alignment: .leading, spacing: 6) {
+                                ForEach(section) { line in
+                                    let adLib = Self.isAdLib(line.text)
+                                    Text(line.text)
+                                        .font(line.id == current ? .body.bold() : adLib ? .callout : .body)
+                                        .foregroundStyle(current == nil || line.id == current ? .primary : .secondary)
+                                        .padding(.leading, adLib ? 14 : 0)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                        .id(line.id)
+                                }
+                            }
                         }
                     }
                     .padding(.trailing, 12)
@@ -266,12 +273,38 @@ struct LyricsPane: View {
                 }
                 .frame(height: CachedArt<EmptyView>.listHeight)
                 .padding(.trailing, -12)
-                .onValueChange(of: current) { line in
+                .onChange(of: current) { _, line in
                     guard let line else { return }
                     withAnimation(.easeInOut(duration: 0.3)) { proxy.scrollTo(line, anchor: .center) }
                 }
             }
         }
+    }
+
+    /// The lines grouped into sections, keeping every line's id (the highlight and the auto-scroll
+    /// go by id). Blank lines are the breaks LRCLIB ships and are dropped; on synced lyrics more
+    /// than 4 seconds between two lines is a break too (an intro, a solo, the gap before a chorus).
+    static func sections(of lyrics: Lyrics) -> [[LyricLine]] {
+        var out = [[LyricLine]]()
+        var section = [LyricLine]()
+        var lastAt: TimeInterval?
+        for line in lyrics.lines {
+            let gap = line.at.flatMap { at in lastAt.map { at - $0 > 4 } } ?? false
+            if (line.text.isEmpty || gap), !section.isEmpty {
+                out.append(section)
+                section = []
+            }
+            if let at = line.at { lastAt = at }
+            guard !line.text.isEmpty else { continue }
+            section.append(line)
+        }
+        if !section.isEmpty { out.append(section) }
+        return out
+    }
+
+    /// `(Gold up in my teeth)` — a backing vocal, set apart from the line being sung.
+    static func isAdLib(_ text: String) -> Bool {
+        text.count > 2 && text.hasPrefix("(") && text.hasSuffix(")")
     }
 
     /// The last line whose timestamp has passed.
@@ -283,24 +316,5 @@ struct LyricsPane: View {
             found = line.id
         }
         return found
-    }
-}
-
-/// `onChange` that hands over just the new value. The one-parameter form is deprecated in
-/// macOS 14 and the two-parameter one doesn't exist before it, and the app runs on macOS 13.
-private extension View {
-    @ViewBuilder
-    func onValueChange<V: Equatable>(of value: V, perform action: @escaping (V) -> Void) -> some View {
-        if #available(macOS 14, *) {
-            onChange(of: value) { _, new in action(new) }
-        } else {
-            legacyOnChange(of: value, perform: action)
-        }
-    }
-
-    /// Deprecated itself, so the macOS 13 fallback doesn't warn about the API it has to use.
-    @available(macOS, deprecated: 14.0)
-    func legacyOnChange<V: Equatable>(of value: V, perform action: @escaping (V) -> Void) -> some View {
-        onChange(of: value, perform: action)
     }
 }

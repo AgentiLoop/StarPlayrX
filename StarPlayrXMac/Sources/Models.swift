@@ -26,6 +26,9 @@ struct NowPlaying: Equatable {
     /// The show's artwork (often a text title card), shown instead of the channel logo only when the
     /// user picks it for that channel; see `Radio.displayed(_:)`.
     var showImage = ""
+    /// When this cut started, in stream time (live channels only): the song's zero point for
+    /// the time-synced lyrics. Nil on Xtra, whose position comes from the player itself.
+    var startedAt: Date?
 }
 
 // MARK: SiriusXM API (XtraClient)

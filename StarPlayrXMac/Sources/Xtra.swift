@@ -264,7 +264,8 @@ actor XtraClient {
             result[id] = NowPlaying(artist: artist.isEmpty ? show?["name"] as? String ?? "" : artist,
                                     song: cut["name"] as? String ?? "",
                                     image: art.map { Self.imageURL(key: $0, size: 450) } ?? "",
-                                    showImage: ((show?["image"] as? [String: Any])?["url"] as? String).map { Self.imageURL(key: $0, size: 450) } ?? "")
+                                    showImage: ((show?["image"] as? [String: Any])?["url"] as? String).map { Self.imageURL(key: $0, size: 450) } ?? "",
+                                    startedAt: validFrom(cut["validFrom"] as? String))
         }
         return result
     }

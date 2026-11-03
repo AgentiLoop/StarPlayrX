@@ -475,12 +475,19 @@ final class Radio: ObservableObject {
         return NowPlaying(artist: track.artist, song: track.title, image: track.imageURL)
     }
 
-    /// Seconds into the song that's playing, for the time-synced lyrics. Only Xtra channels know it:
-    /// their tracks are whole files in the player. A live channel's stream has no song boundaries,
-    /// so its lyrics are shown unsynced.
+    /// Seconds into the song that's playing, for the time-synced lyrics. Xtra tracks are whole
+    /// files in the player, so the player knows. A live channel's stream has no song boundaries:
+    /// the cut's `validFrom` is the song's start in stream time, and the music runs `streamLag`
+    /// behind real time, so now minus that lag minus the start is how far into the song it is.
     var trackPosition: TimeInterval? {
-        guard isPlaying, current?.xtraID != nil, xtraPlayer.timeControlStatus != .paused,
-              let item = xtraPlayer.currentItem else { return nil }
+        guard isPlaying else { return nil }
+        guard current?.xtraID != nil else {
+            guard let started = current.flatMap({ nowPlaying[$0.id] })?.startedAt else { return nil }
+            let at = Date().addingTimeInterval(-streamLag).timeIntervalSince(started)
+            // A talk segment or a stale cut can run for hours; past that these aren't its lyrics.
+            return (0...900).contains(at) ? at : nil
+        }
+        guard xtraPlayer.timeControlStatus != .paused, let item = xtraPlayer.currentItem else { return nil }
         let at = item.currentTime().seconds
         return at.isFinite ? at : nil
     }
