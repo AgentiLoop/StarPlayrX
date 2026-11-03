@@ -21,7 +21,7 @@ StarPlayrX was built for visually impaired listeners, a group of paying subscrib
 ## 🎛️ StarPlayrX for Mac (menu bar app)
 
 <p align="center">
-  <img src="docs/starplayrx-mac-demo.gif" width="400" alt="StarPlayrX playing BPM Workout: click the menu bar icon, drag the panel off the menu bar into its own window, double-click the header to roll it up like a window shade and again to roll it down, then click the icon to glide it back under the menu bar">
+  <img src="docs/starplayrx-mac-demo.gif" width="400" alt="StarPlayrX playing Vegas Pool Party: click the menu bar icon, drag the panel off the menu bar into its own window, double-click the header to roll it up like a window shade and again to roll it down, then click the icon to glide it back under the menu bar">
 </p>
 
 <table align="center">
@@ -78,10 +78,11 @@ StarPlayrX was built for visually impaired listeners, a group of paying subscrib
 - Picks up where you left off: the last channel you played starts again when StarPlayrX opens
 - US and Canada accounts (pick Canada on the sign-in screen)
 - Your password is stored only in the macOS Keychain
+- **Keeps itself up to date:** checks GitHub for a newer release shortly after launch and every 6 hours, then asks: Update (downloads the signed build, verifies the Developer ID signature, swaps it in and relaunches), Remind Me in 1 Hour, or No Thanks
 
 **Requirements:** macOS 13 Ventura or later, Apple Silicon or Intel, and an active SiriusXM subscription.
 
-**Download:** [StarPlayrX for Mac 1.1.15](https://github.com/AgentiLoop/StarPlayrX/releases/tag/mac-1.1.15) (signed and notarized). All builds are on the [Releases](https://github.com/AgentiLoop/StarPlayrX/releases) page.
+**Download:** [StarPlayrX for Mac 1.1.17](https://github.com/AgentiLoop/StarPlayrX/releases/tag/mac-1.1.17) (signed and notarized). All builds are on the [Releases](https://github.com/AgentiLoop/StarPlayrX/releases) page.
 
 ### 📜 AppleScript
 
@@ -97,6 +98,7 @@ tell application "StarPlayrX"
     sign in user "me@example.com" password "…"
     park menu at upper right
     toggle shade
+    check for updates                    -- offers a newer release; empty result when up to date
 end tell
 ```
 
