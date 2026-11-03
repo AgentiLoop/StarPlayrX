@@ -284,6 +284,8 @@ final class SPXCommand: NSScriptCommand {
             menu.detach()
         case "reattach menu":
             if menu.detached { menu.hide(); menu.statusItemClicked() }
+        case "check for updates":
+            return later { await Updater.shared.check(interactive: true) }
         default:
             return fail("Unknown command \(commandDescription.commandName).")
         }

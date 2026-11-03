@@ -26,6 +26,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         MenuController.shared.install()
         // Hosting unit tests: no network sign-in or password prompt.
         guard ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil else { return }
+        Updater.shared.start()
         Task { @MainActor in
             if let saved = Keychain.load(), await Radio.shared.login(user: saved.user, pass: saved.pass) {
                 return

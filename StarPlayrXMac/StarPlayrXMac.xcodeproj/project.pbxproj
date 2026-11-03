@@ -28,6 +28,7 @@
 		C1DCC21623D246122B6DAB6F /* MenuController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95A1B6D05467A2297EAAE180 /* MenuController.swift */; };
 		C4EADC40C4C5D1B84D6005BA /* BubblePopup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 399F131CDB1FBB41334F85DF /* BubblePopup.swift */; };
 		C8A0A19F83AA9E90EFCAB52A /* SpectrumRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C9B3A2D12DB0EEA154457BF /* SpectrumRenderer.swift */; };
+		C8F6A2E065C7DF33930B6C11 /* Updater.swift in Sources */ = {isa = PBXBuildFile; fileRef = C61B9780B3DFA615D3ABFAD1 /* Updater.swift */; };
 		D70FE6A0684BA95A37B9141F /* Keychain.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4362792013A115602196217 /* Keychain.swift */; };
 		F9A9498FC10093CAB657AD06 /* Radio.swift in Sources */ = {isa = PBXBuildFile; fileRef = A828F86C0FE74B3D990CC160 /* Radio.swift */; };
 /* End PBXBuildFile section */
@@ -67,6 +68,7 @@
 		AFC2175A4B9226A8F1E4A18B /* MarqueeText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarqueeText.swift; sourceTree = "<group>"; };
 		B180FAFDD06BBA9CCCECBA5D /* Visualizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Visualizer.swift; sourceTree = "<group>"; };
 		B4362792013A115602196217 /* Keychain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Keychain.swift; sourceTree = "<group>"; };
+		C61B9780B3DFA615D3ABFAD1 /* Updater.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Updater.swift; sourceTree = "<group>"; };
 		DA977B1658B9908A1857CA86 /* Spectrum.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = Spectrum.metal; sourceTree = "<group>"; };
 		DF28422D48A23F0C3140CF55 /* SpectrumView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpectrumView.swift; sourceTree = "<group>"; };
 		F780CB7683BB43494DE45275 /* ScriptedTour.applescript */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.applescript; path = ScriptedTour.applescript; sourceTree = "<group>"; };
@@ -106,6 +108,7 @@
 				8597FCE01D54FAA77BEF60A4 /* StarPlayrX.entitlements */,
 				9AE9931B956CB2DA3D48715B /* StarPlayrX.sdef */,
 				47D0341DA36FCC82C2C684B6 /* StarPlayrXMacApp.swift */,
+				C61B9780B3DFA615D3ABFAD1 /* Updater.swift */,
 				B180FAFDD06BBA9CCCECBA5D /* Visualizer.swift */,
 				40AD17AD1A89E96BF1D207E3 /* Xtra.swift */,
 			);
@@ -251,6 +254,7 @@
 				898FB65622A94556CBD2974B /* SpectrumTimeline.swift in Sources */,
 				823B69E4E49005C7947B6854 /* SpectrumView.swift in Sources */,
 				C1BBBCF52CBE121D9E31AE22 /* StarPlayrXMacApp.swift in Sources */,
+				C8F6A2E065C7DF33930B6C11 /* Updater.swift in Sources */,
 				67113DB4036BE489BDC7FE53 /* Visualizer.swift in Sources */,
 				8B1D211BFBA7662F1F5269C4 /* Xtra.swift in Sources */,
 			);

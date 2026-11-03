@@ -53,6 +53,32 @@ final class LogicTests: XCTestCase {
         XCTAssertEqual(SPXCommand.code("SPUR"), 0x5350_5552)
     }
 
+    func testVersionOrdering() {
+        XCTAssertTrue(Updater.isVersion("1.1.16", newerThan: "1.1.15"))
+        XCTAssertTrue(Updater.isVersion("1.2", newerThan: "1.1.99"))
+        XCTAssertTrue(Updater.isVersion("2.0.0", newerThan: "1.9.9"))
+        XCTAssertFalse(Updater.isVersion("1.1.15", newerThan: "1.1.15"))
+        XCTAssertFalse(Updater.isVersion("1.1.15", newerThan: "1.1.16"))
+        XCTAssertFalse(Updater.isVersion("1.1.0", newerThan: "1.1"))
+        XCTAssertFalse(Updater.isVersion("1.1.16-beta", newerThan: "1.1.15"))
+    }
+
+    func testPickNewestMacRelease() {
+        let page = URL(string: "https://example.com/r")!
+        let zip = URL(string: "https://example.com/StarPlayrX-Mac-x.zip")!
+        let releases: [(tag: String, draft: Bool, prerelease: Bool, notes: String, page: URL, zip: URL?)] = [
+            ("mac-1.1.16", false, false, "sixteen", page, zip),
+            ("mac-1.1.18", false, true, "pre", page, zip),         // pre-release
+            ("mac-1.1.17", false, false, "no zip yet", page, nil), // still uploading
+            ("mac-1.1.19", true, false, "draft", page, zip),       // draft
+            ("1.3.1", false, false, "old iOS tag", page, zip),
+            ("mac-1.1.14", false, false, "older", page, zip)]
+        XCTAssertEqual(Updater.pick(releases, newerThan: "1.1.15", prereleases: false)?.version, "1.1.16")
+        XCTAssertEqual(Updater.pick(releases, newerThan: "1.1.15", prereleases: true)?.version, "1.1.18")
+        XCTAssertNil(Updater.pick(releases, newerThan: "1.1.16", prereleases: false))
+        XCTAssertEqual(Updater.pick(releases, newerThan: "1.1.15", prereleases: false)?.notes, "sixteen")
+    }
+
     func testAlbumArtStaysUntilTheSongChanges() {
         let shown = NowPlaying(artist: "Boston", song: "Foreplay", image: "http://albumart.siriusxm.com/a_m.jpg")
         // Same song polled again without art: keep the album art.

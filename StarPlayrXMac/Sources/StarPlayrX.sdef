@@ -321,5 +321,10 @@
         <command name="reattach menu" code="SPrxAtch" description="Put a torn-off panel back under the menu bar.">
             <cocoa class="SPXCommand"/>
         </command>
+
+        <command name="check for updates" code="SPrxUpdt" description="Look for a newer StarPlayrX release on GitHub now and offer it (Update / Remind Me in 1 Hour / No Thanks). Returns the newer version, or empty when up to date.">
+            <cocoa class="SPXCommand"/>
+            <result type="text"/>
+        </command>
     </suite>
 </dictionary>
