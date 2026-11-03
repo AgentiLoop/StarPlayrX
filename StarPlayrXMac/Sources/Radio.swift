@@ -145,6 +145,9 @@ final class Radio: ObservableObject {
         haltXtra()
         current = channel
         UserDefaults.standard.set(channel.id, forKey: "lastChannel")
+        // A tune the user asked for starts the stall count over; a re-tune by the watchdog keeps it.
+        if retuning { retuning = false } else { recoveryAttempts = 0 }
+        startWatchdog()
         if let xtraID = channel.xtraID {
             player.pause()
             player.replaceCurrentItem(with: nil)
@@ -195,12 +198,73 @@ final class Radio: ObservableObject {
     }
 
     func stop() {
+        stopWatchdog()
         player.pause()
         player.replaceCurrentItem(with: nil)
         haltXtra()
         isPlaying = false
         updateNowPlayingInfo()
     }
+
+    // MARK: Stall recovery
+
+    /// The stream can die on its own — the Mac sleeps, the network drops, a segment or the playlist
+    /// fails — and AVPlayer just stops. Nothing cleared `isPlaying`, so the button stayed on Pause
+    /// over silence and nothing ever brought the audio back. This watchdog notices the silence,
+    /// re-tunes the channel, and after a few failed tries gives up and shows Play again.
+    private var watchdog: Timer?
+    private var silentSince: Date?
+    private var recoveryAttempts = 0
+    private var retuning = false
+    /// Longer than the tune path's own wait for the first segments (10 s), so a slow start
+    /// is never mistaken for a dead stream.
+    private static let stallSeconds: TimeInterval = 12
+    private static let maxRecoveryAttempts = 3
+
+    private func startWatchdog() {
+        silentSince = nil
+        guard watchdog == nil else { return }
+        watchdog = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { _ in
+            Task { @MainActor in Radio.shared.checkPlayback() }
+        }
+    }
+
+    private func stopWatchdog() {
+        watchdog?.invalidate()
+        watchdog = nil
+        silentSince = nil
+    }
+
+    /// True while the current channel is making no sound at all. Buffering counts: it is only acted
+    /// on after `stallSeconds` of it. An Xtra channel between downloaded tracks does not count.
+    private var isSilent: Bool {
+        guard let current else { return false }
+        guard current.xtraID == nil else {
+            return xtraPlayer.timeControlStatus != .playing && xtraPlayer.items().isEmpty
+        }
+        return player.timeControlStatus != .playing
+    }
+
+    private func checkPlayback() {
+        // A live tune sets isPlaying only after the stream URL comes back; stop() is what ends the watchdog.
+        guard isPlaying, let channel = current else { silentSince = nil; return }
+        guard isSilent else { silentSince = nil; recoveryAttempts = 0; return }
+        let since = silentSince ?? Date()
+        silentSince = since
+        guard Date().timeIntervalSince(since) >= Self.stallSeconds else { return }
+        silentSince = nil
+        guard recoveryAttempts < Self.maxRecoveryAttempts else {
+            Self.playLog.error("playback gave up ch=\(channel.id, privacy: .public) after \(self.recoveryAttempts, privacy: .public) tries")
+            stop()
+            status = "Playback stopped. Press play to try again."
+            return
+        }
+        recoveryAttempts += 1
+        Self.playLog.notice("playback stalled ch=\(channel.id, privacy: .public) re-tuning, try \(self.recoveryAttempts, privacy: .public)")
+        retuning = true
+        play(channel)
+    }
+    private static let playLog = Logger(subsystem: "com.starplayrx.mac", category: "playback")
 
     // MARK: Xtra playback
 
