@@ -57,11 +57,12 @@ enum CredentialPrompt {
             signIn.keyEquivalent = "\r"
             signIn.frame = NSRect(x: margin + half + gap, y: margin, width: half, height: 32)
             // The password field's autofill popup drops ~70 pt below the field; keep the buttons clear of it.
+            // The Canada checkbox sits in that gap, flush right (the popup opens on the left), a bit above the buttons.
             var y = margin + 32 + 60
             let canada = NSButton(checkboxWithTitle: "Canada", target: nil, action: nil)
             canada.sizeToFit()
             canada.state = Radio.shared.localeIsCA ? .on : .off
-            canada.frame.origin = NSPoint(x: margin + width - canada.frame.width, y: y)   // flush right
+            canada.frame.origin = NSPoint(x: margin + width - canada.frame.width, y: y - 30)
             y += canada.frame.height + 10
             let pass = NSSecureTextField(frame: NSRect(x: margin, y: y, width: width, height: 24))
             pass.placeholderString = "Password"
