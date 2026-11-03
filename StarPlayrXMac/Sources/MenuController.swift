@@ -27,6 +27,7 @@ final class MenuController: NSObject, ObservableObject {
     /// taken as "open it again" by `statusItemClicked`.
     private var lastOutsideHide = Date.distantPast
     private var glide: Timer?
+    private var lit: Timer?
     private var playing: AnyCancellable?
     /// When the expanded interface session last ended with the panel closing (macOS 27). The click
     /// that closed it can start a new session, and that one has to be cancelled, not acted on.
@@ -94,10 +95,7 @@ final class MenuController: NSObject, ObservableObject {
         // Like MenuBarExtra: the app becomes active, so controls draw active rather than greyed.
         NSApp.activate(ignoringOtherApps: true)
         panel.makeKeyAndOrderFront(nil)
-        DispatchQueue.main.async { [weak self] in
-            guard let self else { return }
-            self.statusItem.button?.highlight(self.panel.isVisible && !self.detached)
-        }
+        keepLit()
 
         // Under the menu bar it behaves like a menu: a click in another app closes it.
         // Clicks on our own icon are left to statusItemClicked, or the two would fight
@@ -141,7 +139,25 @@ final class MenuController: NSObject, ObservableObject {
     }
 
     /// Clears the icon highlight and cancels any expanded interface session.
+    /// The button un-highlights itself when its mouse tracking ends, which is after the click's
+    /// action has run, so a one-time highlight() is wiped. Re-assert it while the panel hangs
+    /// under the icon.
+    private func keepLit() {
+        lit?.invalidate()
+        statusItem.button?.highlight(true)
+        let timer = Timer(timeInterval: 0.05, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                guard let self, self.panel.isVisible, !self.detached else { return }
+                if self.statusItem.button?.isHighlighted == false { self.statusItem.button?.highlight(true) }
+            }
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        lit = timer
+    }
+
     private func endSession() {
+        lit?.invalidate()
+        lit = nil
         statusItem.button?.highlight(false)
         if #available(macOS 27, *) { statusItem.expandedInterfaceSession?.cancel() }
     }
