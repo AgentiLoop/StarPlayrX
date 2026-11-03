@@ -7,10 +7,12 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		2AD94A1CC7AA97E4E45EB81D /* ContrastColor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 231DFE768C1FC815F93C358A /* ContrastColor.swift */; };
 		67113DB4036BE489BDC7FE53 /* Visualizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = B180FAFDD06BBA9CCCECBA5D /* Visualizer.swift */; };
 		6C400293FE0D8C7434417F04 /* ScriptedTour.applescript in Resources */ = {isa = PBXBuildFile; fileRef = F780CB7683BB43494DE45275 /* ScriptedTour.applescript */; };
 		70ED440C2742A2523849C564 /* MarqueeText.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFC2175A4B9226A8F1E4A18B /* MarqueeText.swift */; };
 		78D07A43295425FB93CF8574 /* Scripting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E4311F836AD4A7A0120E737 /* Scripting.swift */; };
+		823B69E4E49005C7947B6854 /* SpectrumView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF28422D48A23F0C3140CF55 /* SpectrumView.swift */; };
 		8489F0CE3E44B23D8B984C16 /* SearchField.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74DCB8300E5FAB44FC58A9F8 /* SearchField.swift */; };
 		898FB65622A94556CBD2974B /* SpectrumTimeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = 086EB200A51E929484F0F0B7 /* SpectrumTimeline.swift */; };
 		8B1D211BFBA7662F1F5269C4 /* Xtra.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40AD17AD1A89E96BF1D207E3 /* Xtra.swift */; };
@@ -24,6 +26,8 @@
 		B92350C46BD992AC2AA8DDCA /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 6E8F68BA0D44926EF37BBB62 /* Assets.xcassets */; };
 		C1BBBCF52CBE121D9E31AE22 /* StarPlayrXMacApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47D0341DA36FCC82C2C684B6 /* StarPlayrXMacApp.swift */; };
 		C1DCC21623D246122B6DAB6F /* MenuController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95A1B6D05467A2297EAAE180 /* MenuController.swift */; };
+		C4EADC40C4C5D1B84D6005BA /* BubblePopup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 399F131CDB1FBB41334F85DF /* BubblePopup.swift */; };
+		C8A0A19F83AA9E90EFCAB52A /* SpectrumRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C9B3A2D12DB0EEA154457BF /* SpectrumRenderer.swift */; };
 		D70FE6A0684BA95A37B9141F /* Keychain.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4362792013A115602196217 /* Keychain.swift */; };
 		F9A9498FC10093CAB657AD06 /* Radio.swift in Sources */ = {isa = PBXBuildFile; fileRef = A828F86C0FE74B3D990CC160 /* Radio.swift */; };
 /* End PBXBuildFile section */
@@ -42,12 +46,15 @@
 		086EB200A51E929484F0F0B7 /* SpectrumTimeline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpectrumTimeline.swift; sourceTree = "<group>"; };
 		1DF942F978B6D6B616311D33 /* StarPlayrXMac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = StarPlayrXMac.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		2110CDF4A0912E48922BDC87 /* StarPlayrXMacTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = StarPlayrXMacTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		231DFE768C1FC815F93C358A /* ContrastColor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContrastColor.swift; sourceTree = "<group>"; };
 		24B9C2880FFCDCA06B056FF3 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		399F131CDB1FBB41334F85DF /* BubblePopup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BubblePopup.swift; sourceTree = "<group>"; };
 		4005321465BF3F5704ABBA35 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
 		40AD17AD1A89E96BF1D207E3 /* Xtra.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Xtra.swift; sourceTree = "<group>"; };
 		40C659F63F7EF9220EB71AB2 /* Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Extensions.swift; sourceTree = "<group>"; };
 		47D0341DA36FCC82C2C684B6 /* StarPlayrXMacApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StarPlayrXMacApp.swift; sourceTree = "<group>"; };
 		5AACB58C22D23FF75DF15D1A /* StarPlayrXMacTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StarPlayrXMacTests.swift; sourceTree = "<group>"; };
+		5C9B3A2D12DB0EEA154457BF /* SpectrumRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpectrumRenderer.swift; sourceTree = "<group>"; };
 		6E4311F836AD4A7A0120E737 /* Scripting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Scripting.swift; sourceTree = "<group>"; };
 		6E8F68BA0D44926EF37BBB62 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		74DCB8300E5FAB44FC58A9F8 /* SearchField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchField.swift; sourceTree = "<group>"; };
@@ -61,6 +68,7 @@
 		B180FAFDD06BBA9CCCECBA5D /* Visualizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Visualizer.swift; sourceTree = "<group>"; };
 		B4362792013A115602196217 /* Keychain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Keychain.swift; sourceTree = "<group>"; };
 		DA977B1658B9908A1857CA86 /* Spectrum.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = Spectrum.metal; sourceTree = "<group>"; };
+		DF28422D48A23F0C3140CF55 /* SpectrumView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpectrumView.swift; sourceTree = "<group>"; };
 		F780CB7683BB43494DE45275 /* ScriptedTour.applescript */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.applescript; path = ScriptedTour.applescript; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -79,6 +87,8 @@
 			children = (
 				7FAE59B5C9E7F2FA47E63AE0 /* ArtCache.swift */,
 				6E8F68BA0D44926EF37BBB62 /* Assets.xcassets */,
+				399F131CDB1FBB41334F85DF /* BubblePopup.swift */,
+				231DFE768C1FC815F93C358A /* ContrastColor.swift */,
 				40C659F63F7EF9220EB71AB2 /* Extensions.swift */,
 				24B9C2880FFCDCA06B056FF3 /* Info.plist */,
 				B4362792013A115602196217 /* Keychain.swift */,
@@ -90,7 +100,9 @@
 				6E4311F836AD4A7A0120E737 /* Scripting.swift */,
 				74DCB8300E5FAB44FC58A9F8 /* SearchField.swift */,
 				DA977B1658B9908A1857CA86 /* Spectrum.metal */,
+				5C9B3A2D12DB0EEA154457BF /* SpectrumRenderer.swift */,
 				086EB200A51E929484F0F0B7 /* SpectrumTimeline.swift */,
+				DF28422D48A23F0C3140CF55 /* SpectrumView.swift */,
 				8597FCE01D54FAA77BEF60A4 /* StarPlayrX.entitlements */,
 				9AE9931B956CB2DA3D48715B /* StarPlayrX.sdef */,
 				47D0341DA36FCC82C2C684B6 /* StarPlayrXMacApp.swift */,
@@ -223,6 +235,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				B6FECCF24C354B0733A16988 /* ArtCache.swift in Sources */,
+				C4EADC40C4C5D1B84D6005BA /* BubblePopup.swift in Sources */,
+				2AD94A1CC7AA97E4E45EB81D /* ContrastColor.swift in Sources */,
 				AB296D5991D3CC95EF85A45A /* Extensions.swift in Sources */,
 				D70FE6A0684BA95A37B9141F /* Keychain.swift in Sources */,
 				70ED440C2742A2523849C564 /* MarqueeText.swift in Sources */,
@@ -233,7 +247,9 @@
 				78D07A43295425FB93CF8574 /* Scripting.swift in Sources */,
 				8489F0CE3E44B23D8B984C16 /* SearchField.swift in Sources */,
 				A31CE963BD060610EDFBBD19 /* Spectrum.metal in Sources */,
+				C8A0A19F83AA9E90EFCAB52A /* SpectrumRenderer.swift in Sources */,
 				898FB65622A94556CBD2974B /* SpectrumTimeline.swift in Sources */,
+				823B69E4E49005C7947B6854 /* SpectrumView.swift in Sources */,
 				C1BBBCF52CBE121D9E31AE22 /* StarPlayrXMacApp.swift in Sources */,
 				67113DB4036BE489BDC7FE53 /* Visualizer.swift in Sources */,
 				8B1D211BFBA7662F1F5269C4 /* Xtra.swift in Sources */,
