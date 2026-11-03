@@ -74,9 +74,9 @@ struct MenuView: View {
                                 .foregroundStyle(Color.secondary)
                         }
                         .buttonStyle(.plain)
-                        // Same size and trailing edge as the row stars: a row's star ends 10pt from the
-                        // content edge (16 outer trailing − 12 list overhang + 4 + 2 inner padding).
-                        .padding(.trailing, -2)
+                        // Same size and trailing edge as the row stars: a row's star ends 2pt inside the
+                        // content edge (12 outer trailing − 12 list overhang + 12 − 10 inner padding).
+                        .padding(.trailing, 2)
                         .help(menu.starsOnly ? "Show every channel" : "Show only starred channels")
                         .accessibilityLabel(menu.starsOnly ? "All Stars On" : "All Stars Off")
                     }
@@ -188,7 +188,7 @@ struct MenuView: View {
                         .foregroundStyle(Color.secondary)
                 }
                 .buttonStyle(.plain)
-                .padding(.trailing, -2)
+                .padding(.trailing, 2)
                 .help(starred ? "Remove from stars" : "Add to stars")
                 .accessibilityLabel(starred ? "Preset On, Channel \(ch.name)" : "Preset Off")
             }
@@ -328,7 +328,7 @@ private struct ChannelRow: View, Equatable {
         // The squircle reaches 8pt further out on each side than the row's content (8pt from the window
         // edge, see channelList); the content itself keeps its place so the stars still line up.
         .padding(.horizontal, 12)
-        .padding(.trailing, 2)   // a little more room between the star and the squircle's edge
+        .padding(.trailing, -10)   // stars sit close to the squircle's right edge, lined up with the header star
         // The playing channel's row sits on a Liquid Glass squircle (translucent tint before macOS 26):
         // white-based in dark mode, light gray in light mode.
         .background {
