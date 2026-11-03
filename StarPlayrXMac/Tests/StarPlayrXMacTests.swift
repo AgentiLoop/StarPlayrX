@@ -117,6 +117,19 @@ final class LogicTests: XCTestCase {
         XCTAssertEqual(LyricsStore.withoutParentheses("(14)"), "(14)")
     }
 
+    func testCachedLinesSurviveTheRoundTrip() {
+        let lines = [LyricLine(id: 0, at: 11.07, text: "We don't have to worry bout nothing"),
+                     LyricLine(id: 1, at: nil, text: "(fire fire fire)"),
+                     LyricLine(id: 2, at: 222.31, text: "")]
+        let back = LyricsCache.lines(from: LyricsCache.json(from: lines))
+        XCTAssertEqual(back.map(\.text), lines.map(\.text))
+        XCTAssertEqual(back.map(\.at), lines.map(\.at))
+        XCTAssertEqual(back.map(\.id), [0, 1, 2])
+        // A miss is a row with no lines; it must come back as no lines, not as one empty line.
+        XCTAssertTrue(LyricsCache.lines(from: LyricsCache.json(from: [])).isEmpty)
+        XCTAssertTrue(LyricsCache.lines(from: "not json").isEmpty)
+    }
+
     func testCurrentLineIsTheLastStampThatPassed() {
         let lyrics = Lyrics(artist: "a", song: "b", lines: [
             LyricLine(id: 0, at: 10, text: "one"),

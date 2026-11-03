@@ -37,8 +37,8 @@ struct LyricsError: LocalizedError {
 
 // MARK: LRCLIB client
 
-/// One fetch per song, cached for the session. Misses are cached too, so flipping back to a song
-/// LRCLIB doesn't have doesn't ask again.
+/// One fetch per song, ever: in memory for this run and in a SQLite file under Application Support
+/// (`LyricsCache`) for every run after it. Misses are remembered too, for a day.
 @MainActor
 final class LyricsStore: ObservableObject {
     static let shared = LyricsStore()
@@ -67,7 +67,8 @@ final class LyricsStore: ObservableObject {
             status = "Nothing playing."
             return
         }
-        if let cached = cache[k] {
+        if let cached = cache[k] ?? LyricsCache.shared.lyrics(for: k) {
+            cache[k] = cached
             lyrics = cached
             status = cached == nil ? "No lyrics found for this song." : ""
             return
@@ -79,6 +80,8 @@ final class LyricsStore: ObservableObject {
                 let found = try await Self.find(artist: artist, song: song, duration: duration)
                 guard !Task.isCancelled, self.key == k else { return }
                 self.cache[k] = found
+                // Kept in Application Support, so the next launch doesn't ask the servers again.
+                LyricsCache.shared.save(found, for: k, artist: artist, song: song)
                 self.lyrics = found
                 self.status = found == nil ? "No lyrics found for this song." : ""
             } catch is CancellationError {
@@ -413,7 +416,7 @@ struct LyricsPane: View {
                 }
                 .frame(height: CachedArt<EmptyView>.listHeight)
                 .padding(.trailing, -12)
-                .onChange(of: current) { _, line in
+                .onValueChange(of: current) { line in
                     guard let line else { return }
                     withAnimation(.easeInOut(duration: 0.3)) { proxy.scrollTo(line, anchor: .center) }
                 }
@@ -459,5 +462,24 @@ struct LyricsPane: View {
             found = line.id
         }
         return found
+    }
+}
+
+/// `onChange` that hands over just the new value. The one-parameter form is deprecated in
+/// macOS 14 and the two-parameter one doesn't exist before it, and the app runs on macOS 13.
+private extension View {
+    @ViewBuilder
+    func onValueChange<V: Equatable>(of value: V, perform action: @escaping (V) -> Void) -> some View {
+        if #available(macOS 14, *) {
+            onChange(of: value) { _, new in action(new) }
+        } else {
+            legacyOnChange(of: value, perform: action)
+        }
+    }
+
+    /// Deprecated itself, so the macOS 13 fallback doesn't warn about the API it has to use.
+    @available(macOS, deprecated: 14.0)
+    func legacyOnChange<V: Equatable>(of value: V, perform action: @escaping (V) -> Void) -> some View {
+        onChange(of: value, perform: action)
     }
 }
