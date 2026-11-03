@@ -351,10 +351,16 @@ extension MenuController: @preconcurrency NSStatusItemExpandedInterfaceDelegate 
     func statusItem(_ statusItem: NSStatusItem, didBegin session: NSStatusItemExpandedInterfaceSession) {
         menuLog.log("didBegin visible=\(self.panel.isVisible) detached=\(self.detached) inClick=\(self.inClick) wasOpen=\(self.clickWasOpen)")
         if !inClick {
-            // No mouse-down seen (keyboard navigation, or the monitor missed it): decide now, and
-            // record it so the button action that may follow doesn't toggle a second time.
-            clickWasOpen = panel.isVisible && !detached
+            // AppKit also begins a session on its own just after the panel opens (from the button
+            // action): that is the highlight for the panel already showing — keep it.
+            if panel.isVisible, !detached { lit?.invalidate(); lit = nil; return }
+            // No mouse-down seen (keyboard navigation): this opens, and is recorded so the button
+            // action that may follow doesn't toggle a second time.
+            clickWasOpen = false
             clickAt = CACurrentMediaTime()
+        } else if !clickWasOpen, panel.isVisible, !detached {
+            clickHandled = true
+            return
         }
         clickHandled = true
         // The click that closed the panel from another app must not reopen it.
