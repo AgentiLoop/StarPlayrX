@@ -20,6 +20,9 @@ final class MenuController: NSObject, ObservableObject {
     private(set) lazy var panel = MenuPanel.make()
     private lazy var statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
     private var outsideClick: Any?
+    /// When the outside-click monitor last closed the panel, so the click that did it isn't also
+    /// taken as "open it again" by `statusItemClicked`.
+    private var lastOutsideHide = Date.distantPast
     private var glide: Timer?
     private var playing: AnyCancellable?
     /// When the expanded interface session last ended with the panel closing (macOS 27). The click
@@ -46,6 +49,11 @@ final class MenuController: NSObject, ObservableObject {
     /// Icon click: open under the menu bar, close if open there, or move a torn-off panel back under it.
     @objc func statusItemClicked() {
         if panel.isVisible && !detached { hide(); return }
+        // The same click that got here may have gone past the outside-click monitor first and
+        // closed the panel (the monitor sees the mouse go down, this runs when it comes up). That
+        // is one click, so it means hide — without this the panel closes and reopens and the icon
+        // looks like it does nothing.
+        if Date().timeIntervalSince(lastOutsideHide) < 0.5 { lastOutsideHide = .distantPast; return }
         showUnderMenuBar()
     }
 
@@ -101,11 +109,19 @@ final class MenuController: NSObject, ObservableObject {
             outsideClick = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
                 let point = NSEvent.mouseLocation
                 Task { @MainActor in
-                    guard let self, !(self.statusItem.button?.window?.frame.contains(point) ?? false) else { return }
+                    guard let self, !self.isOnStatusItem(point) else { return }
+                    self.lastOutsideHide = Date()
                     self.hide()
                 }
             }
         }
+    }
+
+    /// Is this screen point on our menu bar icon? The button's own rectangle converted to the
+    /// screen, not the status bar window's frame, which on recent macOS is not the icon's.
+    private func isOnStatusItem(_ point: NSPoint) -> Bool {
+        guard let button = statusItem.button, let window = button.window else { return false }
+        return window.convertToScreen(button.convert(button.bounds, to: nil)).contains(point)
     }
 
     /// Torn off: the panel stays where it was dropped, until Close / Esc / the icon.

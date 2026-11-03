@@ -44,6 +44,15 @@ enum LyricAligner {
     static let minimumMargin = 1.25
     /// Two peaks closer together than this are the same peak, not a rival.
     static let peakSpacing = 2.5
+    /// When the words we were given are not the same CUT of the record as the one on air, they are
+    /// out by far more than the search above allows for. LRCLIB keeps "Wild Wild West (Album
+    /// Version With Intro)" — a spoken intro the radio edit hasn't got — and every line of it is
+    /// stamped twenty-four seconds late, so the ordinary search is only ever looking at the wrong
+    /// half-minute and comes back with nothing. Looking this wide every time would turn up a rival
+    /// peak on most songs, and the margin test would then refuse songs it corrects today, so the
+    /// wide look is only taken when the ordinary one found nothing at all — and it has to pass the
+    /// same gates, so a whole verse of a shift is only believed on the same evidence as a second.
+    static let wideSearch: ClosedRange<Double> = -35...35
     /// The window just after a line's stamp: "the voice is arriving about now". Narrow on purpose —
     /// it is what pins the moment down. Make it as wide as the lull below and the score stops being
     /// a peak and becomes a plateau as wide as the window, with the true arrival somewhere inside
@@ -83,8 +92,17 @@ enum LyricAligner {
     /// `lineTimes` are seconds into the recording (the LRC stamps of lines that have words).
     /// `songStart` is where the broadcast says the cut began, `onsets` the curve from
     /// `SpectrumTimeline.onsets(channel:)`. Nil when there isn't enough to be sure.
+    /// The usual few seconds first; only if the audio says nothing about those, the wider look that
+    /// can still catch an LRC written for a different cut of the record.
     static func align(lineTimes: [Double], songStart: Date,
                       onsets: (start: Date, step: Double, values: [Float])) -> Alignment? {
+        align(lineTimes: lineTimes, songStart: songStart, onsets: onsets, over: search)
+            ?? align(lineTimes: lineTimes, songStart: songStart, onsets: onsets, over: wideSearch)
+    }
+
+    static func align(lineTimes: [Double], songStart: Date,
+                      onsets: (start: Date, step: Double, values: [Float]),
+                      over range: ClosedRange<Double>) -> Alignment? {
         guard onsets.step > 0, !onsets.values.isEmpty, !lineTimes.isEmpty else { return nil }
         // Where each line falls on the onset curve when nothing is shifted, in frames.
         let offset = songStart.timeIntervalSince(onsets.start) / onsets.step
@@ -98,8 +116,8 @@ enum LyricAligner {
         let back = max(window + 1, Int(lull / onsets.step))
 
         var scores = [(shift: Double, score: Double, lines: Int)]()
-        var shift = search.lowerBound
-        while shift <= search.upperBound {
+        var shift = range.lowerBound
+        while shift <= range.upperBound {
             let delta = shift / onsets.step
             var total = 0.0
             var counted = 0
