@@ -76,7 +76,7 @@ struct MenuView: View {
                         .buttonStyle(.plain)
                         // Same size and trailing edge as the row stars: a row's star ends 10pt from the
                         // content edge (16 outer trailing − 12 list overhang + 4 + 2 inner padding).
-                        .padding(.trailing, 10)
+                        .padding(.trailing, -2)
                         .help(menu.starsOnly ? "Show every channel" : "Show only starred channels")
                         .accessibilityLabel(menu.starsOnly ? "All Stars On" : "All Stars Off")
                     }
@@ -188,7 +188,7 @@ struct MenuView: View {
                         .foregroundStyle(Color.secondary)
                 }
                 .buttonStyle(.plain)
-                .padding(.trailing, 10)
+                .padding(.trailing, -2)
                 .help(starred ? "Remove from stars" : "Add to stars")
                 .accessibilityLabel(starred ? "Preset On, Channel \(ch.name)" : "Preset Off")
             }
