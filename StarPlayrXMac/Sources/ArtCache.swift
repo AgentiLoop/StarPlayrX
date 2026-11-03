@@ -11,19 +11,82 @@ import SwiftUI
 import ImageIO
 
 /// Channel art scaled to fit; when the art is square (it would fit the squircle but leave a margin
-/// and show its own baked-in corners) it's enlarged to fill the squircle instead.
+/// and show its own baked-in corners) it's enlarged to fill the squircle instead — but only as far
+/// as the art's own blank margin allows, so a show logo whose lettering runs close to the edge
+/// ("The Rich Eisen Show") keeps its wording instead of being cropped into.
 struct ChannelLogo: View {
-    let image: Image
+    let image: NSImage
     var inset: CGFloat = 4
-    @State private var isSquare = false
 
     var body: some View {
-        image.resizable().interpolation(.high).scaledToFit()
-            .onGeometryChange(for: Bool.self) { abs($0.size.width - $0.size.height) < 2 } action: { isSquare = $0 }
-            .scaleEffect(isSquare ? 1.12 : 1)
+        let isSquare = abs(image.size.width - image.size.height) < 2
+        Image(nsImage: image).resizable().interpolation(.high).scaledToFit()
+            .scaleEffect(isSquare ? Self.fillScale(image) : 1)
             .padding(isSquare ? 0 : inset)
     }
 }
+
+extension ChannelLogo {
+    /// Most the art is enlarged, even when it is blank all around: covers the corner a logo of its
+    /// own rounded tile leaves behind.
+    static let maxFill: CGFloat = 1.12
+    /// Scanning the bitmap costs more than a row's body may spend, and the same art is shown in
+    /// every row refresh; `ArtCache` hands back the same `NSImage` each time, so key on it.
+    @MainActor private static var fillScales: [ObjectIdentifier: CGFloat] = [:]
+
+    @MainActor static func fillScale(_ image: NSImage) -> CGFloat {
+        if let scale = fillScales[ObjectIdentifier(image)] { return scale }
+        let margin = blankMargin(image)
+        // scaleEffect shows 1/s of the art, centred, so each side loses (1 - 1/s)/2.
+        let scale = margin < 0.01 ? 1 : min(maxFill, 1 / (1 - 2 * margin))
+        if fillScales.count > 400 { fillScales.removeAll() }   // art evicted from the cache never comes back here
+        fillScales[ObjectIdentifier(image)] = scale
+        return scale
+    }
+
+    /// The blank band around the art — transparent, or the flat colour its edges are — as a
+    /// fraction of the art, taken from its tightest side. 0 when the artwork reaches an edge.
+    nonisolated private static func blankMargin(_ image: NSImage) -> CGFloat {
+        guard let cg = image.cgImage(forProposedRect: nil, context: nil, hints: nil) else { return 0 }
+        let w = cg.width, h = cg.height
+        guard w >= 16, h >= 16,
+              let ctx = CGContext(data: nil, width: w, height: h, bitsPerComponent: 8, bytesPerRow: w * 4,
+                                  space: CGColorSpaceCreateDeviceRGB(),
+                                  bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue),
+              let data = ctx.data else { return 0 }
+        ctx.draw(cg, in: CGRect(x: 0, y: 0, width: w, height: h))   // memory row 0 is the top row
+        let px = data.bindMemory(to: UInt8.self, capacity: w * h * 4)
+        typealias Pixel = (r: Int, g: Int, b: Int, a: Int)
+        func pixel(_ x: Int, _ y: Int) -> Pixel {
+            let i = (y * w + x) * 4
+            return (Int(px[i]), Int(px[i + 1]), Int(px[i + 2]), Int(px[i + 3]))
+        }
+        // The background: the middle of the top edge, which a rounded logo tile has even where its
+        // corners are cut away. Nothing there but transparency means the art is only transparent.
+        let top = pixel(w / 2, 0)
+        let background: Pixel? = top.a > 16 ? top : nil
+        func isBlank(_ p: Pixel) -> Bool {
+            if p.a <= 16 { return true }
+            guard let bg = background else { return false }
+            return abs(p.r - bg.r) <= 12 && abs(p.g - bg.g) <= 12 && abs(p.b - bg.b) <= 12 && abs(p.a - bg.a) <= 12
+        }
+        // Read over the middle of each line only, so a rounded corner doesn't decide the edge.
+        let xs = stride(from: w / 10, to: w - w / 10, by: 1), ys = stride(from: h / 10, to: h - h / 10, by: 1)
+        func depth(upTo limit: Int, _ line: (Int) -> Bool) -> Int {
+            var n = 0
+            while n < limit, line(n) { n += 1 }
+            return n
+        }
+        // Only the first 15% matters: filling the squircle never needs more than maxFill.
+        let limitY = h * 3 / 20, limitX = w * 3 / 20
+        let t = depth(upTo: limitY) { y in xs.allSatisfy { isBlank(pixel($0, y)) } }
+        let b = depth(upTo: limitY) { y in xs.allSatisfy { isBlank(pixel($0, h - 1 - y)) } }
+        let l = depth(upTo: limitX) { x in ys.allSatisfy { isBlank(pixel(x, $0)) } }
+        let r = depth(upTo: limitX) { x in ys.allSatisfy { isBlank(pixel(w - 1 - x, $0)) } }
+        return min(CGFloat(min(t, b)) / CGFloat(h), CGFloat(min(l, r)) / CGFloat(w))
+    }
+}
+
 
 /// Channel logos and album art kept in memory once loaded. Nothing is fetched until it's shown or about to be (list look-ahead),
 /// and a URL that is already loading is shared instead of downloaded twice. Each image is fetched

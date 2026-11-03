@@ -145,7 +145,7 @@ struct MenuView: View {
                     Image(nsImage: art).resizable().scaledToFill()
                 } else if let art {
                     // Channel logos must stay whole; square channel art is enlarged to fill the squircle.
-                    let logo = ChannelLogo(image: Image(nsImage: art))
+                    let logo = ChannelLogo(image: art)
                         .frame(width: 64, height: 64)
                     if #available(macOS 26.0, *) {
                         // Dark-tinted Liquid Glass tile behind the logo.
@@ -334,7 +334,7 @@ private struct ChannelRow: View, Equatable {
                     } else {
                         // Same as the header: square channel art is enlarged to fill the squircle,
                         // on the same dark-tinted Liquid Glass tile (solid dark before macOS 26).
-                        let logo = ChannelLogo(image: Image(nsImage: art), inset: 2)
+                        let logo = ChannelLogo(image: art, inset: 2)
                             .frame(width: 32, height: 32)
                         if #available(macOS 26.0, *) {
                             logo.background(Color.clear.glassEffect(.regular.tint(Color(white: 0.12).opacity(0.6)),
