@@ -348,7 +348,7 @@ private struct ChannelRow: View, Equatable {
                     shape.fill(Self.highlight)
                 }
                 // Darkens toward the right so the blue star stands out against the highlight.
-                shape.fill(LinearGradient(colors: [.clear, .black.opacity(0.35)],
+                shape.fill(LinearGradient(colors: [.clear, Self.shade],
                                           startPoint: .leading, endPoint: .trailing))
                     .allowsHitTesting(false)
             }
@@ -366,5 +366,10 @@ private struct ChannelRow: View, Equatable {
         appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
             ? NSColor(white: 1, alpha: 0.10)
             : NSColor(white: 0.75, alpha: 0.5)
+    })
+
+    /// Right end of the highlight's darkening gradient: 35% black in dark mode, 25% in light mode.
+    private static let shade = Color(nsColor: NSColor(name: nil) { appearance in
+        NSColor(white: 0, alpha: appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? 0.35 : 0.25)
     })
 }
