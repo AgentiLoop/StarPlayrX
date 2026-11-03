@@ -112,7 +112,7 @@ fragment float4 spectrumFragment(float4 pos [[position]], constant Globals &g [[
         float2 centre = float2(i * (bw + 2) + hs.x, H - hs.y);
         float sd = roundedRect(p, centre, hs, 1.5);
         if (sd > 3 * sigma + 1) continue;
-        float d = max(sd, 0.0);
+        // float d = max(sd, 0.0);
         // out = over(out, b.glow.rgb, g.glowStyle.x * exp(-d * d / (2 * sigma * sigma)));
         float c = cover(sd, px);
         if (c <= 0) continue;

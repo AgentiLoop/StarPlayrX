@@ -150,7 +150,7 @@ final class Updater: NSObject {
 
     /// The highest `mac-X.Y.Z` release above `current` that has a zip, or nil.
     nonisolated static func newestRelease(newerThan current: String, prereleases: Bool) async throws -> Release? {
-        var request = URLRequest(url: releasesAPI)
+        var request = await URLRequest(url: releasesAPI)
         request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
         request.cachePolicy = .reloadIgnoringLocalCacheData
         let (data, _) = try await URLSession.shared.data(for: request)

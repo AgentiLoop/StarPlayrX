@@ -111,18 +111,19 @@ final class MenuController: NSObject, ObservableObject {
         removeOutsideClick()
     }
 
-    /// The lit menu bar icon. AppKit clears a status button's highlight when the click that set it
-    /// finishes (and when the panel takes key away from the status bar window), so the state is
-    /// re-applied on the next pass of the run loop — unless it has since changed again.
-    private var lit = false
+    /// The lit menu bar icon. `NSStatusBarButton.highlight(_:)` does nothing on macOS 27
+    /// (FB23330269) and on older systems AppKit clears it again when the click ends, so the
+    /// selection is painted as the button's layer background — behind the icon, under our control.
     private func light(_ on: Bool) {
-        lit = on
-        statusItem.button?.highlight(on)
-        DispatchQueue.main.async { [weak self] in
-            guard let self, self.lit == on else { return }
-            self.statusItem.button?.highlight(on)
+        guard let button = statusItem.button else { return }
+        button.wantsLayer = true
+        button.layer?.cornerRadius = 6
+        button.layer?.cornerCurve = .continuous
+        button.effectiveAppearance.performAsCurrentDrawingAppearance {
+            button.layer?.backgroundColor = on ? NSColor.labelColor.withAlphaComponent(0.2).cgColor : nil
         }
     }
+
 
     private func removeOutsideClick() {
         if let outsideClick { NSEvent.removeMonitor(outsideClick) }

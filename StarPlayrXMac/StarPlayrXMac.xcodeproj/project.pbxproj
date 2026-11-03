@@ -45,7 +45,7 @@
 
 /* Begin PBXFileReference section */
 		086EB200A51E929484F0F0B7 /* SpectrumTimeline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpectrumTimeline.swift; sourceTree = "<group>"; };
-		1DF942F978B6D6B616311D33 /* StarPlayrXMac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = StarPlayrXMac.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		1DF942F978B6D6B616311D33 /* StarPlayrX.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = StarPlayrX.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		2110CDF4A0912E48922BDC87 /* StarPlayrXMacTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = StarPlayrXMacTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		231DFE768C1FC815F93C358A /* ContrastColor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContrastColor.swift; sourceTree = "<group>"; };
 		24B9C2880FFCDCA06B056FF3 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
@@ -62,7 +62,7 @@
 		7FAE59B5C9E7F2FA47E63AE0 /* ArtCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArtCache.swift; sourceTree = "<group>"; };
 		8597FCE01D54FAA77BEF60A4 /* StarPlayrX.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = StarPlayrX.entitlements; sourceTree = "<group>"; };
 		95A1B6D05467A2297EAAE180 /* MenuController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuController.swift; sourceTree = "<group>"; };
-		9AE9931B956CB2DA3D48715B /* StarPlayrX.sdef */ = {isa = PBXFileReference; path = StarPlayrX.sdef; sourceTree = "<group>"; };
+		9AE9931B956CB2DA3D48715B /* StarPlayrX.sdef */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = StarPlayrX.sdef; sourceTree = "<group>"; };
 		9CF5EC7805BCA42169AF4ECE /* MenuView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuView.swift; sourceTree = "<group>"; };
 		A828F86C0FE74B3D990CC160 /* Radio.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Radio.swift; sourceTree = "<group>"; };
 		AFC2175A4B9226A8F1E4A18B /* MarqueeText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarqueeText.swift; sourceTree = "<group>"; };
@@ -127,7 +127,7 @@
 		88BAFE35EFC8150A92E4C1D3 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				1DF942F978B6D6B616311D33 /* StarPlayrXMac.app */,
+				1DF942F978B6D6B616311D33 /* StarPlayrX.app */,
 				2110CDF4A0912E48922BDC87 /* StarPlayrXMacTests.xctest */,
 			);
 			name = Products;
@@ -151,7 +151,7 @@
 			packageProductDependencies = (
 			);
 			productName = StarPlayrXMac;
-			productReference = 1DF942F978B6D6B616311D33 /* StarPlayrXMac.app */;
+			productReference = 1DF942F978B6D6B616311D33 /* StarPlayrX.app */;
 			productType = "com.apple.product-type.application";
 		};
 		EE85D016A807B2BCD10423F5 /* StarPlayrXMacTests */ = {
@@ -180,7 +180,7 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
-				LastUpgradeCheck = 1430;
+				LastUpgradeCheck = 2700;
 				TargetAttributes = {
 					496E6E8D687E06E9885C2A02 = {
 						DevelopmentTeam = 469UCUB275;
@@ -313,9 +313,12 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
+				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = 469UCUB275;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
@@ -329,6 +332,7 @@
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = macosx;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_VERSION = 5.0;
@@ -343,14 +347,15 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				DEVELOPMENT_TEAM = 469UCUB275;
-				ENABLE_HARDENED_RUNTIME = NO;
+				DEAD_CODE_STRIPPING = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Sources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
+				MACOSX_DEPLOYMENT_TARGET = "$(RECOMMENDED_MACOSX_DEPLOYMENT_TARGET)";
 				PRODUCT_BUNDLE_IDENTIFIER = com.starplayrx.mac;
 				PRODUCT_NAME = StarPlayrX;
 				SDKROOT = macosx;
@@ -364,7 +369,7 @@
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				DEVELOPMENT_TEAM = 469UCUB275;
+				DEAD_CODE_STRIPPING = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -385,7 +390,7 @@
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				DEVELOPMENT_TEAM = 469UCUB275;
+				DEAD_CODE_STRIPPING = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -434,9 +439,12 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
+				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = 469UCUB275;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_NO_COMMON_BLOCKS = YES;
@@ -457,6 +465,7 @@
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = macosx;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
@@ -471,14 +480,15 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				DEVELOPMENT_TEAM = 469UCUB275;
-				ENABLE_HARDENED_RUNTIME = NO;
+				DEAD_CODE_STRIPPING = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Sources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
+				MACOSX_DEPLOYMENT_TARGET = "$(RECOMMENDED_MACOSX_DEPLOYMENT_TARGET)";
 				PRODUCT_BUNDLE_IDENTIFIER = com.starplayrx.mac;
 				PRODUCT_NAME = StarPlayrX;
 				SDKROOT = macosx;
