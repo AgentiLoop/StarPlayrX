@@ -11,6 +11,7 @@
 //
 
 import Foundation
+import AppKit
 
 @MainActor
 final class LyricSync: ObservableObject {
@@ -32,6 +33,55 @@ final class LyricSync: ObservableObject {
     /// `SpectrumTimeline.decodedSegments` at the last measurement; -1 forces one right away.
     private var lastSegment = -1
 
+    /// The model's own tick. Measuring used to ride on the lyrics pane's redraw timer, and macOS
+    /// stops redrawing a hidden window, so with the window hidden nothing was measured, Shazam
+    /// stopped matching and a new song's lyrics never loaded: the words came back way out of step.
+    private var timer: Timer?
+    /// Held while a live channel plays, so App Nap doesn't slow the timer and the decoding down
+    /// when the window is hidden or covered.
+    private var activity: NSObjectProtocol?
+
+    func start() {
+        guard timer == nil else { return }
+        timer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { _ in
+            Task { @MainActor in LyricSync.shared.tick() }
+        }
+        timer?.tolerance = 0.1
+        // Back on screen: measure now rather than waiting for the next segment.
+        let names = [NSApplication.didUnhideNotification, NSApplication.didBecomeActiveNotification,
+                     NSWindow.didChangeOcclusionStateNotification]
+        for name in names {
+            NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { _ in
+                Task { @MainActor in LyricSync.shared.remeasure() }
+            }
+        }
+    }
+
+    private func remeasure() {
+        lastSegment = -1
+        tick()
+    }
+
+    private func tick() {
+        let radio = Radio.shared
+        let live = radio.isPlaying && radio.current != nil && radio.current?.xtraID == nil
+        if live, activity == nil {
+            activity = ProcessInfo.processInfo.beginActivity(options: [.userInitiated, .latencyCritical],
+                                                             reason: "Live radio: keeping the lyrics in step")
+        } else if !live, let held = activity {
+            ProcessInfo.processInfo.endActivity(held)
+            activity = nil
+        }
+        guard radio.isLoggedIn, MenuController.shared.lyrics else { return }
+        // Load the lyrics for whatever is on now, even while the pane can't redraw (repeat calls
+        // for the same song do nothing).
+        let showing = radio.playingNow ?? radio.current.flatMap { radio.nowPlaying[$0.id] }
+        LyricsStore.shared.show(artist: showing?.artist ?? "", song: showing?.song ?? "", duration: radio.trackDuration)
+        guard live, let lyrics = LyricsStore.shared.lyrics, let channel = radio.current,
+              let np = radio.nowPlaying[channel.id], let started = np.startedAt else { return }
+        update(lyrics: lyrics, key: LyricsStore.key(np.artist, np.song), songStart: started)
+    }
+
     /// The measured shift for this song, or nil while there isn't a confident one (the caller
     /// falls back to `Radio.liveLyricsLead`).
     func shift(forKey key: String) -> Double? { key == self.key ? shift : nil }
@@ -52,7 +102,7 @@ final class LyricSync: ObservableObject {
         if remember { LyricsCache.shared.saveShift(shift, for: key) }
     }
 
-    /// Called on the lyrics pane's tick. Measures once per newly decoded segment, and only replaces what
+    /// Called on the model's own tick (`tick`). Measures once per newly decoded segment, and only replaces what
     /// it has when the new measurement stands out further than the old one did.
     func update(lyrics: Lyrics, key: String, songStart: Date) {
         if key != self.key {

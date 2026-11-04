@@ -602,7 +602,6 @@ struct LyricsPane: View {
     private func lines(_ lyrics: Lyrics) -> some View {
         // 0.25 s is close enough for a sung line and costs almost nothing to redraw.
         TimelineView(.periodic(from: .now, by: 0.25)) { _ in
-            let _ = measure(lyrics)
             let at = radio.trackPosition
             let current = at.flatMap { Self.line(of: lyrics, at: $0) }
             ScrollViewReader { proxy in
@@ -640,14 +639,6 @@ struct LyricsPane: View {
                 }
             }
         }
-    }
-
-    /// Hands the aligner a turn on every tick; it measures at most every 15 seconds, and only on
-    /// a live channel, where the cut's stamp is what the position is worked out from.
-    private func measure(_ lyrics: Lyrics) {
-        guard let channel = radio.current, channel.xtraID == nil,
-              let np = radio.nowPlaying[channel.id], let started = np.startedAt else { return }
-        LyricSync.shared.update(lyrics: lyrics, key: LyricsStore.key(np.artist, np.song), songStart: started)
     }
 
     /// The line the user clicked is the line being sung: the shift that makes the song's position
