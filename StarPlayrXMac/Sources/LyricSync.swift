@@ -67,8 +67,12 @@ final class LyricSync: ObservableObject {
 
         lastSegment = segment
         // Only lines the pane draws: an LRC times the gaps between verses as empty lines, and
-        // nobody sings those, so they would drag the match towards silence.
-        let times = lyrics.lines.compactMap { $0.text.isEmpty ? nil : $0.at }
+        // nobody sings those, so they would drag the match towards silence. Where the source times
+        // every word, each word is a moment too: a rap verse gives the aligner ten points a line
+        // instead of one. Words within a tenth of a second of the last are the same moment.
+        let stamps = lyrics.lines.flatMap { $0.text.isEmpty ? [] : ($0.at.map { [$0] } ?? []) + $0.words }
+        var times = [Double]()
+        for at in stamps.sorted() where at - (times.last ?? -.infinity) >= 0.1 { times.append(at) }
         guard times.count >= LyricAligner.minimumLines else {
             report = "only \(times.count) timed lines"
             return
