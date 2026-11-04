@@ -62,10 +62,8 @@ final class MenuController: NSObject, ObservableObject {
                                                queue: .main) { [weak self] _ in
             Task { @MainActor in self?.routeToPanelDisplay(force: true) }
         }
-        // Dragging the panel: AppKit's didChangeScreen / didMove are unreliable or only come after
-        // the drag, and `panel.screen` / `frame` stay stale while the WindowServer moves it. So ask
-        // the WindowServer where the panel really is, twice a second, in .common mode so it keeps
-        // running during the drag's event tracking.
+        // Catch scripted moves and menu-bar glides. Routing is suppressed while a mouse
+        // button is held; a drag switches speakers only after release.
         let watch = Timer(timeInterval: 0.5, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.routeToPanelDisplay(force: false) }
         }
@@ -75,11 +73,9 @@ final class MenuController: NSObject, ObservableObject {
     /// The display the panel was last routed for.
     private var routedDisplay: CGDirectDisplayID?
 
-    /// Sends the sound to the speakers of the display the panel's centre is really on (read from
-    /// the WindowServer, which is live even mid-drag). Only acts when that display changed,
-    /// unless `force`.
-    private func routeToPanelDisplay(force: Bool) {
-        guard panel.isVisible,
+    /// Routes the settled panel, never an intermediate display crossed during a drag.
+    fileprivate func routeToPanelDisplay(force: Bool) {
+        guard NSEvent.pressedMouseButtons == 0, dragOrigin == nil, panel.isVisible,
               let info = (CGWindowListCopyWindowInfo(.optionIncludingWindow, CGWindowID(panel.windowNumber))
                             as? [[String: Any]])?.first,
               let bounds = info[kCGWindowBounds as String] as? [String: CGFloat],
@@ -271,7 +267,10 @@ final class MenuController: NSObject, ObservableObject {
     func endDrag() {
         guard let start = dragOrigin else { return }
         dragOrigin = nil
-        defer { panel.refreshShadow() }
+        defer {
+            panel.refreshShadow()
+            routeToPanelDisplay(force: false)
+        }
         guard !detached else { return }
         if hypot(panel.frame.minX - start.x, panel.frame.minY - start.y) > Self.tearOffDistance {
             detach()
@@ -450,6 +449,11 @@ final class MenuPanel: NSPanel {
            screen != NSScreen.main ?? screen {
             NSApp.activate(ignoringOtherApps: true)
             makeKey()
+        }
+        // Native window dragging can consume mouse-up inside super.sendEvent(mouseDown).
+        // The routing guard also covers that path without switching while the button is down.
+        if event.type == .leftMouseDown || event.type == .leftMouseUp || event.type == .rightMouseUp {
+            MenuController.shared.routeToPanelDisplay(force: false)
         }
     }
 
