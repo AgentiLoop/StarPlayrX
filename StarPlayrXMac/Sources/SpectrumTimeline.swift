@@ -10,6 +10,7 @@
 import Foundation
 import AVFoundation
 import Accelerate
+import SoundAnalysis
 
 /// Bar heights worked out ahead of time, while the audio is decoded before it plays: live segments
 /// as LiveLoader fetches them for the player, Xtra tracks as soon as they are downloaded.
@@ -18,7 +19,9 @@ import Accelerate
 final class SpectrumTimeline: @unchecked Sendable {
     static let shared = SpectrumTimeline()
 
-    private struct Chunk { let channel: String; let start: Date; let real: Date?; let sequence: Int; let hop: Double; let duration: Double; let frames: [[Float]] }
+    /// `voice`: per frame, how sure Apple's on-device sound classifier is that someone is singing
+    /// or rapping (0...1); nil when it couldn't say.
+    private struct Chunk { let channel: String; let start: Date; let real: Date?; let sequence: Int; let hop: Double; let duration: Double; let frames: [[Float]]; let voice: [Float]? }
     private struct Track { let hop: Double; let first: Int; var frames: [[Float]] }
 
     private let lock = NSLock()
@@ -109,10 +112,11 @@ final class SpectrumTimeline: @unchecked Sendable {
         Self.decode(file) { h, _, f in hop = h; frames += f; return true }
         guard !frames.isEmpty, let audio = try? AVAudioFile(forReading: file) else { return }
         let duration = Double(audio.length) / audio.processingFormat.sampleRate   // ~9.75 s, not the tagged 10
+        let voice = Self.voice(in: file, frames: frames.count, hop: hop)
         lock.lock()
         live.removeAll { $0.start == start }
         live.append(Chunk(channel: Self.channel(name), start: start, real: realDates[name], sequence: sequence,
-                          hop: hop, duration: duration, frames: frames))
+                          hop: hop, duration: duration, frames: frames, voice: voice))
         if live.count > 30 { live.removeFirst(live.count - 30) }
         decodedCount += 1
         lock.unlock()
@@ -183,13 +187,23 @@ final class SpectrumTimeline: @unchecked Sendable {
             // A gap in the segments breaks the timeline; keep only the run that starts at `first`.
             guard chunk.sequence == expected else { break }
             expected += 1
-            for frame in chunk.frames {
+            for (k, frame) in chunk.frames.enumerated() {
                 var flux: Float = 0
-                if let previous, previous.count == frame.count, frame.count > 4 {
-                    // The middle bands only. The bottom ones are the kick and bass, which pound
-                    // away all the way through a song and would drown out the thing being looked
-                    // for: a voice arriving. The top ones are mostly cymbals and hiss.
-                    for i in 2..<(frame.count - 2) { flux += max(0, frame[i] - previous[i]) }
+                if let previous, previous.count == frame.count, frame.count >= Self.vocal.upperBound {
+                    // How much the bands where a voice sits (~320 Hz–3.5 kHz) rose, less how much
+                    // the rest did. A voice coming in lifts its own bands; a drum hit or a cymbal
+                    // lifts everything at once and cancels itself out. Averages, so the two sides
+                    // weigh the same whatever their number of bands.
+                    var inside: Float = 0, outside: Float = 0
+                    for i in 0..<frame.count {
+                        let rise = max(0, frame[i] - previous[i])
+                        if Self.vocal.contains(i) { inside += rise } else { outside += rise }
+                    }
+                    let n = Float(Self.vocal.count)
+                    flux = max(0, inside / n - outside / (Float(frame.count) - n))
+                    // And mostly where the classifier hears singing or rapping, so a DJ talk-up,
+                    // an ad or a busy instrumental break says less about where the lyrics sit.
+                    if let voice = chunk.voice, k < voice.count { flux *= 0.2 + 0.8 * voice[k] }
                 }
                 values.append(flux)
                 previous = frame
@@ -226,6 +240,40 @@ final class SpectrumTimeline: @unchecked Sendable {
     }
 
     private static func channel(_ name: String) -> String { String(name.split(separator: "_").first ?? "") }
+
+    /// The bars a singing voice lives in: band b starts at bin 2·186^(b/24), ~43 Hz a bin, so
+    /// bands 6–16 run from ~320 Hz to ~3.5 kHz.
+    private static let vocal = 6..<17
+
+    /// Apple's built-in sound classifier (SoundAnalysis, on device) over one decoded segment, in
+    /// one-second windows half overlapped: per equalizer frame, how sure it is a voice is singing
+    /// or rapping. Speech is left out on purpose: that is the DJ. Nil if it couldn't run.
+    private static func voice(in file: URL, frames: Int, hop: Double) -> [Float]? {
+        guard hop > 0, let request = try? SNClassifySoundRequest(classifierIdentifier: .version1),
+              let analyzer = try? SNAudioFileAnalyzer(url: file) else { return nil }
+        request.windowDuration = CMTime(seconds: 1, preferredTimescale: 16_000)
+        request.overlapFactor = 0.5
+        let observer = VoiceObserver()
+        guard (try? analyzer.add(request, withObserver: observer)) != nil else { return nil }
+        analyzer.analyze()
+        let windows = observer.windows
+        guard !windows.isEmpty else { return nil }
+        return (0..<frames).map { k in
+            let t = Double(k) * hop
+            return windows.filter { t >= $0.start && t < $0.end }.map(\.voice).max() ?? 0
+        }
+    }
+
+    private final class VoiceObserver: NSObject, SNResultsObserving {
+        static let labels: Set<String> = ["singing", "choir_singing", "rapping", "humming", "yodeling"]
+        var windows = [(start: Double, end: Double, voice: Float)]()
+        func request(_ request: SNRequest, didProduce result: SNResult) {
+            guard let result = result as? SNClassificationResult else { return }
+            let voice = result.classifications.filter { Self.labels.contains($0.identifier) }.map(\.confidence).max() ?? 0
+            let range = result.timeRange
+            windows.append((range.start.seconds, range.end.seconds, Float(voice)))
+        }
+    }
 
     // MARK: Xtra
 
