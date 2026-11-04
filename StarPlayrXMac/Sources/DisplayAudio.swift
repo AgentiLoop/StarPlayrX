@@ -6,8 +6,9 @@
 //
 //  Sound follows the panel across displays. When the Mac plays through a display's own speakers
 //  and there are several such displays, the radio is sent to the speakers of the display the
-//  StarPlayrX panel is on. Only this app's audio moves (AVPlayer's own output device), never the
-//  system's, and nothing happens unless the system output is a display's speakers to begin with.
+//  StarPlayrX panel is on, by making them the Mac's sound output, so the volume keys and slider
+//  work on the speakers that are playing. Nothing happens unless the system output is a
+//  display's speakers to begin with.
 //
 //  Tying a speaker to a screen:
 //  • HDMI / DisplayPort audio: the device is named after the display ("DELL U2720Q").
@@ -29,6 +30,16 @@ enum DisplayAudio {
         guard let current = systemOutput(), let now = outputs.first(where: { $0.id == current }),
               isDisplay(now, among: outputs) else { return nil }
         return outputs.first { matches($0, screen: screen, among: outputs) }?.uid
+    }
+
+    /// Makes the device with this UID the Mac's sound output, if it isn't already.
+    static func makeSystemOutput(_ uid: String) {
+        guard var id = outputDevices().first(where: { $0.uid == uid })?.id, id != systemOutput() else { return }
+        var address = AudioObjectPropertyAddress(mSelector: kAudioHardwarePropertyDefaultOutputDevice,
+                                                 mScope: kAudioObjectPropertyScopeGlobal,
+                                                 mElement: kAudioObjectPropertyElementMain)
+        AudioObjectSetPropertyData(AudioObjectID(kAudioObjectSystemObject), &address, 0, nil,
+                                   UInt32(MemoryLayout<AudioObjectID>.size), &id)
     }
 
     // MARK: Core Audio
