@@ -90,25 +90,6 @@ final class MenuController: NSObject, ObservableObject {
             ($0.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID) == display
         }
         Radio.shared.routeAudio(to: screen)
-        // The volume bar shows on the active display, and macOS only moves that on a click or an
-        // activation: dropping the panel on another display left it behind. Re-activating with the
-        // panel key on its new display moves it there.
-        claimActiveDisplay()
-    }
-
-    /// Makes the panel's display the active one (undimmed menu bar, volume bar). An agent app
-    /// can't do that by activating or by a click on its windows (Apple FB15237355), but a regular
-    /// app can: be one for a moment, activate with the panel key, then go back.
-    private func claimActiveDisplay() {
-        guard panel.isVisible else { return }
-        NSApp.setActivationPolicy(.regular)
-        NSApp.activate(ignoringOtherApps: true)
-        panel.makeKeyAndOrderFront(nil)
-        panel.makeMain()
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
-            NSApp.setActivationPolicy(.accessory)
-            self?.panel.makeKeyAndOrderFront(nil)
-        }
     }
 
     /// Ends `closingPress` once the press that closed the panel comes up.
@@ -420,7 +401,6 @@ extension MenuController: @preconcurrency NSStatusItemExpandedInterfaceDelegate 
 /// Borderless panel with the translucent menu look, rounded corners and shadow.
 final class MenuPanel: NSPanel {
     override var canBecomeKey: Bool { true }   // borderless panels can't otherwise take typing (search)
-    override var canBecomeMain: Bool { true }   // a main window's display becomes the active one
     override func cancelOperation(_ sender: Any?) { MenuController.shared.hide() }   // Esc closes it
 
     /// macOS shows its volume bar on the active display: the one last clicked in an app's window
