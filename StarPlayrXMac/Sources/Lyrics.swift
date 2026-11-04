@@ -617,17 +617,18 @@ struct LyricsPane: View {
     @State private var current: Int?
     /// The line last clicked, standing in for `current` while the song's position is unknown.
     @State private var tapped: Int?
-    /// The "position set" bubble after a click pins the lyrics; a newer click restarts its timer.
-    @State private var bubble = false
+    /// The bubble after a click: "position set" when it pins timed lyrics, or a note that plain
+    /// lyrics can't be timed. A newer click restarts its timer.
+    @State private var bubble: String?
     @State private var bubbleTask: Task<Void, Never>?
 
-    private func showBubble() {
+    private func showBubble(_ text: String) {
         bubbleTask?.cancel()
-        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) { bubble = true }
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) { bubble = text }
         bubbleTask = Task {
             try? await Task.sleep(nanoseconds: 1_600_000_000)
             guard !Task.isCancelled else { return }
-            withAnimation(.easeOut(duration: 0.3)) { bubble = false }
+            withAnimation(.easeOut(duration: 0.3)) { bubble = nil }
         }
     }
 
@@ -687,7 +688,11 @@ struct LyricsPane: View {
         return ScrollViewReader { proxy in
             ScrollView {
                 LyricLines(id: id, lyrics: lyrics, current: current) { line in
-                    if pin(line, in: lyrics, at: radio.trackPosition) { showBubble() }
+                    if !lyrics.synced {
+                        showBubble("Text only lyrics, not timed")
+                    } else if pin(line, in: lyrics, at: radio.trackPosition) {
+                        showBubble("Lyrics position set")
+                    }
                     // Light the clicked line straight away, even when the song's position isn't
                     // known yet (or never turns up): until it is, the click is the best guess.
                     if lyrics.synced {
@@ -702,8 +707,8 @@ struct LyricsPane: View {
             .frame(height: CachedArt<EmptyView>.listHeight)
             .padding(.trailing, -12)
             .overlay(alignment: .bottom) {
-                if bubble {
-                    Text("Lyrics position set")
+                if let bubble {
+                    Text(bubble)
                         .font(.callout.weight(.medium))
                         .padding(.horizontal, 14).padding(.vertical, 7)
                         .background(.regularMaterial, in: Capsule())
