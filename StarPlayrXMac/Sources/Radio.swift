@@ -563,10 +563,20 @@ final class Radio: ObservableObject {
         guard xtraPlayer.timeControlStatus != .paused, let item = xtraPlayer.currentItem else { return nil }
         let at = item.currentTime().seconds
         guard at.isFinite else { return nil }
-        // An Xtra track needs no measured shift — the player knows where it is — but a line the
-        // user clicked in the lyrics still moves the words against it.
-        guard let np = playingNow else { return at }
-        return at + (LyricSync.shared.pinnedShift(forKey: LyricsStore.key(np.artist, np.song)) ?? 0)
+        // The player knows where the file is; Shazam says where that is in the record the lyrics
+        // are timed to, and a line the user clicked moves the words against it over both.
+        let file = (item.asset as? AVURLAsset)?.url
+        let shazam = file.flatMap { LyricSync.shared.xtraShift(for: $0) } ?? 0
+        guard let np = playingNow else { return at + shazam }
+        return at + (LyricSync.shared.pinnedShift(forKey: LyricsStore.key(np.artist, np.song)) ?? shazam)
+    }
+
+    /// The Xtra file in the player and the player's position in it, for matching with Shazam.
+    var xtraNow: (file: URL, at: Double)? {
+        guard isPlaying, current?.xtraID != nil, xtraPlayer.timeControlStatus == .playing,
+              let item = xtraPlayer.currentItem, let file = (item.asset as? AVURLAsset)?.url else { return nil }
+        let at = item.currentTime().seconds
+        return at.isFinite ? (file, at) : nil
     }
 
 

@@ -617,6 +617,19 @@ struct LyricsPane: View {
     @State private var current: Int?
     /// The line last clicked, standing in for `current` while the song's position is unknown.
     @State private var tapped: Int?
+    /// The "position set" bubble after a click pins the lyrics; a newer click restarts its timer.
+    @State private var bubble = false
+    @State private var bubbleTask: Task<Void, Never>?
+
+    private func showBubble() {
+        bubbleTask?.cancel()
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) { bubble = true }
+        bubbleTask = Task {
+            try? await Task.sleep(nanoseconds: 1_600_000_000)
+            guard !Task.isCancelled else { return }
+            withAnimation(.easeOut(duration: 0.3)) { bubble = false }
+        }
+    }
 
     /// The song the pane is about: what's coming out of the speakers, else what the row shows.
     private var showing: NowPlaying? {
@@ -674,7 +687,7 @@ struct LyricsPane: View {
         return ScrollViewReader { proxy in
             ScrollView {
                 LyricLines(id: id, lyrics: lyrics, current: current) { line in
-                    pin(line, in: lyrics, at: radio.trackPosition)
+                    if pin(line, in: lyrics, at: radio.trackPosition) { showBubble() }
                     // Light the clicked line straight away, even when the song's position isn't
                     // known yet (or never turns up): until it is, the click is the best guess.
                     if lyrics.synced {
@@ -688,6 +701,18 @@ struct LyricsPane: View {
             }
             .frame(height: CachedArt<EmptyView>.listHeight)
             .padding(.trailing, -12)
+            .overlay(alignment: .bottom) {
+                if bubble {
+                    Text("Lyrics position set")
+                        .font(.callout.weight(.medium))
+                        .padding(.horizontal, 14).padding(.vertical, 7)
+                        .background(.regularMaterial, in: Capsule())
+                        .shadow(radius: 4, y: 2)
+                        .padding(.bottom, 10)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                        .allowsHitTesting(false)
+                }
+            }
             .onValueChange(of: current) { line in
                 guard let line else { return }
                 withAnimation(.easeInOut(duration: 0.3)) { proxy.scrollTo(line, anchor: .center) }
@@ -708,13 +733,13 @@ struct LyricsPane: View {
     /// measured later overrules it while this song plays. Live channels remember it for next time —
     /// that is the same correction the aligner saves — an Xtra track's position is the file's own,
     /// so its pin lasts only as long as the track does.
-    private func pin(_ line: LyricLine, in lyrics: Lyrics, at position: TimeInterval?) {
-        guard lyrics.synced, let target = line.at, let position, let np = showing else { return }
+    private func pin(_ line: LyricLine, in lyrics: Lyrics, at position: TimeInterval?) -> Bool {
+        guard lyrics.synced, let target = line.at, let position, let np = showing else { return false }
         let live = radio.current?.xtraID == nil
         let key = LyricsStore.key(np.artist, np.song)
         let base = live ? (LyricSync.shared.shift(forKey: key) ?? Radio.liveLyricsLead)
                         : (LyricSync.shared.pinnedShift(forKey: key) ?? 0)
-        LyricSync.shared.pin(shift: base + (target - position), forKey: key, remember: live)
+        return LyricSync.shared.pin(shift: base + (target - position), forKey: key, remember: live)
     }
 
 

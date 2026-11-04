@@ -77,6 +77,7 @@ final class LyricSync: ObservableObject {
         // for the same song do nothing).
         let showing = radio.playingNow ?? radio.current.flatMap { radio.nowPlaying[$0.id] }
         LyricsStore.shared.show(artist: showing?.artist ?? "", song: showing?.song ?? "", duration: radio.trackDuration)
+        if radio.isPlaying, radio.current?.xtraID != nil { xtra(); return }
         guard live, let lyrics = LyricsStore.shared.lyrics, let channel = radio.current,
               let np = radio.nowPlaying[channel.id], let started = np.startedAt else { return }
         update(lyrics: lyrics, key: LyricsStore.key(np.artist, np.song), songStart: started)
@@ -89,6 +90,44 @@ final class LyricSync: ObservableObject {
     /// The shift the user pinned by clicking a line, for the players that have no measured shift
     /// of their own (Xtra tracks, where the position comes straight out of the player).
     func pinnedShift(forKey key: String) -> Double? { isPinned ? shift(forKey: key) : nil }
+
+    /// Xtra tracks: the player knows where the file is, but not where the record is — the file can
+    /// be another edit, or have its own lead-in, and the lyrics are timed to the record. Shazam
+    /// says how far into the record a stretch of the file is, so the difference is the shift.
+    /// One match per track is enough: the file doesn't drift.
+    private var xtraFile: URL?
+    private var xtraFound: Double?
+    private var xtraTries = 0
+    private var xtraAsked = Date.distantPast
+
+    /// The Shazam shift for this Xtra file, once there is one.
+    func xtraShift(for file: URL) -> Double? { file == xtraFile ? xtraFound : nil }
+
+    private func xtra() {
+        guard let (file, at) = Radio.shared.xtraNow, let np = Radio.shared.playingNow,
+              let lyrics = LyricsStore.shared.lyrics, lyrics.synced else { return }
+        if file != xtraFile { xtraFile = file; xtraFound = nil; xtraTries = 0; xtraAsked = .distantPast }
+        // Wait out the first seconds (a fade-in or silence matches nothing), then a few tries,
+        // spaced so a request that failed has had its answer.
+        guard xtraFound == nil, xtraTries < 6, at >= 3, Date().timeIntervalSince(xtraAsked) >= 12 else { return }
+        xtraTries += 1
+        xtraAsked = Date()
+        let key = LyricsStore.key(np.artist, np.song)
+        ShazamSync.shared.track(file, at: at) { match in
+            Task { @MainActor in
+                let sync = LyricSync.shared
+                guard sync.xtraFile == file else { return }
+                guard let match, Self.same(match, as: key) else {
+                    sync.report = "Xtra: no Shazam match yet (try \(sync.xtraTries))"
+                    return
+                }
+                let found = match.offset - at
+                guard abs(found) <= 120 else { return }
+                sync.xtraFound = found
+                sync.report = String(format: "Xtra %+.1fs (Shazam: %@ – %@ at %.1fs)", found, match.artist, match.title, match.offset)
+            }
+        }
+    }
 
     /// Takes the user's word for where the song is: the shift that puts the line they clicked
     /// under the music playing at that moment. `remember` keeps it for the next time the song
@@ -125,13 +164,17 @@ final class LyricSync: ObservableObject {
         // record the audio on air is, and that beats anything worked out from the audio. Only
         // when it hasn't (a song not in its catalogue, a talk-up, matching not set up) does the
         // aligner below have its say.
-        ShazamSync.shared.want()
         let (match, error) = ShazamSync.shared.current
-        if let match, Self.same(match, as: key) {
+        let heard = match.map { Self.same($0, as: key) } ?? false
+        // Until Shazam has heard this song, ask on every segment rather than every half minute.
+        ShazamSync.shared.want(eager: !heard)
+        if let match, heard {
             // At broadcast time `match.real` the record was `match.offset` seconds in; the cut's
-            // stamp put that moment `real - songStart` in. The difference is the shift.
+            // stamp put that moment `real - songStart` in. The difference is the shift. Shazam
+            // heard this very song, so its word stands even when the cut's stamp is minutes out
+            // (it used to be thrown away past a minute, leaving the lyrics way off until a re-tune).
             let found = match.offset - match.real.timeIntervalSince(songStart)
-            if abs(found) <= 60 {
+            if abs(found) <= 600 {
                 shift = found
                 report = String(format: "%+.1fs (Shazam: %@ – %@ at %.1fs)", found, match.artist, match.title, match.offset)
                 LyricsCache.shared.saveShift(found, for: key)
