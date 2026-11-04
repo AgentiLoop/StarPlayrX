@@ -182,13 +182,21 @@ final class SpectrumTimeline: @unchecked Sendable {
     func onsets() -> (start: Date, step: Double, values: [Float])? {
         lock.lock()
         defer { lock.unlock() }
-        let chunks = live.filter { $0.channel == liveChannel && $0.real != nil }.sorted { $0.sequence < $1.sequence }
+        let sorted = live.filter { $0.channel == liveChannel && $0.real != nil }.sorted { $0.sequence < $1.sequence }
+        // A gap in the segments breaks the timeline. Keep the unbroken run that ENDS at the newest
+        // segment: keeping the one that starts at the oldest threw the whole song's audio away
+        // whenever an older segment turned up late or one was skipped (58 s of audio fell to 39).
+        var run = sorted.suffix(1)
+        while let head = run.first, let i = sorted.firstIndex(where: { $0.sequence == head.sequence }), i > 0,
+              sorted[i - 1].sequence == head.sequence - 1 {
+            run = sorted[(i - 1)...]
+        }
+        let chunks = Array(run)
         guard let first = chunks.first, let start = first.real, first.hop > 0 else { return nil }
         var values = [Float]()
         var previous: [Float]?
         var expected = first.sequence
         for chunk in chunks {
-            // A gap in the segments breaks the timeline; keep only the run that starts at `first`.
             guard chunk.sequence == expected else { break }
             expected += 1
             for (k, frame) in chunk.frames.enumerated() {
