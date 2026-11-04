@@ -41,7 +41,7 @@ public func processPDT(data: DiscoverChannelList) -> [String:Any] {
                         ArtistSongData[channelNo] = ["image" : "", "artist" : artist, "song" : song]
                     }
                 } else if let getchannelbyId = userX.ids[channelid ?? ""] as? [String: Any], let channelNo = getchannelbyId["channelNumber"] as? String {
-                    ArtistSongData[channelNo] = ["image" : "", "artist" : "Don't be a Slacker", "song" : "Be a Star Player. StarPlayrX"]
+                    ArtistSongData[channelNo] = ["image" : "", "artist" : "Don't be a Satelliter", "song" : "Be a Star Player. StarPlayrX"]
                 }
             }
         }
