@@ -10,13 +10,78 @@
 import Foundation
 import QuartzCore
 
-/// Spectrum of what is playing. The bars are worked out ahead of time from the decoded audio
-/// (`SpectrumTimeline`). The Metal view's own frame loop ticks this 30 times a second (no separate
-/// timer); it keeps the previous step too, so the GPU tweens bars and bubbles between the two at 60 fps.
-@MainActor
-final class Visualizer {
+/// Simulation runs independently of AppKit's tracking loop. Only value snapshots cross queues.
+final class Visualizer: @unchecked Sendable {
     static let shared = Visualizer()
-    nonisolated static let bandCount = 24
+    static let bandCount = 24
+    struct Frame {
+        var levels: [Float], hues: [Double], rise: [Double], history: [[Float]]
+        var previous: (levels: [Float], rise: [Double], pulse: Double, blobX: Double)
+        var phase: Double, pulse: Double, blobX: Double
+        var generation: Int
+        var time: CFTimeInterval
+        var playing: Bool
+
+        func fraction(now: CFTimeInterval) -> Float {
+            playing ? Float(min(1, max(0, (now - time) / SpectrumSimulation.step))) : 1
+        }
+    }
+    private let queue = DispatchQueue(label: "com.starplayrx.eq", qos: .userInteractive)
+    private let lock = NSLock()
+    private let simulation = SpectrumSimulation()
+    private var cached: Frame
+    private var timer: DispatchSourceTimer?
+    var frame: Frame { lock.lock(); defer { lock.unlock() }; return cached }
+
+    private init() { cached = simulation.frame }
+
+    func start() {
+        queue.async {
+            self.simulation.start()
+            guard self.timer == nil else { return }
+            let timer = DispatchSource.makeTimerSource(queue: self.queue)
+            timer.schedule(deadline: .now(), repeating: SpectrumSimulation.step, leeway: .milliseconds(1))
+            timer.setEventHandler { self.advance() }
+            self.timer = timer
+            timer.resume()
+        }
+    }
+
+    func stop() {
+        queue.async {
+            self.simulation.stop()
+            if !self.simulation.running { self.timer?.cancel(); self.timer = nil }
+            self.publish()
+        }
+    }
+
+    private func advance() {
+        dispatchPrecondition(condition: .onQueue(queue))
+        simulation.tick(now: CACurrentMediaTime())
+        publish()
+    }
+
+    private func publish() {
+        let value = simulation.frame
+        lock.lock(); cached = value; lock.unlock()
+    }
+
+    // Compatibility for the renderer until it takes a single frame snapshot.
+    var levels: [Float] { frame.levels }
+    var hues: [Double] { frame.hues }
+    var rise: [Double] { frame.rise }
+    var history: [[Float]] { frame.history }
+    var previous: (levels: [Float], rise: [Double], pulse: Double, blobX: Double) { frame.previous }
+    var phase: Double { frame.phase }
+    var pulse: Double { frame.pulse }
+    var blobX: Double { frame.blobX }
+    var generation: Int { frame.generation }
+    func tick(now: CFTimeInterval) -> Float { frame.fraction(now: now) }
+}
+
+/// Mutable state is confined to Visualizer's serial simulation queue.
+private final class SpectrumSimulation {
+    private static let bandCount = Visualizer.bandCount
     /// Seconds between state steps. Each step runs the 60 fps tuned update twice, so speeds are unchanged.
     static let step = 1.0 / 30
 
@@ -45,9 +110,14 @@ final class Visualizer {
     private var wander: Double = 0
     private var wanderTarget: Double = 0
 
-    private var running = false
+    private(set) var running = false
     private var lastStep: CFTimeInterval = 0
     private var viewers = 0   // menu and torn-off window can both show bars
+    private var playing = false
+    var frame: Visualizer.Frame {
+        .init(levels: levels, hues: hues, rise: rise, history: history, previous: previous,
+              phase: phase, pulse: pulse, blobX: blobX, generation: generation, time: lastStep, playing: playing)
+    }
 
     func start() {
         viewers += 1
@@ -62,13 +132,14 @@ final class Visualizer {
         pulse = 0
         previous = (levels, rise, 0, blobX)
         history = [[Float]](repeating: levels, count: 4)
+        generation &+= 1
     }
 
-    /// Called by every visible Metal view each frame. Steps the state when 1/30 s has passed and
-    /// returns how far the frame is between the previous step and the current one (0...1).
-    func tick(now: CFTimeInterval) -> Float {
+    func tick(now: CFTimeInterval) {
         // Paused: freeze the frame (bars, bubbles and colours) where the music stopped.
-        guard Radio.shared.isPlaying else { lastStep = now; return 1 }
+        let playback = PlaybackWorker.shared.snapshot
+        playing = playback.isXtra ? playback.xtraStatus != .paused : playback.liveStatus != .paused
+        guard playing else { lastStep = now; return }
         if running, now - lastStep >= Self.step - 0.004 {
             previous = (levels, rise, pulse, blobX)
             history.removeFirst()
@@ -76,7 +147,7 @@ final class Visualizer {
             // steps (~67 ms) late; reading the audio two steps ahead puts the bars back on the beat.
             // A step spans ~3 analysis frames (11.6 ms each); reading just one picked a random frame and
             // the bars twitched. Average the three, and read a little further ahead for the softer easing below.
-            let reads = [0.0, 1.0 / 3, 2.0 / 3].compactMap { Radio.shared.spectrumNow(ahead: (2 + $0) * Self.step + 0.04) }
+            let reads = [0.0, 1.0 / 3, 2.0 / 3].compactMap { playback.spectrum(ahead: (2 + $0) * Self.step + 0.04) }
             let new = reads.isEmpty ? [Float](repeating: 0, count: Self.bandCount)
                 : (0..<Self.bandCount).map { i in reads.reduce(0) { $0 + $1[i] } / Float(reads.count) }
             update(new)
@@ -86,7 +157,6 @@ final class Visualizer {
             lastStep = now - lastStep < 2 * Self.step ? lastStep + Self.step : now
             generation &+= 1
         }
-        return Float(min(1, max(0, (now - lastStep) / Self.step)))
     }
 
     private func update(_ new: [Float]) {
