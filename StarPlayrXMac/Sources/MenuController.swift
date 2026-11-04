@@ -173,7 +173,12 @@ final class MenuController: NSObject, ObservableObject {
             outsideClick = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
                 Task { @MainActor in
                     guard let self, self.panel.isVisible, !self.detached else { return }
-                    self.awaitPressRelease()
+                    // A press on another display (its menu bar icon, say) only closes the panel
+                    // here: it isn't the echo of this icon, so the session that press begins
+                    // must open the panel on that display, not be cancelled as a closing press.
+                    let at = NSEvent.mouseLocation
+                    let sameDisplay = self.panel.screen.map { NSMouseInRect(at, $0.frame, false) } ?? true
+                    if sameDisplay { self.awaitPressRelease() }
                     self.hide()
                 }
             }
