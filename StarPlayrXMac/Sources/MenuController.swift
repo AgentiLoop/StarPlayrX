@@ -90,6 +90,16 @@ final class MenuController: NSObject, ObservableObject {
             ($0.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID) == display
         }
         Radio.shared.routeAudio(to: screen)
+        // The volume bar shows on the active display, and macOS only moves that on a click or an
+        // activation: dropping the panel on another display left it behind. Re-activating with the
+        // panel key on its new display moves it there.
+        if NSApp.isActive, !force {
+            NSApp.deactivate()
+            DispatchQueue.main.async { [weak self] in
+                NSApp.activate(ignoringOtherApps: true)
+                self?.panel.makeKey()
+            }
+        }
     }
 
     /// Ends `closingPress` once the press that closed the panel comes up.
