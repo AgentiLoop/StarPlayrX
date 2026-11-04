@@ -523,10 +523,10 @@ final class MenuPanel: NSPanel {
 
     private lazy var floatingBehavior = collectionBehavior
 
-    /// Desktop-widget level (desktop icons + 1, still clickable) or back to floating.
+    /// Desktop-widget level (desktop icons + 2, the layer macOS puts its own widgets on) or back to floating.
     func sitOnDesktop(_ onDesktop: Bool) {
         if onDesktop {
-            level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.desktopIconWindow)) + 1)
+            level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.desktopIconWindow)) + 2)
             collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle]
         } else {
             level = .floating
