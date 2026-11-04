@@ -74,28 +74,38 @@ struct MenuView: View {
             // list on unshade blocked the main thread and froze the equalizer.
             VStack(alignment: .leading, spacing: 10) {
                 if radio.isLoggedIn {
-                    if menu.lyrics {
-                        LyricsPane()
-                    } else {
-                        HStack(spacing: 13.5) {
-                            SearchField(text: $menu.search, placeholder: "Search channels, artists, songs")
-                            // "All Stars" (as on iOS): the list shows only the starred channels.
-                            Button { menu.starsOnly.toggle() } label: {
-                                Image(menu.starsOnly ? "star_on" : "star_off")
-                                    .renderingMode(menu.starsOnly ? .original : .template)
-                                    .resizable()
-                                    .scaledToFit()
-                                    .frame(width: 16, height: 16)
-                                    .foregroundStyle(Color.secondary)
+                    // Big album art lies over the list or lyrics (kept underneath so the panel doesn't resize).
+                    let big = bigArtURL
+                    VStack(alignment: .leading, spacing: 10) {
+                        if menu.lyrics {
+                            LyricsPane()
+                        } else {
+                            HStack(spacing: 13.5) {
+                                SearchField(text: $menu.search, placeholder: "Search channels, artists, songs")
+                                // "All Stars" (as on iOS): the list shows only the starred channels.
+                                Button { menu.starsOnly.toggle() } label: {
+                                    Image(menu.starsOnly ? "star_on" : "star_off")
+                                        .renderingMode(menu.starsOnly ? .original : .template)
+                                        .resizable()
+                                        .scaledToFit()
+                                        .frame(width: 16, height: 16)
+                                        .foregroundStyle(Color.secondary)
+                                }
+                                .buttonStyle(.plain)
+                                // Same size and trailing edge as the row stars: a row's star ends 2pt inside the
+                                // content edge (12 outer trailing − 12 list overhang + 12 − 10 inner padding).
+                                .padding(.trailing, 2)
+                                .help(menu.starsOnly ? "Show every channel" : "Show only starred channels")
+                                .accessibilityLabel(menu.starsOnly ? "All Stars On" : "All Stars Off")
                             }
-                            .buttonStyle(.plain)
-                            // Same size and trailing edge as the row stars: a row's star ends 2pt inside the
-                            // content edge (12 outer trailing − 12 list overhang + 12 − 10 inner padding).
-                            .padding(.trailing, 2)
-                            .help(menu.starsOnly ? "Show every channel" : "Show only starred channels")
-                            .accessibilityLabel(menu.starsOnly ? "All Stars On" : "All Stars Off")
+                            channelList
                         }
-                        channelList
+                    }
+                    .opacity(big == nil ? 1 : 0)
+                    .allowsHitTesting(big == nil)
+                    .accessibilityHidden(big != nil)
+                    .overlay {
+                        if let big { bigArt(big) }
                     }
                 }
                 Divider()
@@ -169,10 +179,14 @@ struct MenuView: View {
             .accessibilityElement()
             .accessibilityAddTraits(.isButton)
             .accessibilityLabel(radio.current.map { isAlbumArt ? "Album art, \($0.name)" : "Channel art, \($0.name)" } ?? "StarPlayrX")
-            .accessibilityHint("Switches between the channel logo and the show art")
+            .accessibilityHint(bigArtURL != nil ? "Shows the \(menu.lyrics ? "lyrics" : "channel list") again"
+                               : songArtURL != nil ? "Shows the album art full size"
+                               : "Switches between the channel logo and the show art")
             .simultaneousGesture(TapGesture().onEnded {
-                // Click the artwork: channel logo ⇄ show art, remembered per channel. When there's nothing
-                // to switch (song art, or no show art) it scrolls the list to the channel as before.
+                // Click song art: full size over the list or lyrics, and back (same as clicking the big art).
+                // Otherwise channel logo ⇄ show art, remembered per channel. When there's nothing
+                // to switch (no show art) it scrolls the list to the channel as before.
+                if songArtURL != nil { menu.bigArt.toggle(); return }
                 if let id = radio.current?.id, radio.toggleShowArt(id) { return }
                 revealCurrent()
             })
@@ -193,7 +207,7 @@ struct MenuView: View {
             .accessibilityAddTraits(.isButton)
             .accessibilityHint(menu.lyrics ? "Shows the channel list" : "Shows the song's lyrics")
             // Click the song/artist: the lyrics take the channel list's place, and back again.
-            .simultaneousGesture(TapGesture().onEnded { menu.lyrics.toggle() })
+            .simultaneousGesture(TapGesture().onEnded { menu.bigArt = false; menu.lyrics.toggle() })
             Button {
                 radio.togglePlayPause()
             } label: {
@@ -227,6 +241,29 @@ struct MenuView: View {
     /// Single click on the now-playing art or titles: bring the current channel's row into view.
     private func revealCurrent() {
         if let id = radio.current?.id { menu.reveal(id) }
+    }
+
+    /// The current song's own album art (not the show art a channel may show instead), nil when there is none.
+    private var songArtURL: String? {
+        radio.current.flatMap { radio.nowPlaying[$0.id]?.image }.flatMap { $0.isEmpty ? nil : $0 }
+    }
+
+    /// The album art shown full size over the list or lyrics; nil when it's off or the song has no art.
+    private var bigArtURL: String? { menu.bigArt ? songArtURL : nil }
+
+    /// Full-size album art, as wide as the panel's content; clicking it shows the list or lyrics again.
+    private func bigArt(_ url: String) -> some View {
+        CachedArt(url: url, size: 336, isAlbumArt: true) { art, _ in
+            if let art { Image(nsImage: art).resizable().scaledToFit() }
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .contentShape(Rectangle())
+        .onTapGesture { menu.bigArt = false }
+        .accessibilityElement()
+        .accessibilityAddTraits(.isButton)
+        .accessibilityLabel("Album art")
+        .accessibilityHint(menu.lyrics ? "Shows the lyrics" : "Shows the channel list")
     }
 
     /// LazyVStack: only rows near the visible part of the list exist, so the hundreds of channels

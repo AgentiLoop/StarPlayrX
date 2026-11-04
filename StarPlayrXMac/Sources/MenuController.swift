@@ -322,6 +322,8 @@ final class MenuController: NSObject, ObservableObject {
     @Published var starsOnly = false
     /// Clicking the song/artist in Now Playing puts the lyrics where the channel list was.
     @Published var lyrics = false
+    /// Clicking the album art shows it full size over the channel list or lyrics; clicking either art puts them back.
+    @Published var bigArt = false
 
     /// The channels the list shows right now (after the search field and the stars filter).
     var visibleChannels: [Channel] {
