@@ -107,6 +107,10 @@ struct MenuView: View {
                     .overlay {
                         if let big { bigArt(big) }
                     }
+                    // The list height at which this area is square, so the big art fills it exactly.
+                    .onGeometryChange(for: CGFloat.self) { $0.size.width - $0.size.height } action: {
+                        artFitHeight = menu.listHeight + $0
+                    }
                 }
                 Divider()
                 footer
@@ -122,9 +126,33 @@ struct MenuView: View {
         }
         .padding(12)
         .frame(width: 360)   // room for the star beside the play button
+        // Drag the bottom edge to make the list (and lyrics) taller or shorter.
+        .overlay(alignment: .bottom) {
+            if radio.isLoggedIn && !shaded {
+                Color.clear
+                    .frame(height: 7)
+                    .contentShape(Rectangle())
+                    .onHover { inside in
+                        if inside { NSCursor.resizeUpDown.push() } else { NSCursor.pop() }
+                    }
+                    .gesture(DragGesture(minimumDistance: 1, coordinateSpace: .global)
+                        .onChanged { _ in menu.resize(snap: artFitHeight) }
+                        .onEnded { _ in menu.endResize() })
+                    .accessibilityElement()
+                    .accessibilityLabel("Resize")
+                    .accessibilityAdjustableAction { direction in
+                        let step: CGFloat = direction == .increment ? 40 : -40
+                        let range = MenuController.listHeightRange
+                        menu.listHeight = min(max(menu.listHeight + step, range.lowerBound), range.upperBound)
+                        menu.endResize()
+                    }
+            }
+        }
     }
 
     @State private var dragMouseStart: NSPoint?
+    /// List height where the big album art fits its area exactly (no bands above and below); the resize snaps to it.
+    @State private var artFitHeight: CGFloat?
 
     /// Drag the header to pull the panel off the menu bar; let go far enough away and the same
     /// panel stays where it was dropped (torn off). Once torn off, dragging just moves it.
