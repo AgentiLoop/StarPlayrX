@@ -16,10 +16,6 @@ import Foundation
 final class LyricSync: ObservableObject {
     static let shared = LyricSync()
 
-    /// How often another measurement is taken while a song plays. Each one looks at everything
-    /// decoded so far, so the later ones have more to go on than the first.
-    static let interval: TimeInterval = 15
-
     /// The song the shift belongs to, and the shift itself. Published so the pane can show it.
     @Published private(set) var key = ""
     @Published private(set) var shift: Double?
@@ -29,7 +25,12 @@ final class LyricSync: ObservableObject {
     @Published private(set) var isPinned = false
     /// The last measurement, for the `lyric sync` scripting property.
     private(set) var report = "no measurement yet"
-    private var lastTry = Date.distantPast
+    /// Another measurement is taken each time a new segment of audio has been decoded (~9.75 s on
+    /// live channels), so it stays in step with the segments whatever their length, and a DJ break,
+    /// ad or dead air between songs never leaves it waiting on a timer. Each one looks at everything
+    /// decoded so far, so the later ones have more to go on than the first.
+    /// `SpectrumTimeline.decodedSegments` at the last measurement; -1 forces one right away.
+    private var lastSegment = -1
 
     /// The measured shift for this song, or nil while there isn't a confident one (the caller
     /// falls back to `Radio.liveLyricsLead`).
@@ -51,7 +52,7 @@ final class LyricSync: ObservableObject {
         if remember { LyricsCache.shared.saveShift(shift, for: key) }
     }
 
-    /// Called on the lyrics pane's tick. Measures at most every `interval`, and only replaces what
+    /// Called on the lyrics pane's tick. Measures once per newly decoded segment, and only replaces what
     /// it has when the new measurement stands out further than the old one did.
     func update(lyrics: Lyrics, key: String, songStart: Date) {
         if key != self.key {
@@ -59,11 +60,12 @@ final class LyricSync: ObservableObject {
             shift = LyricsCache.shared.shift(for: key)
             report = shift.map { "remembered \(String(format: "%+.1f", $0))s" } ?? "no measurement yet"
             isPinned = false
-            lastTry = .distantPast
+            lastSegment = -1
         }
-        guard !isPinned, lyrics.synced, Date().timeIntervalSince(lastTry) >= Self.interval else { return }
+        let segment = SpectrumTimeline.shared.decodedSegments
+        guard !isPinned, lyrics.synced, segment != lastSegment else { return }
 
-        lastTry = Date()
+        lastSegment = segment
         // Only lines the pane draws: an LRC times the gaps between verses as empty lines, and
         // nobody sings those, so they would drag the match towards silence.
         let times = lyrics.lines.compactMap { $0.text.isEmpty ? nil : $0.at }

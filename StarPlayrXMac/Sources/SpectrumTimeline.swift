@@ -114,7 +114,16 @@ final class SpectrumTimeline: @unchecked Sendable {
         live.append(Chunk(channel: Self.channel(name), start: start, real: realDates[name], sequence: sequence,
                           hop: hop, duration: duration, frames: frames))
         if live.count > 30 { live.removeFirst(live.count - 30) }
+        decodedCount += 1
         lock.unlock()
+    }
+
+    private var decodedCount = 0
+    /// How many live segments have been decoded so far: goes up by one with each new one, so a
+    /// caller can do its work once per segment whatever the segments' length.
+    var decodedSegments: Int {
+        lock.lock(); defer { lock.unlock() }
+        return decodedCount
     }
 
     /// Bars for the live stream at the player item's current time. The item places the segment it
