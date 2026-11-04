@@ -141,6 +141,21 @@ Your username and password are kept only in the macOS Keychain, and what's-playi
 
 The last version with the legacy path is tagged [`legacy-api`](https://github.com/AgentiLoop/StarPlayrX/tree/legacy-api).
 
+### ⌨️ Command-line-only settings
+
+Two settings have no switch in the app. Set them in Terminal with `defaults` (the app's domain is `com.starplayrx.mac`). Both are read when they're used, so there's no need to restart the app.
+
+| Key | Type | Default | What it does |
+| --- | --- | --- | --- |
+| `updatePrereleases` | bool | `NO` | Also offer pre-releases when checking for updates |
+| `lyricsLiveLead` | float | `0.5` | Seconds added to a live channel's song position before lyrics are matched to it. Try `0`, `-1` or `-3` if lines run ahead of the singing. A song whose line you clicked to sync keeps its own timing |
+
+```sh
+defaults write com.starplayrx.mac updatePrereleases -bool YES
+defaults write com.starplayrx.mac lyricsLiveLead -float -1
+defaults delete com.starplayrx.mac lyricsLiveLead   # back to the default
+```
+
 ## 🛠️ Building
 
 You need Xcode 16 or later.
