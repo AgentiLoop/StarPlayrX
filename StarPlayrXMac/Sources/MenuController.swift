@@ -50,6 +50,12 @@ final class MenuController: NSObject, ObservableObject {
             self?.statusItem.button?.image = NSImage(systemSymbolName: on ? "dot.radiowaves.left.and.right" : "radio",
                                                       accessibilityDescription: "StarPlayrX")
         }
+        // Sound follows the panel: a torn-off panel dragged onto another display plays through
+        // that display's speakers (opening it under a menu bar is handled in showUnderMenuBar).
+        NotificationCenter.default.addObserver(forName: NSWindow.didChangeScreenNotification, object: panel,
+                                               queue: .main) { [weak self] _ in
+            Task { @MainActor in Radio.shared.routeAudio(to: self?.panel.screen) }
+        }
     }
 
     /// Ends `closingPress` once the press that closed the panel comes up.
