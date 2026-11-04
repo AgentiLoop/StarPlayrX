@@ -79,9 +79,16 @@ final class LyricsCache {
             return Date().timeIntervalSince(fetched) < Self.missLifetime ? .some(nil) : nil
         }
         // A stub kept before stubs were turned away (a lone "probe" line): not an answer, look again.
+        // Same for timing with a hole in it, kept before the search learned to pass those over —
+        // but only once: a fresh look that still finds nothing better is saved after this date,
+        // and is believed from then on.
         let lyrics = Lyrics(artist: artist, song: song, lines: lines, synced: synced)
+        if lyrics.hasHole, fetched < Self.holesChecked { return nil }
         return lyrics.isReal ? lyrics : nil
     }
+
+    /// When the search started passing over lyrics with holes in their timing (2026-11-04).
+    static let holesChecked = Date(timeIntervalSince1970: 1_793_836_800)
 
     /// Remembers what the search came back with, a miss included (as a row with no lines).
     func save(_ lyrics: Lyrics?, for key: String, artist: String, song: String) {
