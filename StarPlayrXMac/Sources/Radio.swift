@@ -210,24 +210,24 @@ final class Radio: ObservableObject {
     }
     private var routeFade: Task<Void, Never>?
 
-    /// Moves the sound to the speakers `uid` with one player: a quick fade out on the old
-    /// speakers, the switch, and a fade in on the new ones. (A second player to overlap them
-    /// never lines up to the sample with the first, so the two displays played an echo.)
+    /// Moves the sound to the speakers `uid` with one player, without stopping it: the volume
+    /// only dips a little to hide the switch, the switch happens at the bottom of the dip with
+    /// no wait, and it comes straight back up. (Fading all the way out and back in left a gap of
+    /// silence between displays.)
     private func crossfade(from old: String?, to uid: String) async {
-        let steps = 12, half = 0.2
-        let pause = UInt64(half / Double(steps) * 1e9)
+        let steps = 6
+        let pause: UInt64 = 15_000_000
         let full = player.volume > 0 ? player.volume : 1
-        for i in stride(from: steps - 1, through: 0, by: -1) {
-            guard !Task.isCancelled else { setVolume(full); return }
-            setVolume(full * Float(i) / Float(steps))
+        let low = full * 0.5
+        for i in 1...steps {
+            setVolume(full - (full - low) * Float(i) / Float(steps))
             try? await Task.sleep(nanoseconds: pause)
         }
         // The player follows the system output, so this moves it (and the volume keys).
         DisplayAudio.makeSystemOutput(uid)
-        try? await Task.sleep(nanoseconds: 60_000_000)   // let the new device start
         for i in 1...steps {
-            setVolume(full * Float(i) / Float(steps))
-            try? await Task.sleep(nanoseconds: pause)
+            setVolume(low + (full - low) * Float(i) / Float(steps))
+            try? await Task.sleep(nanoseconds: pause * 2)
         }
         setVolume(full)
     }
