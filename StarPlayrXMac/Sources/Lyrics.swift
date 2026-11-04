@@ -32,6 +32,15 @@ struct Lyrics {
     let lines: [LyricLine]
     /// True when every line has a timestamp, so the pane can follow the music.
     let synced: Bool
+
+    /// Whether this looks like a song's words at all. Sources sometimes answer with a stub — a
+    /// single "probe" line, a credit, one word — which would sit in the pane instead of the
+    /// lyrics. A song has at least a few lines and a couple dozen words.
+    var isReal: Bool {
+        let sung = lines.map(\.text).filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+        let words = sung.reduce(0) { $0 + $1.split(whereSeparator: \.isWhitespace).count }
+        return sung.count >= 4 && words >= 20
+    }
 }
 
 /// An LRCLIB request that came back with something other than a record or a 404.
@@ -124,7 +133,7 @@ final class LyricsStore: ObservableObject {
         var plain: Lyrics?
         for source in [fetch, netease, qqMusic, kugou, lyricsOVH] {
             do {
-                if let found = try await source(artist, song, duration) {
+                if let found = try await source(artist, song, duration), found.isReal {
                     // Timestamps win: a source that only has the words doesn't end the search, or a
                     // rate-limited LRCLIB would cost the whole song its highlight when the next
                     // source along has the same lyrics with times on them.

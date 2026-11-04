@@ -78,7 +78,9 @@ final class LyricsCache {
             // A remembered miss, kept only while it's fresh.
             return Date().timeIntervalSince(fetched) < Self.missLifetime ? .some(nil) : nil
         }
-        return Lyrics(artist: artist, song: song, lines: lines, synced: synced)
+        // A stub kept before stubs were turned away (a lone "probe" line): not an answer, look again.
+        let lyrics = Lyrics(artist: artist, song: song, lines: lines, synced: synced)
+        return lyrics.isReal ? lyrics : nil
     }
 
     /// Remembers what the search came back with, a miss included (as a row with no lines).
