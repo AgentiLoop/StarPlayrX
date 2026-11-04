@@ -738,7 +738,8 @@ struct LyricsPane: View {
         let live = radio.current?.xtraID == nil
         let key = LyricsStore.key(np.artist, np.song)
         let base = live ? (LyricSync.shared.shift(forKey: key) ?? Radio.liveLyricsLead)
-                        : (LyricSync.shared.pinnedShift(forKey: key) ?? 0)
+                        : (LyricSync.shared.pinnedShift(forKey: key)
+                           ?? radio.xtraNow.flatMap { LyricSync.shared.xtraShift(for: $0.file) } ?? 0)
         return LyricSync.shared.pin(shift: base + (target - position), forKey: key, remember: live)
     }
 
