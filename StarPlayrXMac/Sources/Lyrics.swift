@@ -69,8 +69,10 @@ struct Lyrics {
             var startOfLine = true
             for word in text.lowercased().split(separator: " ", omittingEmptySubsequences: false) {
                 var w = String(word)
-                if w == "i" || w.hasPrefix("i'") || w.hasPrefix("i’") || w == "(i" || w.hasPrefix("(i'") {
-                    if let i = w.firstIndex(of: "i") { w.replaceSubrange(i...i, with: "I") }
+                // "i" on its own, whatever is round it: i, i'm, "i'd, (i, i,
+                if let i = w.firstIndex(where: \.isLetter), w[i] == "i",
+                   w[w.index(after: i)...].first.map({ !$0.isLetter }) ?? true {
+                    w.replaceSubrange(i...i, with: "I")
                 }
                 if startOfLine || w.hasPrefix("("), let i = w.firstIndex(where: \.isLetter) {
                     w.replaceSubrange(i...i, with: w[i].uppercased())
