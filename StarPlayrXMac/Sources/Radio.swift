@@ -215,9 +215,11 @@ final class Radio: ObservableObject {
                 setVolume(start * Float(i) / Float(steps))
                 try? await Task.sleep(nanoseconds: UInt64(half / Double(steps) * 1e9))
             }
+            guard !Task.isCancelled else { return }   // a newer move took over
             DisplayAudio.makeSystemOutput(uid)
             try? await Task.sleep(nanoseconds: 80_000_000)   // let the new device start
             for i in 1...steps {
+                guard !Task.isCancelled else { return }
                 setVolume(Float(i) / Float(steps))
                 try? await Task.sleep(nanoseconds: UInt64(half / Double(steps) * 1e9))
             }
