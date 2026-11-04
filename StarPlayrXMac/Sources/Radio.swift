@@ -14,6 +14,213 @@ import MediaPlayer
 import Combine
 import os
 
+/// Player objects never leave this queue. The lock protects only copied values, never AVFoundation calls.
+final class PlaybackWorker: @unchecked Sendable {
+    static let shared = PlaybackWorker()
+    struct Snapshot {
+        var id: UUID?
+        var isXtra = false
+        var liveStatus: AVPlayer.TimeControlStatus = .paused
+        var xtraStatus: AVPlayer.TimeControlStatus = .paused
+        var liveTime = Double.nan
+        var xtraTime = Double.nan
+        var liveDate: Date?
+        var duration = Double.nan
+        var file: URL?
+        var track: XtraTrack?
+        var queueCount = 0
+
+        func spectrum(ahead: Double) -> [Float]? {
+            if isXtra {
+                guard xtraStatus == .playing, xtraTime.isFinite, let file else { return nil }
+                return SpectrumTimeline.shared.levels(track: file, at: xtraTime + ahead)
+            }
+            guard liveStatus == .playing, liveTime.isFinite else { return nil }
+            return SpectrumTimeline.shared.levels(time: liveTime + ahead)
+        }
+    }
+    private let queue = DispatchQueue(label: "com.starplayrx.playback", qos: .userInitiated)
+    private let lock = NSLock()
+    private var cached = Snapshot()
+    var snapshot: Snapshot { lock.lock(); defer { lock.unlock() }; return cached }
+    private lazy var live = AVPlayer()
+    private lazy var xtra = AVQueuePlayer()
+    private var id = UUID()
+    private var isXtra = false
+    private var loader: LiveLoader?
+    private var tracks = [AVPlayerItem: (track: XtraTrack, file: URL)]()
+    private var folder: URL?
+    private var lastItem: AVPlayerItem?
+    private var trackChanged: (@Sendable (UUID) -> Void)?
+    private var timer: DispatchSourceTimer?
+    private static let log = Logger(subsystem: "com.starplayrx.mac", category: "playback")
+
+    private init() {
+        queue.async {
+            let timer = DispatchSource.makeTimerSource(queue: self.queue)
+            timer.schedule(deadline: .now(), repeating: 1.0 / 30, leeway: .milliseconds(3))
+            timer.setEventHandler { [weak self] in self?.sample() }
+            self.timer = timer
+            timer.resume()
+        }
+    }
+
+    func onTrackChange(_ callback: @escaping @Sendable (UUID) -> Void) {
+        queue.async { self.trackChanged = callback }
+    }
+
+    func begin(id: UUID, xtra: Bool, folder: URL) {
+        queue.async {
+            self.id = id
+            self.isXtra = xtra
+            self.live.pause()
+            self.live.replaceCurrentItem(with: nil)
+            self.xtra.pause()
+            self.xtra.removeAllItems()
+            self.loader?.isActive = false
+            self.loader = nil
+            self.tracks.removeAll()
+            self.lastItem = nil
+            SpectrumTimeline.shared.forgetTracks()
+            SpectrumTimeline.shared.resetLive()
+            if let old = self.folder { try? FileManager.default.removeItem(at: old) }
+            self.folder = folder
+            self.sample()
+        }
+    }
+
+    func loadLive(_ url: URL, client: XtraClient, id: UUID) {
+        queue.async {
+            guard self.id == id else { return }
+            let (asset, loader) = LiveLoader.asset(for: url, client: client)
+            self.loader = loader
+            let item = AVPlayerItem(asset: asset)
+            item.preferredForwardBufferDuration = 3
+            self.live.replaceCurrentItem(with: item)
+            self.startLive(id: id, tries: 0)
+        }
+    }
+
+    private func startLive(id: UUID, tries: Int) {
+        dispatchPrecondition(condition: .onQueue(queue))
+        guard self.id == id, let item = live.currentItem else { return }
+        if (item.status != .readyToPlay || item.seekableTimeRanges.isEmpty), tries < 100 {
+            queue.asyncAfter(deadline: .now() + 0.1) { self.startLive(id: id, tries: tries + 1) }
+            return
+        }
+        if let range = item.seekableTimeRanges.last?.timeRangeValue {
+            let edge = max(CMTimeSubtract(CMTimeRangeGetEnd(range), CMTime(seconds: 1, preferredTimescale: 1000)), range.start)
+            if abs(CMTimeGetSeconds(CMTimeSubtract(edge, item.currentTime()))) > 1 {
+                item.seek(to: edge, toleranceBefore: .zero, toleranceAfter: .zero) { _ in
+                    self.queue.async {
+                        guard self.id == id else { return }
+                        self.live.play()
+                        self.sample()
+                    }
+                }
+                return
+            }
+        }
+        live.play()
+        sample()
+    }
+
+    func enqueue(_ track: XtraTrack, file: URL, first: Bool, id: UUID) async {
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            queue.async {
+                guard self.id == id else { continuation.resume(); return }
+                let item = AVPlayerItem(url: file)
+                self.tracks[item] = (track, file)
+                self.xtra.insert(item, after: nil)
+                if first, track.startOffset > 0 {
+                    self.xtra.seek(to: CMTime(seconds: track.startOffset, preferredTimescale: 1000)) { _ in
+                        self.queue.async {
+                            if self.id == id { self.xtra.play(); self.sample() }
+                            continuation.resume()
+                        }
+                    }
+                } else {
+                    if first { self.xtra.play() }
+                    self.sample()
+                    continuation.resume()
+                }
+            }
+        }
+    }
+
+    private func sample() {
+        dispatchPrecondition(condition: .onQueue(queue))
+        let queued = Set(xtra.items())
+        for (item, entry) in tracks where !queued.contains(item) {
+            tracks[item] = nil
+            SpectrumTimeline.shared.forget(track: entry.file)
+            try? FileManager.default.removeItem(at: entry.file)
+        }
+        let item = xtra.currentItem
+        let liveItem = live.currentItem
+        var state = Snapshot()
+        state.id = id
+        state.isXtra = isXtra
+        state.liveStatus = live.timeControlStatus
+        state.xtraStatus = xtra.timeControlStatus
+        state.liveTime = liveItem?.currentTime().seconds ?? .nan
+        state.xtraTime = item?.currentTime().seconds ?? .nan
+        state.liveDate = liveItem?.currentDate()
+        state.duration = item?.duration.seconds ?? .nan
+        state.file = item.flatMap { tracks[$0]?.file }
+        state.track = item.flatMap { tracks[$0]?.track }
+        state.queueCount = queued.count
+        lock.lock()
+        let previous = cached
+        cached = state
+        lock.unlock()
+        if previous.liveStatus != state.liveStatus || previous.xtraStatus != state.xtraStatus {
+            Self.log.notice("worker live=\(state.liveStatus.rawValue) xtra=\(state.xtraStatus.rawValue) liveTime=\(state.liveTime) xtraTime=\(state.xtraTime)")
+        }
+        if item !== lastItem {
+            lastItem = item
+            trackChanged?(id)
+        }
+    }
+
+    func route(to uid: String) async {
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            queue.async {
+                guard !DisplayAudio.isSystemOutput(uid) else { continuation.resume(); return }
+                let liveVolume = self.live.volume, xtraVolume = self.xtra.volume
+                let cool = DisplayAudio.warmUp(uid)
+                self.fade(uid: uid, step: 1, liveVolume: liveVolume, xtraVolume: xtraVolume, cool: cool, continuation: continuation)
+            }
+        }
+    }
+
+    private func fade(uid: String, step: Int, liveVolume: Float, xtraVolume: Float,
+                      cool: @escaping () -> Void, continuation: CheckedContinuation<Void, Never>) {
+        dispatchPrecondition(condition: .onQueue(queue))
+        let gain = step <= 12 ? Float(1 + cos(Double(step) / 12 * .pi)) / 2
+            : Float(1 - cos(Double(step - 12) / 16 * .pi)) / 2
+        live.volume = liveVolume * gain
+        xtra.volume = xtraVolume * gain
+        if step == 28 {
+            live.volume = liveVolume
+            xtra.volume = xtraVolume
+            cool()
+            continuation.resume()
+            return
+        }
+        queue.asyncAfter(deadline: .now() + 0.015) {
+            if step == 12 {
+                DisplayAudio.makeSystemOutput(uid)
+                self.queue.asyncAfter(deadline: .now() + 0.1) {
+                    self.fade(uid: uid, step: step + 1, liveVolume: liveVolume, xtraVolume: xtraVolume, cool: cool, continuation: continuation)
+                }
+            } else {
+                self.fade(uid: uid, step: step + 1, liveVolume: liveVolume, xtraVolume: xtraVolume, cool: cool, continuation: continuation)
+            }
+        }
+    }
+}
+
 @MainActor
 final class Radio: ObservableObject {
     static let shared = Radio()
@@ -60,39 +267,35 @@ final class Radio: ObservableObject {
     /// True once sign-in has finished loading every channel, Xtra included.
     @Published var channelsLoaded = false
 
-    private let player = AVPlayer()
+    private let playback = PlaybackWorker.shared
+    private var playbackID = UUID()
+    private var liveTask: Task<Void, Never>?
+    private var playbackState: PlaybackWorker.Snapshot {
+        let state = playback.snapshot
+        return state.id == playbackID ? state : .init()
+    }
     private var pdtTimer: Timer?
 
     // Xtra channels: tracks are downloaded, decrypted and queued one after another.
     private let xtra = XtraClient()
-    private let xtraPlayer = AVQueuePlayer()
     private var xtraTask: Task<Void, Never>?
-    private var xtraTracks = [AVPlayerItem: XtraTrack]()
     private var xtraNowPlaying = [String: NowPlaying]()
     private var liveIDs = [String: String]()   // live channel number -> entity id, for the lookAround feed
-    private var xtraObserver: AnyCancellable?
     private var xtraPeekedAt = [String: Date]()
     private var xtraPeekedTrack = [String: XtraTrack]()  // what the channel list shows, played first on tune
     private var xtraPeeking = false
-    private var liveLoader: LiveLoader?   // keeps the live stream's resource loader alive
-    private let xtraFolder = FileManager.default.temporaryDirectory.appendingPathComponent("StarPlayrXtra")
-
-    private var playbackObservers = Set<AnyCancellable>()
+    private var xtraFolder: URL {
+        FileManager.default.temporaryDirectory.appendingPathComponent("StarPlayrXtra/\(playbackID.uuidString)")
+    }
 
     private init() {
         setupRemoteCommands()
-        for (name, observed) in [("live", player), ("xtra", xtraPlayer)] {
-            observed.publisher(for: \.timeControlStatus)
-                .sink { [weak observed] state in
-                    guard let observed else { return }
-                    let item = observed.currentItem.map { String(describing: ObjectIdentifier($0)) } ?? "nil"
-                    Self.playLog.notice("state player=\(name, privacy: .public) state=\(state.rawValue) rate=\(observed.rate) t=\(observed.currentTime().seconds) item=\(item, privacy: .public) reason=\(observed.reasonForWaitingToPlay?.rawValue ?? "none", privacy: .public)")
-                }
-                .store(in: &playbackObservers)
+        playback.onTrackChange { [weak self] id in
+            Task { @MainActor in
+                guard let self, self.playbackID == id else { return }
+                self.xtraItemChanged()
+            }
         }
-        xtraObserver = xtraPlayer.publisher(for: \.currentItem)
-            .receive(on: DispatchQueue.main)
-            .sink { _ in Task { @MainActor in Radio.shared.xtraItemChanged() } }
     }
 
     // MARK: Login
@@ -155,52 +358,29 @@ final class Radio: ObservableObject {
 
     func play(_ channel: Channel) {
         haltXtra()
+        liveTask?.cancel()
+        playbackID = UUID()
+        let id = playbackID
+        playback.begin(id: id, xtra: channel.xtraID != nil, folder: xtraFolder)
         current = channel
         UserDefaults.standard.set(channel.id, forKey: "lastChannel")
         // A tune the user asked for starts the stall count over; a re-tune by the watchdog keeps it.
         if retuning { retuning = false } else { recoveryAttempts = 0 }
         startWatchdog()
         if let xtraID = channel.xtraID {
-            player.pause()
-            player.replaceCurrentItem(with: nil)
             playXtra(channel, id: xtraID)
             return
         }
-        Task {
-            liveLoader?.isActive = false
-            liveLoader = nil
-            // Before the new item exists, so the EQ is dated from the first playlist that item loads.
-            SpectrumTimeline.shared.resetLive()
+        liveTask = Task {
             guard let liveID = liveIDs[channel.id] else { status = "Channel \(channel.id) is not available."; stop(); return }
             let live: URL
-            do { live = try await xtra.liveStream(channelID: liveID) } catch { status = error.localizedDescription; stop(); return }
-            // Playlists and the AES key go through LiveLoader; the signed segment URLs load directly.
-            let (asset, loader) = LiveLoader.asset(for: live, client: xtra)
-            liveLoader = loader
-            let item = AVPlayerItem(asset: asset)
-            // Start as soon as a little audio is buffered instead of waiting to fill a large buffer.
-            item.preferredForwardBufferDuration = 3
-            // Stay paused until the start position is settled so the old position never plays
-            // (that was the half-second stutter before the jump).
-            player.pause()
-            player.replaceCurrentItem(with: item)
+            do { live = try await xtra.liveStream(channelID: liveID) } catch {
+                guard !Task.isCancelled, playbackID == id else { return }
+                status = error.localizedDescription; stop(); return
+            }
+            guard !Task.isCancelled, playbackID == id else { return }
             isPlaying = true
-            var tries = 0
-            while (item.status != .readyToPlay || item.seekableTimeRanges.isEmpty), tries < 100 {
-                try? await Task.sleep(nanoseconds: 100_000_000)
-                tries += 1
-            }
-            guard player.currentItem === item else { return }
-            // Fallback: only jump if the start tag was ignored and we're more than 1 s off live.
-            if let range = item.seekableTimeRanges.last?.timeRangeValue {
-                let edge = max(CMTimeSubtract(CMTimeRangeGetEnd(range), CMTime(seconds: 1, preferredTimescale: 1000)), range.start)
-                if abs(CMTimeGetSeconds(CMTimeSubtract(edge, item.currentTime()))) > 1 {
-                    // Exact seek so we land within 1 s of live, not on an earlier segment boundary.
-                    await item.seek(to: edge, toleranceBefore: .zero, toleranceAfter: .zero)
-                }
-            }
-            guard player.currentItem === item else { return }
-            player.play()
+            playback.loadLive(live, client: xtra, id: id)
             await updatePDT()
         }
     }
@@ -225,34 +405,7 @@ final class Radio: ObservableObject {
             }
             while let uid = pendingOutputUID {
                 pendingOutputUID = nil
-                let live = player
-                let queued = xtraPlayer
-                // Fade and switch off the UI thread, without pausing, seeking or replacing items.
-                await Task.detached(priority: .userInitiated) {
-                    guard !DisplayAudio.isSystemOutput(uid) else { return }
-                    let liveVolume = live.volume
-                    let queuedVolume = queued.volume
-                    defer {
-                        live.volume = liveVolume
-                        queued.volume = queuedVolume
-                    }
-                    let cool = DisplayAudio.warmUp(uid)
-                    defer { cool() }
-                    for step in 1...12 {
-                        let gain = Float(1 + cos(Double(step) / 12 * .pi)) / 2
-                        live.volume = liveVolume * gain
-                        queued.volume = queuedVolume * gain
-                        try? await Task.sleep(nanoseconds: 15_000_000)
-                    }
-                    DisplayAudio.makeSystemOutput(uid)
-                    try? await Task.sleep(nanoseconds: 100_000_000)
-                    for step in 1...16 {
-                        let gain = Float(1 - cos(Double(step) / 16 * .pi)) / 2
-                        live.volume = liveVolume * gain
-                        queued.volume = queuedVolume * gain
-                        try? await Task.sleep(nanoseconds: 15_000_000)
-                    }
-                }.value
+                await playback.route(to: uid)
             }
         }
     }
@@ -262,9 +415,11 @@ final class Radio: ObservableObject {
 
     func stop() {
         stopWatchdog()
-        player.pause()
-        player.replaceCurrentItem(with: nil)
         haltXtra()
+        liveTask?.cancel()
+        liveTask = nil
+        playbackID = UUID()
+        playback.begin(id: playbackID, xtra: false, folder: xtraFolder)
         isPlaying = false
         updateNowPlayingInfo()
     }
@@ -303,9 +458,9 @@ final class Radio: ObservableObject {
     private var isSilent: Bool {
         guard let current else { return false }
         guard current.xtraID == nil else {
-            return xtraPlayer.timeControlStatus != .playing && xtraPlayer.items().isEmpty
+            return playbackState.xtraStatus != .playing && playbackState.queueCount == 0
         }
-        return player.timeControlStatus != .playing
+        return playbackState.liveStatus != .playing
     }
 
     private func checkPlayback() {
@@ -347,6 +502,8 @@ final class Radio: ObservableObject {
             nowPlaying[channel.id] = nil
         }
         updateNowPlayingInfo()
+        let session = playbackID
+        let folder = xtraFolder
         xtraTask = Task {
             var pending = [XtraTrack]()
             var token: String?
@@ -355,15 +512,11 @@ final class Radio: ObservableObject {
             if let peeked {
                 seen.insert(peeked.id)
                 do {
-                    let file = try await xtra.download(peeked, into: xtraFolder)
-                    if !Task.isCancelled {
+                    let file = try await xtra.download(peeked, into: folder)
+                    if !Task.isCancelled, playbackID == session {
                         SpectrumTimeline.shared.analyze(track: file)
-                        let item = AVPlayerItem(url: file)
-                        xtraTracks[item] = peeked
-                        xtraPlayer.insert(item, after: nil)
+                        await playback.enqueue(peeked, file: file, first: true, id: session)
                         first = false
-                        xtraPlayer.play()
-                        xtraItemChanged()
                     }
                 } catch {
                     print("XTRA peeked download failed \(channel.id) \(peeked.title): \(error.localizedDescription) url=\(peeked.url)")
@@ -372,7 +525,7 @@ final class Radio: ObservableObject {
             do {
                 while !Task.isCancelled {
                     // Keep one track playing and one ready behind it.
-                    if xtraPlayer.items().count > 1 {
+                    if playbackState.queueCount > 1 {
                         try await Task.sleep(nanoseconds: 2_000_000_000)
                         continue
                     }
@@ -383,53 +536,32 @@ final class Radio: ObservableObject {
                         if pending.isEmpty { try await Task.sleep(nanoseconds: 5_000_000_000); continue }
                     }
                     let track = pending.removeFirst()
-                    let file = try await xtra.download(track, into: xtraFolder)
-                    guard !Task.isCancelled else { break }
+                    let file = try await xtra.download(track, into: folder)
+                    guard !Task.isCancelled, playbackID == session else { break }
                     SpectrumTimeline.shared.analyze(track: file, from: first ? track.startOffset : 0)
-                    let item = AVPlayerItem(url: file)
-                    xtraTracks[item] = track
-                    xtraPlayer.insert(item, after: nil)
-                    if first {
-                        first = false
-                        if track.startOffset > 0 {
-                            await xtraPlayer.seek(to: CMTime(seconds: track.startOffset, preferredTimescale: 1000))
-                        }
-                        xtraPlayer.play()
-                        xtraItemChanged()
-                    }
+                    await playback.enqueue(track, file: file, first: first, id: session)
+                    first = false
                 }
             } catch is CancellationError {
             } catch {
                 print("Xtra playback error: \(error.localizedDescription)")
-                if first, current?.id == channel.id { stop() }
+                if first, !Task.isCancelled, playbackID == session { stop() }
             }
         }
     }
 
     private func haltXtra() {
         // The list keeps showing the song that was playing, so tuning back in should play that song.
-        if let item = xtraPlayer.currentItem, let track = xtraTracks[item], let current, current.xtraID != nil {
+        if let track = playbackState.track, let current, current.xtraID != nil {
             xtraPeekedTrack[current.id] = track
         }
         xtraTask?.cancel()
         xtraTask = nil
-        xtraPlayer.pause()
-        xtraPlayer.removeAllItems()
-        xtraTracks = [:]
-        SpectrumTimeline.shared.forgetTracks()
-        try? FileManager.default.removeItem(at: xtraFolder)
     }
 
     /// Shows the queued track that just started and deletes files of tracks that have finished.
     fileprivate func xtraItemChanged() {
-        let queued = Set(xtraPlayer.items())
-        for (item, track) in xtraTracks where !queued.contains(item) {
-            xtraTracks[item] = nil
-            let file = xtraFolder.appendingPathComponent("\(track.id).aac")
-            SpectrumTimeline.shared.forget(track: file)
-            try? FileManager.default.removeItem(at: file)
-        }
-        guard let item = xtraPlayer.currentItem, let track = xtraTracks[item], let current, current.xtraID != nil else { return }
+        guard let track = playbackState.track, let current, current.xtraID != nil else { return }
         let np = NowPlaying(artist: track.artist, song: track.title, image: track.imageURL)
         // Called from both the queue observer and playXtra for the same item: log the track once.
         if xtraNowPlaying[current.id] != np { print("XTRA playing \(current.id) \(track.artist) – \(track.title)") }
@@ -452,7 +584,7 @@ final class Radio: ObservableObject {
         // The player's date runs ahead of the stream's real PDT (segments are tagged 10 s but hold
         // ~9.75 s, so the gap grows to ~8 s). The song list was matched to the player's date, so it
         // ran that far ahead of the music; hold it back by the measured gap.
-        if current?.xtraID == nil, player.timeControlStatus == .playing, let at = player.currentItem?.currentDate(),
+        if current?.xtraID == nil, playbackState.liveStatus == .playing, let at = playbackState.liveDate,
            let real = SpectrumTimeline.shared.realDate(at: at) {
             streamLag = max(0, at.timeIntervalSince(real))
         }
@@ -540,7 +672,7 @@ final class Radio: ObservableObject {
     var playingNow: NowPlaying? {
         guard isPlaying, let current else { return nil }
         guard current.xtraID != nil else { return nowPlaying[current.id] }
-        guard let item = xtraPlayer.currentItem, let track = xtraTracks[item] else { return nil }
+        guard let track = playbackState.track else { return nil }
         return NowPlaying(artist: track.artist, song: track.title, image: track.imageURL)
     }
 
@@ -560,12 +692,13 @@ final class Radio: ObservableObject {
             // A talk segment or a stale cut can run for hours; past that these aren't its lyrics.
             return (0...900).contains(at) ? at : nil
         }
-        guard xtraPlayer.timeControlStatus != .paused, let item = xtraPlayer.currentItem else { return nil }
-        let at = item.currentTime().seconds
+        let state = playbackState
+        guard state.xtraStatus != .paused else { return nil }
+        let at = state.xtraTime
         guard at.isFinite else { return nil }
         // The player knows where the file is; Shazam says where that is in the record the lyrics
         // are timed to, and a line the user clicked moves the words against it over both.
-        let file = (item.asset as? AVURLAsset)?.url
+        let file = state.file
         let shazam = file.flatMap { LyricSync.shared.xtraShift(for: $0) } ?? 0
         guard let np = playingNow else { return at + shazam }
         return at + (LyricSync.shared.pinnedShift(forKey: LyricsStore.key(np.artist, np.song)) ?? shazam)
@@ -573,9 +706,10 @@ final class Radio: ObservableObject {
 
     /// The Xtra file in the player and the player's position in it, for matching with Shazam.
     var xtraNow: (file: URL, at: Double)? {
-        guard isPlaying, current?.xtraID != nil, xtraPlayer.timeControlStatus == .playing,
-              let item = xtraPlayer.currentItem, let file = (item.asset as? AVURLAsset)?.url else { return nil }
-        let at = item.currentTime().seconds
+        let state = playbackState
+        guard isPlaying, current?.xtraID != nil, state.xtraStatus == .playing,
+              let file = state.file else { return nil }
+        let at = state.xtraTime
         return at.isFinite ? (file, at) : nil
     }
 
@@ -585,7 +719,7 @@ final class Radio: ObservableObject {
     /// what both the song list and the lyrics are matched against, so neither runs ahead of the
     /// music when the player buffers, is paused, or is rewound.
     private var heardDate: Date? {
-        guard current?.xtraID == nil, let at = player.currentItem?.currentDate() else { return nil }
+        guard current?.xtraID == nil, let at = playbackState.liveDate else { return nil }
         return SpectrumTimeline.shared.realDate(at: at) ?? at.addingTimeInterval(-streamLag)
     }
 
@@ -601,15 +735,15 @@ final class Radio: ObservableObject {
 
     /// Length of the Xtra track in the player, which sharpens LRCLIB's matching. Nil on live channels.
     var trackDuration: TimeInterval? {
-        guard current?.xtraID != nil, let item = xtraPlayer.currentItem else { return nil }
-        let length = item.duration.seconds
+        guard current?.xtraID != nil else { return nil }
+        let length = playbackState.duration
         return length.isFinite && length > 0 ? length : nil
     }
 
     /// Whether the player for the current channel is actually producing audio (not just buffering).
     var audioStarted: Bool {
         guard isPlaying, let current else { return false }
-        return (current.xtraID != nil ? xtraPlayer : player).timeControlStatus == .playing
+        return (current.xtraID != nil ? playbackState.xtraStatus : playbackState.liveStatus) == .playing
     }
 
     /// Bars for what is coming out of the speakers right now, read from the frames worked out
@@ -618,14 +752,12 @@ final class Radio: ObservableObject {
     /// visualizer can read slightly ahead to make up for the time its smoothing takes to show them.
     func spectrumNow(ahead: Double = 0) -> [Float]? {
         guard isPlaying, let current else { return nil }
-        if current.xtraID != nil {
-            guard xtraPlayer.timeControlStatus == .playing, let item = xtraPlayer.currentItem,
-                  let file = (item.asset as? AVURLAsset)?.url else { return nil }
-            return SpectrumTimeline.shared.levels(track: file, at: item.currentTime().seconds + ahead)
-        }
+        let state = playbackState
+        if current.xtraID != nil { return state.spectrum(ahead: ahead) }
         // The item's own timeline, not its date: the date jumps back each time the playlist window slides.
-        guard player.timeControlStatus == .playing, let time = player.currentItem?.currentTime().seconds else { return nil }
-        let levels = SpectrumTimeline.shared.levels(time: time + ahead)
+        guard state.liveStatus == .playing else { return nil }
+        let time = state.liveTime
+        let levels = state.spectrum(ahead: ahead)
         // The EQ went dark while a live channel played, with nothing to go on. Log the transitions
         // (once per dropout, once per recovery) with the timeline's state: `log show --predicate 'subsystem == "com.starplayrx.mac"'`.
         if (levels == nil) != eqDark {
