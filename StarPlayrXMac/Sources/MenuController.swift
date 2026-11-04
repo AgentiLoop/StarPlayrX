@@ -52,9 +52,12 @@ final class MenuController: NSObject, ObservableObject {
         }
         // Sound follows the panel: a torn-off panel dragged onto another display plays through
         // that display's speakers (opening it under a menu bar is handled in showUnderMenuBar).
-        NotificationCenter.default.addObserver(forName: NSWindow.didChangeScreenNotification, object: panel,
-                                               queue: .main) { [weak self] _ in
-            Task { @MainActor in Radio.shared.routeAudio(to: self?.panel.screen) }
+        // And clicking the panel on a display claims that display's speakers again, e.g. after
+        // the sound was moved to the other display by hand.
+        for name in [NSWindow.didChangeScreenNotification, NSWindow.didBecomeKeyNotification] {
+            NotificationCenter.default.addObserver(forName: name, object: panel, queue: .main) { [weak self] _ in
+                Task { @MainActor in Radio.shared.routeAudio(to: self?.panel.screen) }
+            }
         }
     }
 
@@ -125,7 +128,9 @@ final class MenuController: NSObject, ObservableObject {
         // Like MenuBarExtra: the app becomes active, so controls draw active rather than greyed.
         NSApp.activate(ignoringOtherApps: true)
         panel.makeKeyAndOrderFront(nil)
-        Radio.shared.routeAudio(to: statusItem.button?.window?.screen ?? panel.screen)
+        // The panel's own screen, now it is placed: with a menu bar on every display, the status
+        // item's window can be on a different display than the one the panel opened on.
+        Radio.shared.routeAudio(to: panel.screen)
         // In a session AppKit draws the real highlight itself; only light it by hand without one.
         if #available(macOS 27, *), statusItem.expandedInterfaceSession != nil {} else { keepLit() }
 
