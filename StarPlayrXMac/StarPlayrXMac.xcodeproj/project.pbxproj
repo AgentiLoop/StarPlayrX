@@ -35,6 +35,7 @@
 		C8F6A2E065C7DF33930B6C11 /* Updater.swift in Sources */ = {isa = PBXBuildFile; fileRef = C61B9780B3DFA615D3ABFAD1 /* Updater.swift */; };
 		D70FE6A0684BA95A37B9141F /* Keychain.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4362792013A115602196217 /* Keychain.swift */; };
 		F9A9498FC10093CAB657AD06 /* Radio.swift in Sources */ = {isa = PBXBuildFile; fileRef = A828F86C0FE74B3D990CC160 /* Radio.swift */; };
+		AC2707528BDBBD324D0EEE42 /* ShazamSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = A358392485F8373A3173D8CC /* ShazamSync.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -80,6 +81,7 @@
 		DA977B1658B9908A1857CA86 /* Spectrum.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = Spectrum.metal; sourceTree = "<group>"; };
 		DF28422D48A23F0C3140CF55 /* SpectrumView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpectrumView.swift; sourceTree = "<group>"; };
 		F780CB7683BB43494DE45275 /* ScriptedTour.applescript */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.applescript; path = ScriptedTour.applescript; sourceTree = "<group>"; };
+		A358392485F8373A3173D8CC /* ShazamSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ShazamSync.swift"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -123,7 +125,8 @@
 				C61B9780B3DFA615D3ABFAD1 /* Updater.swift */,
 				B180FAFDD06BBA9CCCECBA5D /* Visualizer.swift */,
 				40AD17AD1A89E96BF1D207E3 /* Xtra.swift */,
-			);
+							A358392485F8373A3173D8CC /* ShazamSync.swift */,
+);
 			path = Sources;
 			sourceTree = "<group>";
 		};
@@ -273,7 +276,8 @@
 				C8F6A2E065C7DF33930B6C11 /* Updater.swift in Sources */,
 				67113DB4036BE489BDC7FE53 /* Visualizer.swift in Sources */,
 				8B1D211BFBA7662F1F5269C4 /* Xtra.swift in Sources */,
-			);
+							AC2707528BDBBD324D0EEE42 /* ShazamSync.swift in Sources */,
+);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		2D226AB8E2AE6464C3D191F7 /* Sources */ = {

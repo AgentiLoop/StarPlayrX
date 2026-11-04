@@ -66,6 +66,24 @@ final class LyricSync: ObservableObject {
         guard !isPinned, lyrics.synced, segment != lastSegment else { return }
 
         lastSegment = segment
+        // Shazam first: when it has heard this very song, it knows outright how far into the
+        // record the audio on air is, and that beats anything worked out from the audio. Only
+        // when it hasn't (a song not in its catalogue, a talk-up, matching not set up) does the
+        // aligner below have its say.
+        ShazamSync.shared.want()
+        let (match, error) = ShazamSync.shared.current
+        if let match, Self.same(match, as: key) {
+            // At broadcast time `match.real` the record was `match.offset` seconds in; the cut's
+            // stamp put that moment `real - songStart` in. The difference is the shift.
+            let found = match.offset - match.real.timeIntervalSince(songStart)
+            if abs(found) <= 60 {
+                shift = found
+                report = String(format: "%+.1fs (Shazam: %@ – %@ at %.1fs)", found, match.artist, match.title, match.offset)
+                LyricsCache.shared.saveShift(found, for: key)
+                return
+            }
+        }
+        let shazam = error.map { " · Shazam: \($0)" } ?? ""
         // Only lines the pane draws: an LRC times the gaps between verses as empty lines, and
         // nobody sings those, so they would drag the match towards silence. Where the source times
         // every word, each word is a moment too: a rap verse gives the aligner ten points a line
@@ -74,23 +92,39 @@ final class LyricSync: ObservableObject {
         var times = [Double]()
         for at in stamps.sorted() where at - (times.last ?? -.infinity) >= 0.1 { times.append(at) }
         guard times.count >= LyricAligner.minimumLines else {
-            report = "only \(times.count) timed lines"
+            report = "only \(times.count) timed lines" + shazam
             return
         }
         guard let onsets = SpectrumTimeline.shared.onsets() else {
-            report = "no decoded audio yet"
+            report = "no decoded audio yet" + shazam
             return
         }
         let audio = Double(onsets.values.count) * onsets.step
         guard let found = LyricAligner.align(lineTimes: times, songStart: songStart, onsets: onsets) else {
-            report = String(format: "no confident match (%.0fs of audio, %d lines)", audio, times.count)
+            report = String(format: "no confident match (%.0fs of audio, %d lines)", audio, times.count) + shazam
             return
         }
         // The newest measurement wins: every one looks at more of the song than the last, and a
         // later lock is the one that had the most to go on.
         shift = found.shift
         report = String(format: "%+.1fs (confidence %.1f, margin %.2f, %d lines, %.0fs of audio)",
-                        found.shift, found.confidence, found.margin, found.lines, audio)
+                        found.shift, found.confidence, found.margin, found.lines, audio) + shazam
         LyricsCache.shared.saveShift(found.shift, for: key)
+    }
+
+    /// Whether Shazam heard the song the lyrics are for (`key` is "artist|song", lowercased).
+    /// Loose on purpose: the station says "Lose Yourself", Shazam "Lose Yourself (From "8 Mile")";
+    /// the artist one way round or the other ("Eminem" / "Eminem & Dido").
+    static func same(_ match: ShazamSync.Match, as key: String) -> Bool {
+        let parts = key.split(separator: "|", maxSplits: 1).map(String.init)
+        guard parts.count == 2 else { return false }
+        func plain(_ s: String) -> String {
+            LyricsStore.withoutParentheses(s).lowercased().filter { $0.isLetter || $0.isNumber }
+        }
+        let (artist, song) = (plain(parts[0]), plain(parts[1]))
+        let (heardArtist, heardSong) = (plain(match.artist), plain(match.title))
+        guard !artist.isEmpty, !song.isEmpty, !heardArtist.isEmpty, !heardSong.isEmpty else { return false }
+        return (heardSong.contains(song) || song.contains(heardSong))
+            && (heardArtist.contains(artist) || artist.contains(heardArtist))
     }
 }

@@ -114,6 +114,10 @@ final class SpectrumTimeline: @unchecked Sendable {
         let duration = Double(audio.length) / audio.processingFormat.sampleRate   // ~9.75 s, not the tagged 10
         let voice = Self.voice(in: file, frames: frames.count, hop: hop)
         lock.lock()
+        let real = realDates[name]
+        lock.unlock()
+        if let real { ShazamSync.shared.segment(file, real: real) }
+        lock.lock()
         live.removeAll { $0.start == start }
         live.append(Chunk(channel: Self.channel(name), start: start, real: realDates[name], sequence: sequence,
                           hop: hop, duration: duration, frames: frames, voice: voice))
