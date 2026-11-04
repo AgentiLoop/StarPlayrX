@@ -95,6 +95,9 @@ final class LyricSync: ObservableObject {
     /// turns up, which only means the same thing on a live channel — an Xtra track's position is
     /// the file's own, not a cut's stamp.
     func pin(shift: Double, forKey key: String, remember: Bool) {
+        // A click a minute or more away from where the song is can't be "this line is being sung
+        // now" (a stray click, or the pane drawn from a stale position): it threw a song 2 minutes out.
+        guard abs(shift) <= 60 else { return }
         self.key = key
         self.shift = shift
         isPinned = true
