@@ -225,6 +225,7 @@ final class Radio: ObservableObject {
         if #available(macOS 14.2, *), isPlaying, let old, let fade = SpeakerCrossfade(from: old, to: uid) {
             defer { fade.stop() }
             try? await Task.sleep(nanoseconds: 150_000_000)   // sound reaching the tap?
+            try? "tap heard=\(fade.heardSound)\n".write(toFile: "/tmp/xf.txt", atomically: true, encoding: .utf8)
             if fade.heardSound {
                 DisplayAudio.makeSystemOutput(uid)
                 for i in 1...steps {
