@@ -59,7 +59,7 @@ final class PlaybackWorker: @unchecked Sendable {
         queue.async {
             let timer = DispatchSource.makeTimerSource(queue: self.queue)
             timer.schedule(deadline: .now(), repeating: 1.0 / 30, leeway: .milliseconds(3))
-            timer.setEventHandler { [weak self] in self?.sample() }
+            timer.setEventHandler { self.sample() }
             self.timer = timer
             timer.resume()
         }
