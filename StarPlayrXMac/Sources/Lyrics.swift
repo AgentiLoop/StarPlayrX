@@ -701,7 +701,7 @@ struct LyricsPane: View {
                     Spacer()
                 }
                 .frame(maxWidth: .infinity)
-                .frame(height: CachedArt<EmptyView>.listHeight)
+                .frame(height: menu.listHeight)
             }
         }
         // Follows the song: a new title (or opening the pane) starts the fetch.
@@ -759,7 +759,7 @@ struct LyricsPane: View {
                 .padding(.trailing, 12)
                 .background(SkinnyScrollers().frame(width: 0, height: 0))
             }
-            .frame(height: CachedArt<EmptyView>.listHeight)
+            .frame(height: menu.listHeight)
             .padding(.trailing, -12)
             .overlay(alignment: .bottom) {
                 if let bubble {

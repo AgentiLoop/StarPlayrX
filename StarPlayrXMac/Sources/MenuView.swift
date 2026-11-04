@@ -298,7 +298,7 @@ struct MenuView: View {
                 // Keeps the scroll bar the same skinny width when the pointer grabs it.
                 .background(SkinnyScrollers().frame(width: 0, height: 0))
             }
-            .frame(height: CachedArt<EmptyView>.listHeight)
+            .frame(height: menu.listHeight)
             // The list reaches 8pt past the content area on the left (room for the playing row's squircle,
             // which sits 8pt from the window edge) and 12pt on the right (scroll bar at the window's edge).
             .padding(.leading, -8)

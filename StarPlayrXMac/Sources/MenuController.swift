@@ -20,6 +20,34 @@ final class MenuController: NSObject, ObservableObject {
 
     @Published private(set) var detached = false
     @Published var shaded = false
+    /// Height of the channel list and lyrics: drag the panel's bottom edge to change it. Remembered.
+    @Published var listHeight: CGFloat = MenuController.savedListHeight
+    static let listHeightRange: ClosedRange<CGFloat> = 200...1600
+    private static let listHeightKey = "listHeight"
+    private static var savedListHeight: CGFloat {
+        let saved = UserDefaults.standard.double(forKey: listHeightKey)
+        return saved > 0 ? min(max(saved, listHeightRange.lowerBound), listHeightRange.upperBound) : 360
+    }
+    private var resizeStart: (mouseY: CGFloat, height: CGFloat, room: CGFloat)?
+
+    /// Bottom-edge drag. The top stays put (MenuPanel.setFrame), so the panel grows down, no
+    /// further than the bottom of the screen. Snaps to `snap` (where the album art fits exactly) when close.
+    func resize(snap: CGFloat?) {
+        let mouseY = NSEvent.mouseLocation.y
+        if resizeStart == nil {
+            let bottom = panel.screen?.visibleFrame.minY ?? 0
+            resizeStart = (mouseY, listHeight, max(panel.frame.minY - bottom - 8, 0))
+        }
+        guard let start = resizeStart else { return }
+        var height = start.height + min(start.mouseY - mouseY, start.room)
+        if let snap, abs(height - snap) < 12 { height = snap }
+        listHeight = min(max(height.rounded(), Self.listHeightRange.lowerBound), Self.listHeightRange.upperBound)
+    }
+
+    func endResize() {
+        resizeStart = nil
+        UserDefaults.standard.set(Double(listHeight), forKey: Self.listHeightKey)
+    }
     private(set) lazy var panel = MenuPanel.make()
     private lazy var statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
     private var outsideClick: Any?

@@ -331,7 +331,3 @@ struct CachedArt<Content: View>: View {
         }
     }
 }
-
-extension CachedArt {
-    nonisolated static var listHeight: CGFloat { 360 }
-}
