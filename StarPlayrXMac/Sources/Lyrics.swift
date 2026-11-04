@@ -613,7 +613,8 @@ struct LyricsPane: View {
     @EnvironmentObject var radio: Radio
     @ObservedObject private var menu = MenuController.shared
     @ObservedObject private var store = LyricsStore.shared
-
+    /// The line being sung, by id; only changes when the singing moves on to the next line.
+    @State private var current: Int?
 
     /// The song the pane is about: what's coming out of the speakers, else what the row shows.
     private var showing: NowPlaying? {
@@ -662,44 +663,33 @@ struct LyricsPane: View {
     /// Synced lyrics scroll themselves and dim every line but the one being sung; plain lyrics
     /// are just a scrolling block of text. Either way the lines are grouped into sections, so
     /// verses and the chorus read apart instead of as one wall of text.
+    ///
+    /// The song's position is checked 4 times a second, but the lines are only rebuilt when the
+    /// line being sung changes (every few seconds). Rebuilding every line of the song on each
+    /// check, as a `TimelineView` did, cost ~7% CPU with the lyrics open.
     private func lines(_ lyrics: Lyrics) -> some View {
-        // 0.25 s is close enough for a sung line and costs almost nothing to redraw.
-        TimelineView(.periodic(from: .now, by: 0.25)) { _ in
-            let at = radio.trackPosition
-            let current = at.flatMap { Self.line(of: lyrics, at: $0) }
-            ScrollViewReader { proxy in
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 14) {
-                        ForEach(Self.sections(of: lyrics), id: \.first!.id) { section in
-                            VStack(alignment: .leading, spacing: 6) {
-                                ForEach(section) { line in
-                                    let adLib = Self.isAdLib(line.text)
-                                    Text(line.text)
-                                        .font(line.id == current ? .body.bold() : adLib ? .callout : .body)
-                                        .foregroundStyle(current == nil || line.id == current ? .primary : .secondary)
-                                        .padding(.leading, adLib ? 14 : 0)
-                                        .frame(maxWidth: .infinity, alignment: .leading)
-                                        // Click a line to say that is what is being sung right now:
-                                        // the highlight moves there and the rest of the song follows
-                                        // from it. Only means anything on timed lyrics.
-                                        .contentShape(Rectangle())
-                                        .onTapGesture { pin(line, in: lyrics, at: at) }
-
-                                        .id(line.id)
-                                }
-
-                            }
-                        }
-                    }
-                    .padding(.trailing, 12)
-                    .background(SkinnyScrollers().frame(width: 0, height: 0))
+        let id = "\(lyrics.artist)|\(lyrics.song)|\(lyrics.lines.count)|\(lyrics.synced)"
+        return ScrollViewReader { proxy in
+            ScrollView {
+                LyricLines(id: id, lyrics: lyrics, current: current) { line in
+                    pin(line, in: lyrics, at: radio.trackPosition)
                 }
-                .frame(height: CachedArt<EmptyView>.listHeight)
-                .padding(.trailing, -12)
-                .onValueChange(of: current) { line in
-                    guard let line else { return }
-                    withAnimation(.easeInOut(duration: 0.3)) { proxy.scrollTo(line, anchor: .center) }
-                }
+                .equatable()
+                .padding(.trailing, 12)
+                .background(SkinnyScrollers().frame(width: 0, height: 0))
+            }
+            .frame(height: CachedArt<EmptyView>.listHeight)
+            .padding(.trailing, -12)
+            .onValueChange(of: current) { line in
+                guard let line else { return }
+                withAnimation(.easeInOut(duration: 0.3)) { proxy.scrollTo(line, anchor: .center) }
+            }
+        }
+        .task(id: id) {
+            while !Task.isCancelled {
+                let now = radio.trackPosition.flatMap { Self.line(of: lyrics, at: $0) }
+                if now != current { current = now }
+                try? await Task.sleep(nanoseconds: 250_000_000)
             }
         }
     }
@@ -760,6 +750,40 @@ struct LyricsPane: View {
             if !line.text.isEmpty { found = line.id }
         }
         return found
+    }
+}
+
+/// Every line of the song, grouped into sections. Equatable on the song and the line being sung,
+/// so SwiftUI leaves it alone until one of them changes.
+private struct LyricLines: View, Equatable {
+    let id: String
+    let lyrics: Lyrics
+    let current: Int?
+    let tap: (LyricLine) -> Void
+
+    static func == (a: LyricLines, b: LyricLines) -> Bool { a.id == b.id && a.current == b.current }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            ForEach(LyricsPane.sections(of: lyrics), id: \.first!.id) { section in
+                VStack(alignment: .leading, spacing: 6) {
+                    ForEach(section) { line in
+                        let adLib = LyricsPane.isAdLib(line.text)
+                        Text(line.text)
+                            .font(line.id == current ? .body.bold() : adLib ? .callout : .body)
+                            .foregroundStyle(current == nil || line.id == current ? .primary : .secondary)
+                            .padding(.leading, adLib ? 14 : 0)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            // Click a line to say that is what is being sung right now:
+                            // the highlight moves there and the rest of the song follows
+                            // from it. Only means anything on timed lyrics.
+                            .contentShape(Rectangle())
+                            .onTapGesture { tap(line) }
+                            .id(line.id)
+                    }
+                }
+            }
+        }
     }
 }
 
