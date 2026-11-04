@@ -84,6 +84,8 @@ final class LyricsCache {
         // and is believed from then on.
         let lyrics = Lyrics(artist: artist, song: song, lines: lines, synced: synced)
         if lyrics.hasHole, fetched < Self.holesChecked { return nil }
+        // Kept in capitals before those were looked past (new ones are saved calmed): look again.
+        if lyrics.isShouting { return nil }
         return lyrics.isReal ? lyrics : nil
     }
 

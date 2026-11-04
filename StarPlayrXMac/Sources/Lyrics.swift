@@ -49,6 +49,41 @@ struct Lyrics {
         let times = lines.filter { !$0.text.trimmingCharacters(in: .whitespaces).isEmpty }.compactMap(\.at)
         return synced && zip(times, times.dropFirst()).contains { $1 - $0 >= 45 }
     }
+
+    /// Typed in capitals from start to finish. Some sources keep a song in ALL CAPS, which shouts
+    /// from the pane; a copy in ordinary case is looked for first, and `calmed` fixes it if none.
+    var isShouting: Bool {
+        let letters = lines.flatMap { $0.text.unicodeScalars }.filter { CharacterSet.letters.contains($0) }
+        let upper = letters.filter { CharacterSet.uppercaseLetters.contains($0) }.count
+        let lower = letters.filter { CharacterSet.lowercaseLetters.contains($0) }.count
+        return upper + lower >= 40 && Double(upper) / Double(upper + lower) > 0.8
+    }
+
+    /// The same lyrics in sentence case: each line starts with a capital, as does a bracket that
+    /// opens one, and "I" (I'm, I'd, I'll, I've) stays a capital. Names lose theirs, which reads
+    /// far better than a pane of capitals.
+    func calmed() -> Lyrics {
+        guard isShouting else { return self }
+        func calm(_ text: String) -> String {
+            var out = ""
+            var startOfLine = true
+            for word in text.lowercased().split(separator: " ", omittingEmptySubsequences: false) {
+                var w = String(word)
+                if w == "i" || w.hasPrefix("i'") || w.hasPrefix("i’") || w == "(i" || w.hasPrefix("(i'") {
+                    if let i = w.firstIndex(of: "i") { w.replaceSubrange(i...i, with: "I") }
+                }
+                if startOfLine || w.hasPrefix("("), let i = w.firstIndex(where: \.isLetter) {
+                    w.replaceSubrange(i...i, with: w[i].uppercased())
+                    startOfLine = false
+                }
+                out += (out.isEmpty ? "" : " ") + w
+            }
+            return out
+        }
+        return Lyrics(artist: artist, song: song,
+                      lines: lines.map { LyricLine(id: $0.id, at: $0.at, text: calm($0.text), words: $0.words) },
+                      synced: synced)
+    }
 }
 
 /// An LRCLIB request that came back with something other than a record or a 404.
@@ -139,9 +174,13 @@ final class LyricsStore: ObservableObject {
     private static func find(artist: String, song: String, duration: TimeInterval?) async throws -> Lyrics? {
         var failure: Error?
         var plain: Lyrics?
+        // Timed lyrics in ALL CAPS: kept in case nothing else turns up, but the next source gets
+        // its turn to find the same song in ordinary case first.
+        var shouting: Lyrics?
         for source in [fetch, netease, qqMusic, kugou, lyricsOVH] {
             do {
                 if let found = try await source(artist, song, duration), found.isReal {
+                    if found.synced, found.isShouting { shouting = shouting ?? found; continue }
                     // Timestamps win: a source that only has the words doesn't end the search, or a
                     // rate-limited LRCLIB would cost the whole song its highlight when the next
                     // source along has the same lyrics with times on them.
@@ -155,7 +194,8 @@ final class LyricsStore: ObservableObject {
             }
             try Task.checkCancellation()
         }
-        if let plain { return plain }
+        if let shouting { return shouting.calmed() }
+        if let plain { return plain.calmed() }
         if let failure { throw failure }
         return nil
     }
@@ -183,7 +223,7 @@ final class LyricsStore: ObservableObject {
         var holed: Lyrics?
         if let record = try await ask("/api/get", get) as? [String: Any],
            let got = lyrics(from: record, artist: artist, song: song) {
-            guard got.hasHole else { return got }
+            guard got.hasHole || got.isShouting else { return got }
             holed = got
         }
         // The live channels tack a decade or a note onto the title ("Break Free (14)",
@@ -193,7 +233,7 @@ final class LyricsStore: ObservableObject {
            let record = try await ask("/api/get", [URLQueryItem(name: "track_name", value: plainSong),
                                                    URLQueryItem(name: "artist_name", value: plainArtist)]) as? [String: Any],
            let got = lyrics(from: record, artist: artist, song: song) {
-            guard got.hasHole else { return got }
+            guard got.hasHole || got.isShouting else { return got }
             holed = got
         }
         let found = try await ask("/api/search", [URLQueryItem(name: "track_name", value: plainSong),
@@ -209,7 +249,7 @@ final class LyricsStore: ObservableObject {
         // timestamps), and the wrong lyrics are worse than none, so artist and title must both fit.
         let mine = records.filter { matches(plainArtist, $0) && isSong(plainSong, $0) }
         let timed = mine.filter { $0["syncedLyrics"] is String }.compactMap { lyrics(from: $0, artist: artist, song: song) }
-        if let whole = timed.first(where: { $0.synced && !$0.hasHole }) { return whole }
+        if let whole = timed.first(where: { $0.synced && !$0.hasHole && !$0.isShouting }) { return whole }
         if let holed { return holed }
         if let first = timed.first { return first }
         guard let best = mine.first else { return nil }
