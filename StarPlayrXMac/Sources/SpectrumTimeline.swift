@@ -144,31 +144,6 @@ final class SpectrumTimeline: @unchecked Sendable {
         let seqs = live.map(\.sequence).sorted()
         return "anchor=\(anchor.map { "\($0.sequence)" } ?? "nil") slot=\(startSlot.map(String.init) ?? "nil") cursor=\(cursor.map { "\($0.sequence)@\(Int($0.time))" } ?? "nil") nominal=\(nominal) channel=\(liveChannel) dates=\(segmentDates.count) live=\(seqs.first.map { "\($0)…\(seqs.last ?? $0)(\(seqs.count))" } ?? "none")"
     }
-    /// The real on-air time (stream PDT) of the audio at the player item's current time, found by
-    /// the same walk over real decoded segment lengths that keeps the equalizer in step. The lyrics
-    /// used `realDate(at:)` on the item's date instead, which jumps whenever the playlist window
-    /// slides and sits on a 10 s grid that the ~9.75 s segments drift away from, so the words ran
-    /// a second or two ahead of the singing and never came back. Read-only: the EQ owns `cursor`
-    /// (it reads slightly ahead, so this may have to step back a segment).
-    func realDate(time: Double) -> Date? {
-        lock.lock()
-        defer { lock.unlock() }
-        guard var (sequence, segStart, _) = cursor, time >= 0 else { return nil }
-        func chunk(_ s: Int) -> Chunk? { live.first { $0.channel == liveChannel && $0.sequence == s } }
-        while time < segStart {
-            guard let previous = chunk(sequence - 1) else { return nil }
-            sequence -= 1
-            segStart -= previous.duration
-        }
-        while let c = chunk(sequence) {
-            let t = time - segStart
-            if t < c.duration { return c.real?.addingTimeInterval(t) }
-            segStart += c.duration
-            sequence += 1
-        }
-        return nil
-    }
-
     func levels(time: Double) -> [Float]? {
         lock.lock()
         defer { lock.unlock() }

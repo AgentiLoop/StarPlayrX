@@ -510,24 +510,9 @@ final class Radio: ObservableObject {
     /// what both the song list and the lyrics are matched against, so neither runs ahead of the
     /// music when the player buffers, is paused, or is rewound.
     private var heardDate: Date? {
-        guard current?.xtraID == nil, let item = player.currentItem, let at = item.currentDate() else { return nil }
-        let old = SpectrumTimeline.shared.realDate(at: at)
-        // The item's timeline walked over the real segment lengths, exactly as the equalizer is:
-        // the item's date jumps when the playlist window slides and drifts off the 10 s grid.
-        let time = item.currentTime().seconds
-        let walked = time.isFinite ? SpectrumTimeline.shared.realDate(time: time) : nil
-        if Date().timeIntervalSince(lastHeardLog) > 5 {
-            lastHeardLog = Date()
-            let line = "\(Date()) t=\(time) walk=\(walked.map { "\($0.timeIntervalSince1970)" } ?? "nil") date=\(old.map { "\($0.timeIntervalSince1970)" } ?? "nil") diff=\(walked.flatMap { w in old.map { w.timeIntervalSince($0) } } ?? .nan)\n"
-            if let h = FileHandle(forWritingAtPath: "/tmp/heard.txt") { h.seekToEndOfFile(); h.write(Data(line.utf8)); h.closeFile() }
-            else { try? line.write(toFile: "/tmp/heard.txt", atomically: true, encoding: .utf8) }
-        }
-        if let real = walked {
-            return real
-        }
-        return old ?? at.addingTimeInterval(-streamLag)
+        guard current?.xtraID == nil, let at = player.currentItem?.currentDate() else { return nil }
+        return SpectrumTimeline.shared.realDate(at: at) ?? at.addingTimeInterval(-streamLag)
     }
-    private var lastHeardLog = Date.distantPast
 
     /// Seconds added to where the cut's timestamp says we are. A live cut is stamped a little
     /// before the recording's own zero (the station fades in over the end of the last song, and the
