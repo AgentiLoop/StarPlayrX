@@ -254,7 +254,8 @@ struct MenuView: View {
     /// Full-size album art, as wide as the panel's content; clicking it shows the list or lyrics again.
     private func bigArt(_ url: String) -> some View {
         CachedArt(url: url, size: 336, isAlbumArt: true) { art, _ in
-            if let art { Image(nsImage: art).resizable().scaledToFit() }
+            // Color.clear until it loads: an empty view never runs CachedArt's .task, so nothing would load.
+            if let art { Image(nsImage: art).resizable().scaledToFit() } else { Color.clear }
         }
         .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
         .frame(maxWidth: .infinity, maxHeight: .infinity)
