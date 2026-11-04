@@ -510,9 +510,21 @@ final class Radio: ObservableObject {
     /// what both the song list and the lyrics are matched against, so neither runs ahead of the
     /// music when the player buffers, is paused, or is rewound.
     private var heardDate: Date? {
-        guard current?.xtraID == nil, let at = player.currentItem?.currentDate() else { return nil }
-        return SpectrumTimeline.shared.realDate(at: at) ?? at.addingTimeInterval(-streamLag)
+        guard current?.xtraID == nil, let item = player.currentItem, let at = item.currentDate() else { return nil }
+        let old = SpectrumTimeline.shared.realDate(at: at)
+        // The item's timeline walked over the real segment lengths, exactly as the equalizer is:
+        // the item's date jumps when the playlist window slides and drifts off the 10 s grid.
+        let time = item.currentTime().seconds
+        if time.isFinite, let real = SpectrumTimeline.shared.realDate(time: time) {
+            if let old, Date().timeIntervalSince(lastHeardLog) > 10 {
+                lastHeardLog = Date()
+                Self.log.notice("heard: walk vs date \(real.timeIntervalSince(old), privacy: .public)s")
+            }
+            return real
+        }
+        return old ?? at.addingTimeInterval(-streamLag)
     }
+    private var lastHeardLog = Date.distantPast
 
     /// Seconds added to where the cut's timestamp says we are. A live cut is stamped a little
     /// before the recording's own zero (the station fades in over the end of the last song, and the
