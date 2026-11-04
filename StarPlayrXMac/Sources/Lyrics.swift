@@ -721,8 +721,12 @@ struct LyricsPane: View {
                     .font(.caption).foregroundStyle(.secondary).lineLimit(1)
             }
             Spacer()
-            Button("Channels") { menu.lyrics = false }
+            Button("Art") { menu.bigArt = true }
+                .disabled(radio.current.flatMap { radio.nowPlaying[$0.id]?.image }.map(\.isEmpty) ?? true)
+                .help("Show the album art full size")
+            Button("Chs") { menu.lyrics = false }
                 .help("Back to the channel list")
+                .accessibilityLabel("Channels")
         }
         .frame(height: 22)
     }
