@@ -22,15 +22,21 @@ enum ContrastColor {
         // and the search below costs up to 21 × 3 pow() calls.
         let key = Key(hue: Int((hue - floor(hue)) * 720), saturation: Int(saturation * 100),
                       bg: Int(bg * 1000), minRatio: Int(minRatio * 10))
-        if let hit = cache[key] { return hit }
-        if cache.count > 20_000 { cache.removeAll() }
+        cacheLock.lock()
+        let hit = cache[key]
+        cacheLock.unlock()
+        if let hit { return hit }
         let c = search(hue: Double(key.hue) / 720, saturation: saturation, against: bg, minRatio: minRatio)
+        cacheLock.lock()
+        if cache.count > 20_000 { cache.removeAll() }
         cache[key] = c
+        cacheLock.unlock()
         return c
     }
 
     private struct Key: Hashable { let hue, saturation, bg, minRatio: Int }
-    nonisolated(unsafe) private static var cache = [Key: SIMD4<Float>]()   // only used on the main thread
+    private static let cacheLock = NSLock()
+    nonisolated(unsafe) private static var cache = [Key: SIMD4<Float>]()
 
     private static func search(hue: Double, saturation: Double, against bg: Double, minRatio: Double) -> SIMD4<Float> {
         let dark = bg < 0.5
