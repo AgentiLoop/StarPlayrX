@@ -203,54 +203,75 @@ final class Radio: ObservableObject {
     /// app's: the volume keys and slider work on the system output, so sending only the radio
     /// left them turning the other display up and down. Each display keeps its own volume.
     func routeAudio(to screen: NSScreen?) {
-        guard let screen, let uid = DisplayAudio.device(for: screen) else { return }
-        // One move at a time: each waits for the one before, then fades from wherever that left
-        // the sound, so a quick move back and forth never has two fades playing at once.
-        let previous = routeFade
-        routeFade = Task { @MainActor [weak self] in
-            await previous?.value
-            guard let self, !DisplayAudio.isSystemOutput(uid) else { return }
-            await self.crossfade(from: DisplayAudio.systemOutputUID(), to: uid)
-        }
+        guard let screen, let uid = DisplayAudio.device(for: screen), !DisplayAudio.isSystemOutput(uid) else { return }
+        let old = DisplayAudio.systemOutputUID()
+        routeFade?.cancel()
+        routeFade = Task { @MainActor [weak self] in await self?.crossfade(from: old, to: uid) }
     }
     private var routeFade: Task<Void, Never>?
 
-    /// Moves the sound to the speakers `uid`, cross-fading: the old speakers fade out while the
-    /// new ones fade in, from the one player (see `SpeakerCrossfade`). The Mac's sound output
-    /// switches too, so the volume keys follow. Where that can't run (before macOS 14.2, or
-    /// without the audio recording permission) it fades out, switches, and fades back in.
+    /// A real cross-fade between the two displays' speakers: a second player on the same stream,
+    /// lined up to the sample clock with the one playing, keeps the old speakers going and fades
+    /// out while the main player moves to the new speakers and fades in. If the second player
+    /// can't be lined up in time, it falls back to a quick fade out and in.
     private func crossfade(from old: String?, to uid: String) async {
+        let main: AVPlayer = current?.xtraID == nil ? player : xtraPlayer
+        let ghost = isPlaying ? await ghostPlayer(for: main, on: old) : nil
+        guard !Task.isCancelled else { ghost?.pause(); return }
         let steps = 20, length = 0.6
-        let pause = UInt64(length / Double(steps) * 1e9)
-        if #available(macOS 14.2, *), isPlaying, let old, let fade = SpeakerCrossfade(from: old, to: uid) {
-            defer { fade.stop() }
-            try? await Task.sleep(nanoseconds: 150_000_000)   // sound reaching the tap?
-            try? "tap heard=\(fade.heardSound)\n".write(toFile: "/tmp/xf.txt", atomically: true, encoding: .utf8)
-            if fade.heardSound {
-                DisplayAudio.makeSystemOutput(uid)
-                for i in 1...steps {
-                    // Equal-power curves, so the loudness holds steady through the middle.
-                    let t = Float(i) / Float(steps)
-                    fade.set(old: cos(t * .pi / 2), new: sin(t * .pi / 2))
-                    try? await Task.sleep(nanoseconds: pause)
-                }
-                return
+        let full = main.volume
+        if ghost == nil {   // fallback: down on the old speakers first
+            for i in stride(from: steps - 1, through: 0, by: -1) {
+                setVolume(full * Float(i) / Float(steps))
+                try? await Task.sleep(nanoseconds: UInt64(length / 2 / Double(steps) * 1e9))
             }
+        } else {
+            setVolume(0)   // the ghost is carrying the old speakers now
         }
-        let full = player.volume
-        for i in stride(from: steps - 1, through: 0, by: -1) {
-            setVolume(full * Float(i) / Float(steps))
-            try? await Task.sleep(nanoseconds: pause / 2)
-        }
+        // The main player follows the system output, so this moves it (and the volume keys).
         DisplayAudio.makeSystemOutput(uid)
         try? await Task.sleep(nanoseconds: 60_000_000)   // let the new device start
         for i in 1...steps {
-            setVolume(full * Float(i) / Float(steps))
-            try? await Task.sleep(nanoseconds: pause / 2)
+            let t = Float(i) / Float(steps)
+            // Equal-power curves, so the loudness holds steady through the middle.
+            setVolume(full * sin(t * .pi / 2))
+            ghost?.volume = full * cos(t * .pi / 2)
+            try? await Task.sleep(nanoseconds: UInt64((ghost == nil ? length / 2 : length) / Double(steps) * 1e9))
         }
         setVolume(full)
+        ghost?.pause()
+        ghost?.replaceCurrentItem(with: nil)
     }
 
+    /// A player on `device` playing what `main` is playing, started at the same instant on the
+    /// host clock. Nil if it isn't ready in time.
+    private func ghostPlayer(for main: AVPlayer, on device: String?) async -> AVPlayer? {
+        guard let device, let item = main.currentItem else { return nil }
+        let copy = AVPlayerItem(asset: item.asset)
+        let ghost = AVPlayer(playerItem: copy)
+        ghost.audioOutputDeviceUniqueID = device
+        ghost.automaticallyWaitsToMinimizeStalling = false
+        ghost.volume = main.volume
+        for _ in 0..<40 where copy.status != .readyToPlay {   // up to 2 s
+            try? await Task.sleep(nanoseconds: 50_000_000)
+        }
+        guard copy.status == .readyToPlay, !Task.isCancelled else { return nil }
+        // Start a second from now: where the main player will be then, in the copy's own timeline.
+        let lead = 1.0
+        let target: CMTime
+        if let mainDate = item.currentDate(), let copyDate = copy.currentDate() {
+            let wanted = mainDate.addingTimeInterval(lead)
+            target = CMTimeAdd(copy.currentTime(), CMTime(seconds: wanted.timeIntervalSince(copyDate), preferredTimescale: 48_000))
+        } else {
+            target = CMTimeAdd(item.currentTime(), CMTime(seconds: lead, preferredTimescale: 48_000))
+        }
+        let startHost = CMTimeAdd(CMClockGetTime(CMClockGetHostTimeClock()), CMTime(seconds: lead, preferredTimescale: 1_000_000_000))
+        guard await copy.seek(to: target, toleranceBefore: .zero, toleranceAfter: .zero), !Task.isCancelled,
+              CMTimeCompare(CMClockGetTime(CMClockGetHostTimeClock()), startHost) < 0 else { return nil }
+        ghost.setRate(1, time: target, atHostTime: startHost)
+        try? await Task.sleep(nanoseconds: UInt64(max(0, CMTimeGetSeconds(CMTimeSubtract(startHost, CMClockGetTime(CMClockGetHostTimeClock())))) * 1e9))
+        return ghost.timeControlStatus == .playing ? ghost : { ghost.pause(); return nil }()
+    }
     private func setVolume(_ v: Float) {
         player.volume = v
         xtraPlayer.volume = v
