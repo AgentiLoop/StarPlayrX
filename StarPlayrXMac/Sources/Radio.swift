@@ -203,8 +203,31 @@ final class Radio: ObservableObject {
     /// app's: the volume keys and slider work on the system output, so sending only the radio
     /// left them turning the other display up and down. Each display keeps its own volume.
     func routeAudio(to screen: NSScreen?) {
-        guard let screen, let uid = DisplayAudio.device(for: screen) else { return }
-        DisplayAudio.makeSystemOutput(uid)
+        guard let screen, let uid = DisplayAudio.device(for: screen), !DisplayAudio.isSystemOutput(uid) else { return }
+        // Fade out on the old speakers, switch, fade back in on the new ones, so the sound glides
+        // across instead of cutting off on one display and jumping in on the other.
+        routeFade?.cancel()
+        routeFade = Task { @MainActor [weak self] in
+            guard let self else { return }
+            let steps = 12, half = 0.25
+            let start = player.volume
+            for i in stride(from: steps - 1, through: 0, by: -1) {
+                setVolume(start * Float(i) / Float(steps))
+                try? await Task.sleep(nanoseconds: UInt64(half / Double(steps) * 1e9))
+            }
+            DisplayAudio.makeSystemOutput(uid)
+            try? await Task.sleep(nanoseconds: 80_000_000)   // let the new device start
+            for i in 1...steps {
+                setVolume(Float(i) / Float(steps))
+                try? await Task.sleep(nanoseconds: UInt64(half / Double(steps) * 1e9))
+            }
+            setVolume(1)
+        }
+    }
+    private var routeFade: Task<Void, Never>?
+    private func setVolume(_ v: Float) {
+        player.volume = v
+        xtraPlayer.volume = v
     }
 
     func stop() {

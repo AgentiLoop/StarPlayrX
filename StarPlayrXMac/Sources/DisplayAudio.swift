@@ -32,6 +32,11 @@ enum DisplayAudio {
         return outputs.first { matches($0, screen: screen, among: outputs) }?.uid
     }
 
+    /// Whether the device with this UID is already the Mac's sound output.
+    static func isSystemOutput(_ uid: String) -> Bool {
+        outputDevices().first(where: { $0.uid == uid })?.id == systemOutput()
+    }
+
     /// Makes the device with this UID the Mac's sound output, and its alert-sound output too.
     /// The volume keys and slider also turn the alert device up and down, so left on the other
     /// display it made both displays' volumes move together.
