@@ -77,8 +77,19 @@ final class Radio: ObservableObject {
     private var liveLoader: LiveLoader?   // keeps the live stream's resource loader alive
     private let xtraFolder = FileManager.default.temporaryDirectory.appendingPathComponent("StarPlayrXtra")
 
+    private var playbackObservers = Set<AnyCancellable>()
+
     private init() {
         setupRemoteCommands()
+        for (name, observed) in [("live", player), ("xtra", xtraPlayer)] {
+            observed.publisher(for: \.timeControlStatus)
+                .sink { [weak observed] state in
+                    guard let observed else { return }
+                    let item = observed.currentItem.map { String(describing: ObjectIdentifier($0)) } ?? "nil"
+                    Self.playLog.notice("state player=\(name, privacy: .public) state=\(state.rawValue) rate=\(observed.rate) t=\(observed.currentTime().seconds) item=\(item, privacy: .public) reason=\(observed.reasonForWaitingToPlay?.rawValue ?? "none", privacy: .public)")
+                }
+                .store(in: &playbackObservers)
+        }
         xtraObserver = xtraPlayer.publisher(for: \.currentItem)
             .receive(on: DispatchQueue.main)
             .sink { _ in Task { @MainActor in Radio.shared.xtraItemChanged() } }
