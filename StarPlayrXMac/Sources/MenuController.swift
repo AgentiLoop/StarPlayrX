@@ -18,7 +18,12 @@ let menuLog = Logger(subsystem: "com.starplayrx.mac", category: "menu")
 final class MenuController: NSObject, ObservableObject {
     static let shared = MenuController()
 
-    @Published private(set) var detached = false
+    /// Torn off, the panel sits on the desktop layer like a desktop widget: just above the
+    /// wallpaper icons, behind every app window, on every Space, staying put for Show Desktop.
+    /// Under the menu bar it floats above apps, like a menu.
+    @Published private(set) var detached = false {
+        didSet { panel.sitOnDesktop(detached) }
+    }
     @Published var shaded = false
     /// Height of the channel list and lyrics: drag the panel's bottom edge to change it. Remembered.
     @Published var listHeight: CGFloat = MenuController.savedListHeight
@@ -150,6 +155,8 @@ final class MenuController: NSObject, ObservableObject {
         // Shaded and torn off: glide back still rolled up, then unroll once in place.
         let unshade = panel.isVisible && detached && shaded
         let wasTornOff = panel.isVisible && detached
+        // Off the desktop layer before gliding back (a shaded panel is still `detached` meanwhile).
+        if wasTornOff { panel.sitOnDesktop(false) }
         if !unshade {
             detached = false
             shaded = false
@@ -512,6 +519,19 @@ final class MenuPanel: NSPanel {
         }
         super.setFrame(rect, display: flag)
         if isVisible { refreshShadow() }
+    }
+
+    private lazy var floatingBehavior = collectionBehavior
+
+    /// Desktop-widget level (desktop icons + 1, still clickable) or back to floating.
+    func sitOnDesktop(_ onDesktop: Bool) {
+        if onDesktop {
+            level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.desktopIconWindow)) + 1)
+            collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle]
+        } else {
+            level = .floating
+            collectionBehavior = floatingBehavior
+        }
     }
 
     /// A clear borderless window can leave its old shadow on screen after it moves or resizes
