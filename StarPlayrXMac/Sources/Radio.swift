@@ -223,7 +223,10 @@ final class Radio: ObservableObject {
             setVolume(full - (full - low) * Float(i) / Float(steps))
             try? await Task.sleep(nanoseconds: pause)
         }
-        // The player follows the system output, so this moves it (and the volume keys).
+        // Point the player at the new speakers itself (a quicker hand-over than waiting for it to
+        // follow the system output), then move the system output too so the volume keys follow.
+        player.audioOutputDeviceUniqueID = uid
+        xtraPlayer.audioOutputDeviceUniqueID = uid
         DisplayAudio.makeSystemOutput(uid)
         for i in 1...steps {
             setVolume(low + (full - low) * Float(i) / Float(steps))
