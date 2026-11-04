@@ -230,7 +230,7 @@ final class Radio: ObservableObject {
             setVolume(0)   // the ghost is carrying the old speakers now
         }
         // The main player follows the system output, so this moves it (and the volume keys).
-        menuLog.log("crossfade switch → \(uid.suffix(12), privacy: .public) ghost=\(ghost != nil)")
+        try? "ghost=\(ghost != nil)\n".write(toFile: "/tmp/xf.txt", atomically: true, encoding: .utf8)
         DisplayAudio.makeSystemOutput(uid)
         try? await Task.sleep(nanoseconds: 60_000_000)   // let the new device start
         for i in 1...steps {
