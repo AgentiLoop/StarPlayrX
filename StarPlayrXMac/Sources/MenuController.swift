@@ -90,6 +90,13 @@ final class MenuController: NSObject, ObservableObject {
             ($0.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID) == display
         }
         Radio.shared.routeAudio(to: screen)
+        // macOS draws its volume bar (keys, menu bar Sound) on the active display, the one with
+        // the frontmost app's key window. The panel doesn't activate the app when clicked, so the
+        // bar stayed on the other display; take the focus so it comes along with the sound.
+        if !NSApp.isActive || !panel.isKeyWindow {
+            NSApp.activate(ignoringOtherApps: true)
+            panel.makeKeyAndOrderFront(nil)
+        }
     }
 
     /// Ends `closingPress` once the press that closed the panel comes up.
