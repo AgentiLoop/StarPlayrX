@@ -104,6 +104,7 @@ final class MenuController: NSObject, ObservableObject {
         NSApp.setActivationPolicy(.regular)
         NSApp.activate(ignoringOtherApps: true)
         panel.makeKeyAndOrderFront(nil)
+        panel.makeMain()
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
             NSApp.setActivationPolicy(.accessory)
             self?.panel.makeKeyAndOrderFront(nil)
@@ -419,6 +420,7 @@ extension MenuController: @preconcurrency NSStatusItemExpandedInterfaceDelegate 
 /// Borderless panel with the translucent menu look, rounded corners and shadow.
 final class MenuPanel: NSPanel {
     override var canBecomeKey: Bool { true }   // borderless panels can't otherwise take typing (search)
+    override var canBecomeMain: Bool { true }   // a main window's display becomes the active one
     override func cancelOperation(_ sender: Any?) { MenuController.shared.hide() }   // Esc closes it
 
     /// macOS shows its volume bar on the active display: the one last clicked in an app's window
