@@ -54,11 +54,42 @@ final class MenuController: NSObject, ObservableObject {
         // that display's speakers (opening it under a menu bar is handled in showUnderMenuBar).
         // And clicking the panel on a display claims that display's speakers again, e.g. after
         // the sound was moved to the other display by hand.
-        for name in [NSWindow.didChangeScreenNotification, NSWindow.didBecomeKeyNotification] {
-            NotificationCenter.default.addObserver(forName: name, object: panel, queue: .main) { [weak self] _ in
-                Task { @MainActor in Radio.shared.routeAudio(to: self?.panel.screen) }
-            }
+        NotificationCenter.default.addObserver(forName: NSWindow.didBecomeKeyNotification, object: panel,
+                                               queue: .main) { [weak self] _ in
+            Task { @MainActor in self?.routeToPanelDisplay(force: true) }
         }
+        // Dragging the panel: AppKit's didChangeScreen / didMove are unreliable or only come after
+        // the drag, and `panel.screen` / `frame` stay stale while the WindowServer moves it. So ask
+        // the WindowServer where the panel really is, twice a second, in .common mode so it keeps
+        // running during the drag's event tracking.
+        let watch = Timer(timeInterval: 0.5, repeats: true) { [weak self] _ in
+            Task { @MainActor in self?.routeToPanelDisplay(force: false) }
+        }
+        RunLoop.main.add(watch, forMode: .common)
+    }
+
+    /// The display the panel was last routed for.
+    private var routedDisplay: CGDirectDisplayID?
+
+    /// Sends the sound to the speakers of the display the panel's centre is really on (read from
+    /// the WindowServer, which is live even mid-drag). Only acts when that display changed,
+    /// unless `force`.
+    private func routeToPanelDisplay(force: Bool) {
+        guard panel.isVisible,
+              let info = (CGWindowListCopyWindowInfo(.optionIncludingWindow, CGWindowID(panel.windowNumber))
+                            as? [[String: Any]])?.first,
+              let bounds = info[kCGWindowBounds as String] as? [String: CGFloat],
+              let x = bounds["X"], let y = bounds["Y"], let w = bounds["Width"], let h = bounds["Height"]
+        else { return }
+        var display: CGDirectDisplayID = 0
+        var count: UInt32 = 0
+        guard CGGetDisplaysWithPoint(CGPoint(x: x + w / 2, y: y + min(h / 2, 40)), 1, &display, &count) == .success,
+              count == 1, force || display != routedDisplay else { return }
+        routedDisplay = display
+        let screen = NSScreen.screens.first {
+            ($0.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID) == display
+        }
+        Radio.shared.routeAudio(to: screen)
     }
 
     /// Ends `closingPress` once the press that closed the panel comes up.
@@ -130,7 +161,7 @@ final class MenuController: NSObject, ObservableObject {
         panel.makeKeyAndOrderFront(nil)
         // The panel's own screen, now it is placed: with a menu bar on every display, the status
         // item's window can be on a different display than the one the panel opened on.
-        Radio.shared.routeAudio(to: panel.screen)
+        routeToPanelDisplay(force: true)
         // In a session AppKit draws the real highlight itself; only light it by hand without one.
         if #available(macOS 27, *), statusItem.expandedInterfaceSession != nil {} else { keepLit() }
 
