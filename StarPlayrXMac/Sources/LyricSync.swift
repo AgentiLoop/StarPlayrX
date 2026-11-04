@@ -78,6 +78,17 @@ final class LyricSync: ObservableObject {
         let showing = radio.playingNow ?? radio.current.flatMap { radio.nowPlaying[$0.id] }
         LyricsStore.shared.show(artist: showing?.artist ?? "", song: showing?.song ?? "", duration: radio.trackDuration)
         if radio.isPlaying, radio.current?.xtraID != nil { xtra(); return }
+        // No lyrics under the station's names: ask Shazam what is on air and look again under its
+        // artist and title. Only a match heard since this song started counts.
+        if live, LyricsStore.shared.missed, let channel = radio.current, let np = radio.nowPlaying[channel.id] {
+            let match = ShazamSync.shared.current.match
+            let fresh = match.flatMap { m in np.startedAt.map { m.real >= $0 } ?? true } ?? false
+            ShazamSync.shared.want(eager: !fresh)
+            if fresh, let match {
+                LyricsStore.shared.tryHeard(artist: match.artist, song: match.title, duration: nil)
+            }
+            return
+        }
         guard live, let lyrics = LyricsStore.shared.lyrics, let channel = radio.current,
               let np = radio.nowPlaying[channel.id], let started = np.startedAt else { return }
         update(lyrics: lyrics, key: LyricsStore.key(np.artist, np.song), songStart: started)
@@ -104,8 +115,10 @@ final class LyricSync: ObservableObject {
     func xtraShift(for file: URL) -> Double? { file == xtraFile ? xtraFound : nil }
 
     private func xtra() {
+        // Timed lyrics to line up, or none at all under the station's names: then Shazam's names
+        // are the next thing to look them up by.
         guard let (file, at) = Radio.shared.xtraNow, let np = Radio.shared.playingNow,
-              let lyrics = LyricsStore.shared.lyrics, lyrics.synced else { return }
+              LyricsStore.shared.missed || LyricsStore.shared.lyrics?.synced == true else { return }
         if file != xtraFile { xtraFile = file; xtraFound = nil; xtraTries = 0; xtraAsked = .distantPast }
         // Wait out the first seconds (a fade-in or silence matches nothing), then a few tries,
         // spaced so a request that failed has had its answer.
@@ -117,7 +130,11 @@ final class LyricSync: ObservableObject {
             Task { @MainActor in
                 let sync = LyricSync.shared
                 guard sync.xtraFile == file else { return }
-                guard let match, Self.same(match, as: key) else {
+                let store = LyricsStore.shared
+                if let match, store.missed {
+                    store.tryHeard(artist: match.artist, song: match.title, duration: Radio.shared.trackDuration)
+                }
+                guard let match, store.missed || Self.heard(match, key: key) else {
                     sync.report = "Xtra: no Shazam match yet (try \(sync.xtraTries))"
                     return
                 }
@@ -165,7 +182,7 @@ final class LyricSync: ObservableObject {
         // when it hasn't (a song not in its catalogue, a talk-up, matching not set up) does the
         // aligner below have its say.
         let (match, error) = ShazamSync.shared.current
-        let heard = match.map { Self.same($0, as: key) } ?? false
+        let heard = match.map { Self.heard($0, key: key) } ?? false
         // Until Shazam has heard this song, ask on every segment rather than every half minute.
         ShazamSync.shared.want(eager: !heard)
         if let match, heard {
@@ -208,6 +225,14 @@ final class LyricSync: ObservableObject {
         report = String(format: "%+.1fs (confidence %.1f, margin %.2f, %d lines, %.0fs of audio)",
                         found.shift, found.confidence, found.margin, found.lines, audio) + shazam
         LyricsCache.shared.saveShift(found.shift, for: key)
+    }
+
+    /// Shazam heard the song on now: by the station's names, or by the names the lyrics were found
+    /// under (Shazam's own, when the station's found nothing).
+    static func heard(_ match: ShazamSync.Match, key: String) -> Bool {
+        if same(match, as: key) { return true }
+        guard let lyrics = LyricsStore.shared.lyrics else { return false }
+        return same(match, as: LyricsStore.key(lyrics.artist, lyrics.song))
     }
 
     /// Whether Shazam heard the song the lyrics are for (`key` is "artist|song", lowercased).

@@ -66,17 +66,6 @@ final class Visualizer: @unchecked Sendable {
         lock.lock(); cached = value; lock.unlock()
     }
 
-    // Compatibility for the renderer until it takes a single frame snapshot.
-    var levels: [Float] { frame.levels }
-    var hues: [Double] { frame.hues }
-    var rise: [Double] { frame.rise }
-    var history: [[Float]] { frame.history }
-    var previous: (levels: [Float], rise: [Double], pulse: Double, blobX: Double) { frame.previous }
-    var phase: Double { frame.phase }
-    var pulse: Double { frame.pulse }
-    var blobX: Double { frame.blobX }
-    var generation: Int { frame.generation }
-    func tick(now: CFTimeInterval) -> Float { frame.fraction(now: now) }
 }
 
 /// Mutable state is confined to Visualizer's serial simulation queue.

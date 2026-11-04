@@ -106,8 +106,13 @@ final class LyricsStore: ObservableObject {
     @Published private(set) var lyrics: Lyrics?
     /// What to show when there are no lines: searching, not found, instrumental, or an error.
     @Published private(set) var status = ""
+    /// The station's artist and title found nothing for the song on now. `LyricSync` then asks
+    /// Shazam what is really playing and hands its names to `tryHeard`.
+    private(set) var missed = false
 
     private var key = ""
+    /// The Shazam names last tried for this song, so each is only looked up once.
+    private var heardKey = ""
     private var cache = [String: Lyrics?]()
     private var task: Task<Void, Never>?
 
@@ -121,6 +126,8 @@ final class LyricsStore: ObservableObject {
         let k = Self.key(artist, song)
         guard k != key else { return }
         key = k
+        heardKey = ""
+        missed = false
         task?.cancel()
         guard !song.isEmpty else {
             lyrics = nil
@@ -130,6 +137,7 @@ final class LyricsStore: ObservableObject {
         if let cached = cache[k] ?? LyricsCache.shared.lyrics(for: k) {
             cache[k] = cached
             lyrics = cached
+            missed = cached == nil
             status = cached == nil ? "No lyrics found for this song." : ""
             return
         }
@@ -148,13 +156,56 @@ final class LyricsStore: ObservableObject {
                     LyricsCache.shared.save(found, for: k, artist: artist, song: song)
                 }
                 self.lyrics = found
+                self.missed = found == nil
                 self.status = found == nil ? "No lyrics found for this song." : ""
             } catch is CancellationError {
             } catch {
                 guard self.key == k else { return }
                 self.lyrics = nil
+                self.missed = true
                 self.status = "Couldn't reach the lyrics servers: \(error.localizedDescription)"
             }
+        }
+    }
+
+    /// The station's names found nothing: look again under the artist and title Shazam heard on
+    /// air (the station's are often abbreviated, misspelled or a DJ's note). Lyrics found this way
+    /// are kept under the station's names too, so the song loads straight away next time.
+    func tryHeard(artist: String, song: String, duration: TimeInterval?) {
+        let k = key, heard = Self.key(artist, song)
+        guard missed, !song.isEmpty, heard != k, heard != heardKey else { return }
+        heardKey = heard
+        let station = k.split(separator: "|", maxSplits: 1).map(String.init)
+        func adopt(_ found: Lyrics?) {
+            guard let found else {
+                status = "No lyrics found for this song, nor for \"\(song)\" by \(artist) (Shazam)."
+                return
+            }
+            lyrics = found
+            missed = false
+            status = ""
+            if found.synced, station.count == 2 {
+                cache[k] = found
+                LyricsCache.shared.save(found, for: k, artist: station[0], song: station[1])
+            }
+        }
+        if let cached = cache[heard] ?? LyricsCache.shared.lyrics(for: heard) {
+            adopt(cached)
+            return
+        }
+        task?.cancel()
+        status = "Searching for lyrics for \"\(song)\" by \(artist) (Shazam)…"
+        task = Task {
+            let result: Lyrics??
+            do { result = try await Self.find(artist: artist, song: song, duration: duration) } catch { result = nil }
+            guard !Task.isCancelled, self.key == k, self.heardKey == heard else { return }
+            // Every server failed: not a miss, so nothing is remembered.
+            guard let found = result else { adopt(nil); return }
+            if found?.synced ?? true {
+                self.cache[heard] = found
+                LyricsCache.shared.save(found, for: heard, artist: artist, song: song)
+            }
+            adopt(found)
         }
     }
 
