@@ -180,7 +180,16 @@ final class MenuController: NSObject, ObservableObject {
                     // must open the panel on that display, not be cancelled as a closing press.
                     let at = NSEvent.mouseLocation
                     let sameDisplay = self.panel.screen.map { NSMouseInRect(at, $0.frame, false) } ?? true
-                    if sameDisplay { self.awaitPressRelease() }
+                    if sameDisplay {
+                        self.awaitPressRelease()
+                        self.hide()
+                        return
+                    }
+                    // Give that press a moment to begin a session; if it does, the panel moves
+                    // there instead of closing.
+                    let pressed = CACurrentMediaTime()
+                    try? await Task.sleep(nanoseconds: 250_000_000)
+                    guard self.sessionBeganAt < pressed, self.panel.isVisible, !self.detached else { return }
                     self.hide()
                 }
             }
@@ -392,8 +401,12 @@ extension MenuController: @preconcurrency NSStatusItemExpandedInterfaceDelegate 
             return
         }
         closingPress = false
-        // Already open under the icon: this session is the highlight for it — keep it.
-        if panel.isVisible, !detached { lit?.invalidate(); lit = nil; return }
+        // Already open under the icon on this display: this session is the highlight for it.
+        let iconScreen = statusItem.button?.window?.screen
+        if panel.isVisible, !detached, iconScreen == nil || iconScreen == panel.screen {
+            lit?.invalidate(); lit = nil; return
+        }
+        // Closed, or open under another display's icon: open (or move) it under this one.
         sessionBeganAt = CACurrentMediaTime()
         showUnderMenuBar()
     }
