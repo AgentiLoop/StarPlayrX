@@ -47,18 +47,18 @@ final class SpectrumRenderer: NSObject, MTKViewDelegate {
     private var builtGeneration = -1
     private var builtStyle = [Double]()
     private var clock = 0.0
+    private let renderQueue = DispatchQueue(label: "com.starplayrx.spectrum.render", qos: .userInteractive)
+    private var rendering = false
 
     private static func hue(_ x: Double) -> Double { (x.truncatingRemainder(dividingBy: 1) + 1).truncatingRemainder(dividingBy: 1) }
 
     func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {}
 
     func draw(in view: MTKView) {
-        // A hidden, occluded or rolled-up window doesn't hand drawables back, so asking for one would
-        // block the main thread for up to a second each frame.
-        guard view.bounds.width > 0, view.bounds.height > 0, let window = view.window,
+        // Snapshot UI state here, but never wait for a display's drawable on the main thread.
+        guard !rendering, view.bounds.width > 0, view.bounds.height > 0, let window = view.window,
               window.isVisible, window.occlusionState.contains(.visible),
-              let pass = view.currentRenderPassDescriptor, let drawable = view.currentDrawable,
-              let pipeline, let commands = queue?.makeCommandBuffer(), let encoder = commands.makeRenderCommandEncoder(descriptor: pass) else { return }
+              let layer = view.layer as? CAMetalLayer, let pipeline, let queue else { return }
         let viz = Visualizer.shared
         let f = viz.tick(now: CACurrentMediaTime())
         // The bubbles breathe on this clock; paused, it stands still with everything else.
@@ -89,19 +89,39 @@ final class SpectrumRenderer: NSObject, MTKViewDelegate {
         // The "lava": a blurred blob of the colour opposite the middle bar's, swelling on the beat.
         var blob = blobColour
         blob.w = Float(0.075 + 0.175 * pulse)
-        var globals = Globals(
+        let globals = Globals(
             view: [Float(view.bounds.width) - 2 * Self.pad, Self.barHeight, Float(view.drawableSize.width / view.bounds.width), Self.pad],
             state: [Float(pulse), light ? 1 : 0, Float(bubbles), Float(clock)],
             bubble: light ? [0, 0, 0, 0.7] : [1, 1, 1, 1],   // dark bubbles at 70% strength, so they stay soft
             blob: blob,
             blobShape: [Float(80 * blobX), Float(0.6 + 0.3 * sin(viz.phase * 2 * .pi * 2)), Float(0.6 + 0.5 * pulse), 13],   // last: glow moved 13 pt down
             glowStyle: [Float(light ? 0.75 + 0.25 * pulse : 0.7 + 0.3 * pulse), Float(1 + 4 * pulse), f, 0])
-        encoder.setRenderPipelineState(pipeline)
-        encoder.setFragmentBytes(&globals, length: MemoryLayout<Globals>.stride, index: 0)
-        encoder.setFragmentBytes(&bars, length: MemoryLayout<Bar>.stride * bars.count, index: 1)
-        encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
-        encoder.endEncoding()
-        commands.present(drawable)
-        commands.commit()
+        let frameBars = bars
+        let clearColor = view.clearColor
+        rendering = true
+        renderQueue.async { [weak self] in
+            autoreleasepool {
+                defer { DispatchQueue.main.async { self?.rendering = false } }
+                guard let drawable = layer.nextDrawable(), let commands = queue.makeCommandBuffer() else { return }
+                let pass = MTLRenderPassDescriptor()
+                pass.colorAttachments[0].texture = drawable.texture
+                pass.colorAttachments[0].loadAction = .clear
+                pass.colorAttachments[0].storeAction = .store
+                pass.colorAttachments[0].clearColor = clearColor
+                guard let encoder = commands.makeRenderCommandEncoder(descriptor: pass) else { return }
+                var uniforms = globals
+                encoder.setRenderPipelineState(pipeline)
+                encoder.setFragmentBytes(&uniforms, length: MemoryLayout<Globals>.stride, index: 0)
+                frameBars.withUnsafeBytes { bytes in
+                    if let base = bytes.baseAddress {
+                        encoder.setFragmentBytes(base, length: bytes.count, index: 1)
+                    }
+                }
+                encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+                encoder.endEncoding()
+                commands.present(drawable)
+                commands.commit()
+            }
+        }
     }
 }
