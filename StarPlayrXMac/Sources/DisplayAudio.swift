@@ -32,14 +32,19 @@ enum DisplayAudio {
         return outputs.first { matches($0, screen: screen, among: outputs) }?.uid
     }
 
-    /// Makes the device with this UID the Mac's sound output, if it isn't already.
+    /// Makes the device with this UID the Mac's sound output, and its alert-sound output too.
+    /// The volume keys and slider also turn the alert device up and down, so left on the other
+    /// display it made both displays' volumes move together.
     static func makeSystemOutput(_ uid: String) {
-        guard var id = outputDevices().first(where: { $0.uid == uid })?.id, id != systemOutput() else { return }
-        var address = AudioObjectPropertyAddress(mSelector: kAudioHardwarePropertyDefaultOutputDevice,
-                                                 mScope: kAudioObjectPropertyScopeGlobal,
-                                                 mElement: kAudioObjectPropertyElementMain)
-        AudioObjectSetPropertyData(AudioObjectID(kAudioObjectSystemObject), &address, 0, nil,
-                                   UInt32(MemoryLayout<AudioObjectID>.size), &id)
+        guard var id = outputDevices().first(where: { $0.uid == uid })?.id else { return }
+        for selector in [kAudioHardwarePropertyDefaultOutputDevice, kAudioHardwarePropertyDefaultSystemOutputDevice] {
+            let current: AudioObjectID? = property(AudioObjectID(kAudioObjectSystemObject), selector)
+            guard current != id else { continue }
+            var address = AudioObjectPropertyAddress(mSelector: selector, mScope: kAudioObjectPropertyScopeGlobal,
+                                                     mElement: kAudioObjectPropertyElementMain)
+            AudioObjectSetPropertyData(AudioObjectID(kAudioObjectSystemObject), &address, 0, nil,
+                                       UInt32(MemoryLayout<AudioObjectID>.size), &id)
+        }
     }
 
     // MARK: Core Audio
