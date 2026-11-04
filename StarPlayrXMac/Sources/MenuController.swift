@@ -90,13 +90,6 @@ final class MenuController: NSObject, ObservableObject {
             ($0.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID) == display
         }
         Radio.shared.routeAudio(to: screen)
-        // macOS draws its volume bar (keys, menu bar Sound) on the active display, the one with
-        // the frontmost app's key window. The panel doesn't activate the app when clicked, so the
-        // bar stayed on the other display; take the focus so it comes along with the sound.
-        if !NSApp.isActive || !panel.isKeyWindow {
-            NSApp.activate(ignoringOtherApps: true)
-            panel.makeKeyAndOrderFront(nil)
-        }
     }
 
     /// Ends `closingPress` once the press that closed the panel comes up.
@@ -409,6 +402,24 @@ extension MenuController: @preconcurrency NSStatusItemExpandedInterfaceDelegate 
 final class MenuPanel: NSPanel {
     override var canBecomeKey: Bool { true }   // borderless panels can't otherwise take typing (search)
     override func cancelOperation(_ sender: Any?) { MenuController.shared.hide() }   // Esc closes it
+
+    /// macOS shows its volume bar on the active display: the one last clicked in an app's window
+    /// (the other displays' menu bars are dimmed). A non-activating panel's clicks don't count,
+    /// so the bar stayed on the display of whatever was clicked before. Activating on the press
+    /// (a user event, which macOS lets an app activate for) makes this display the active one.
+    override func sendEvent(_ event: NSEvent) {
+        if event.type == .leftMouseDown || event.type == .rightMouseDown, !NSApp.isActive {
+            NSApp.activate(ignoringOtherApps: true)
+            makeKey()
+        }
+        super.sendEvent(event)
+        // A drag of the panel ends inside super: if it landed on another display, claim it too.
+        if event.type == .leftMouseDown || event.type == .leftMouseUp, let screen,
+           screen != NSScreen.main ?? screen {
+            NSApp.activate(ignoringOtherApps: true)
+            makeKey()
+        }
+    }
 
     /// ⌘T tears the panel off (or puts it back) and ⌘R rolls it up or down. The drag and the
     /// double-click that do the same need a mouse; these work from the keyboard and VoiceOver.
