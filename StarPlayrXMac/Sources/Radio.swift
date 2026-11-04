@@ -203,48 +203,26 @@ final class Radio: ObservableObject {
     /// app's: the volume keys and slider work on the system output, so sending only the radio
     /// left them turning the other display up and down. Each display keeps its own volume.
     func routeAudio(to screen: NSScreen?) {
-        guard let screen, let uid = DisplayAudio.device(for: screen), !DisplayAudio.isSystemOutput(uid) else { return }
-        let old = DisplayAudio.systemOutputUID()
-        routeFade?.cancel()
-        routeFade = Task { @MainActor [weak self] in await self?.crossfade(from: old, to: uid) }
-    }
-    private var routeFade: Task<Void, Never>?
-
-    /// Moves the sound to the speakers `uid` with one player, without stopping it: the volume
-    /// only dips a little to hide the switch, the switch happens at the bottom of the dip with
-    /// no wait, and it comes straight back up. (Fading all the way out and back in left a gap of
-    /// silence between displays.)
-    private func crossfade(from old: String?, to uid: String) async {
-        let steps = 6
-        let pause: UInt64 = 15_000_000
-        let full = player.volume > 0 ? player.volume : 1
-        let low = full * 0.5
-        // Starting the new speakers takes up to ~125 ms: off the main thread, so the bars and the
-        // drag keep going while the sound carries on from the old speakers.
-        let cool = await Task.detached { DisplayAudio.warmUp(uid) }.value
-        defer { Task.detached { cool() } }
-        for i in 1...steps {
-            setVolume(full - (full - low) * Float(i) / Float(steps))
-            try? await Task.sleep(nanoseconds: pause)
+        guard let screen, let uid = DisplayAudio.device(for: screen) else { return }
+        pendingOutputUID = uid
+        guard routeTask == nil else { return }
+        routeTask = Task { @MainActor [weak self] in
+            guard let self else { return }
+            defer { routeTask = nil }
+            while let uid = pendingOutputUID {
+                pendingOutputUID = nil
+                // Leave both players on the default output. Do not touch their device, volume,
+                // item or playback state while the panel moves between displays.
+                await Task.detached {
+                    guard !DisplayAudio.isSystemOutput(uid) else { return }
+                    DisplayAudio.makeSystemOutput(uid)
+                }.value
+            }
         }
-        // Point the player at the new speakers itself (a quicker hand-over than waiting for it to
-        // follow the system output), then move the system output too so the volume keys follow.
-        player.audioOutputDeviceUniqueID = uid
-        xtraPlayer.audioOutputDeviceUniqueID = uid
-        // Changing the system output blocks for ~100 ms: not on the main thread, or the bars and
-        // the drag stall.
-        Task.detached { DisplayAudio.makeSystemOutput(uid) }
-        for i in 1...steps {
-            setVolume(low + (full - low) * Float(i) / Float(steps))
-            try? await Task.sleep(nanoseconds: pause * 2)
-        }
-        setVolume(full)
     }
+    private var pendingOutputUID: String?
+    private var routeTask: Task<Void, Never>?
 
-    private func setVolume(_ v: Float) {
-        player.volume = v
-        xtraPlayer.volume = v
-    }
 
     func stop() {
         stopWatchdog()
