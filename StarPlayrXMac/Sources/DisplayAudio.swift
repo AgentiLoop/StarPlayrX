@@ -26,10 +26,41 @@ enum DisplayAudio {
     /// The output device (Core Audio UID) for `screen`'s speakers, if the system output is a
     /// display's speakers and `screen` has its own. Nil means "leave the sound where it is".
     static func device(for screen: NSScreen) -> String? {
+        guard let number = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID
+        else { return nil }
+        let map = speakers()
+        guard let now = systemOutputUID(), map[now] != nil else { return nil }
+        return map.first { $0.value == number }?.key
+    }
+
+    /// Which display each display speaker belongs to (speaker UID → display). Working it out walks
+    /// the IOKit registry (~50 ms), far too slow for every move of the panel, so it is kept until
+    /// a display or an audio device comes or goes.
+    private static var cache: [String: CGDirectDisplayID]?
+    private static var watching = false
+
+    private static func speakers() -> [String: CGDirectDisplayID] {
+        if let cache { return cache }
+        if !watching {
+            watching = true
+            NotificationCenter.default.addObserver(forName: NSApplication.didChangeScreenParametersNotification,
+                                                   object: nil, queue: .main) { _ in cache = nil }
+            var devices = AudioObjectPropertyAddress(mSelector: kAudioHardwarePropertyDevices,
+                                                     mScope: kAudioObjectPropertyScopeGlobal,
+                                                     mElement: kAudioObjectPropertyElementMain)
+            AudioObjectAddPropertyListenerBlock(AudioObjectID(kAudioObjectSystemObject), &devices, .main) { _, _ in
+                cache = nil
+            }
+        }
         let outputs = outputDevices()
-        guard let current = systemOutput(), let now = outputs.first(where: { $0.id == current }),
-              isDisplay(now, among: outputs) else { return nil }
-        return outputs.first { matches($0, screen: screen, among: outputs) }?.uid
+        var map = [String: CGDirectDisplayID]()
+        for screen in NSScreen.screens {
+            guard let number = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID,
+                  let speaker = outputs.first(where: { matches($0, screen: screen, among: outputs) }) else { continue }
+            map[speaker.uid] = number
+        }
+        cache = map
+        return map
     }
 
     /// The Core Audio UID of the Mac's sound output right now.
@@ -117,11 +148,6 @@ enum DisplayAudio {
     }
 
     // MARK: Which speaker is which display's
-
-    /// A display's speakers: tied to some connected screen.
-    private static func isDisplay(_ device: Device, among all: [Device]) -> Bool {
-        NSScreen.screens.contains { matches(device, screen: $0, among: all) }
-    }
 
     private static func matches(_ device: Device, screen: NSScreen, among all: [Device]) -> Bool {
         guard let number = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID,

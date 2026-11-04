@@ -219,8 +219,10 @@ final class Radio: ObservableObject {
         let pause: UInt64 = 15_000_000
         let full = player.volume > 0 ? player.volume : 1
         let low = full * 0.5
-        let cool = DisplayAudio.warmUp(uid)
-        defer { cool() }
+        // Starting the new speakers takes up to ~125 ms: off the main thread, so the bars and the
+        // drag keep going while the sound carries on from the old speakers.
+        let cool = await Task.detached { DisplayAudio.warmUp(uid) }.value
+        defer { Task.detached { cool() } }
         for i in 1...steps {
             setVolume(full - (full - low) * Float(i) / Float(steps))
             try? await Task.sleep(nanoseconds: pause)
