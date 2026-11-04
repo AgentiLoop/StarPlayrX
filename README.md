@@ -44,7 +44,25 @@ StarPlayrX was built for visually impaired listeners, a group of paying subscrib
   </tr>
 </table>
 
-### 🎤 New: time-synced lyrics
+### 🖼️ New: full-size album art
+
+<table align="center">
+  <tr>
+    <td align="center" valign="top" width="50%">
+      <img src="docs/screenshot-mac-album-art.png" width="300" alt="StarPlayrX under the menu bar showing the Welcome to the Pleasuredome album art full size for Relax by Frankie Goes To Hollywood on 80s on 8"><br>
+      <b>🖼️ Click the art, see it big</b>
+    </td>
+    <td align="center" valign="top" width="50%">
+      <img src="docs/screenshot-mac-album-art-2.png" width="300" alt="StarPlayrX under the menu bar showing the album art full size for Groove Line by Heatwave on 70s on 7"><br>
+      <b>📻 It follows the song</b>
+    </td>
+  </tr>
+</table>
+
+- **Click the album art** in Now Playing and it fills the space of the channel list or lyrics. Click it again (big or small) to go back to whatever you had open
+- From the lyrics, the **Art** button does the same
+
+### 🎤 Time-synced lyrics
 
 <table align="center">
   <tr>
@@ -59,7 +77,7 @@ StarPlayrX was built for visually impaired listeners, a group of paying subscrib
   </tr>
 </table>
 
-- **Click the song or artist** in Now Playing and the channel list turns into the lyrics for what's playing. **Channels** takes you back. The panel keeps its size, so nothing jumps
+- **Click the song or artist** in Now Playing and the channel list turns into the lyrics for what's playing. **Chs** takes you back. The panel keeps its size, so nothing jumps
 - **Time-synced:** the line being sung is bold, the rest dim, and the pane scrolls itself to keep the current line in the middle. Verses and choruses are spaced apart, and ad-libs are tucked in
 - **In step on live radio, too:** live channels have no song clock, so StarPlayrX listens to the audio, finds where the singing starts on each line, and measures how far the lyrics need to shift for that song. It keeps checking every 15 seconds while the song plays. Xtra channels follow the song's own position
 - **Off by a bit? Click the line being sung** and the highlight jumps there; the rest of the song follows from it. On live channels StarPlayrX remembers that fix for the next time the song comes on
@@ -107,7 +125,7 @@ StarPlayrX was built for visually impaired listeners, a group of paying subscrib
 
 **Requirements:** macOS 13 Ventura or later, Apple Silicon or Intel, and an active SiriusXM subscription.
 
-**Download:** [StarPlayrX for Mac 1.1.19](https://github.com/AgentiLoop/StarPlayrX/releases/tag/mac-1.1.19) (signed and notarized). All builds are on the [Releases](https://github.com/AgentiLoop/StarPlayrX/releases) page.
+**Download:** [StarPlayrX for Mac 1.1.23](https://github.com/AgentiLoop/StarPlayrX/releases/tag/mac-1.1.23) (signed and notarized). All builds are on the [Releases](https://github.com/AgentiLoop/StarPlayrX/releases) page.
 
 ### 📜 AppleScript
 
