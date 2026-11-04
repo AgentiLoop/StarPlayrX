@@ -41,6 +41,14 @@ struct Lyrics {
         let words = sung.reduce(0) { $0 + $1.split(whereSeparator: \.isWhitespace).count }
         return sung.count >= 4 && words >= 20
     }
+
+    /// Timed lyrics with a stretch of 45 s or more between one line and the next, before the
+    /// last line: a part of the song the record never timed (often written up as "(...)"), so
+    /// the pane sits on one line while the singing carries on. A guitar solo rarely runs that long.
+    var hasHole: Bool {
+        let times = lines.filter { !$0.text.trimmingCharacters(in: .whitespaces).isEmpty }.compactMap(\.at)
+        return synced && zip(times, times.dropFirst()).contains { $1 - $0 >= 45 }
+    }
 }
 
 /// An LRCLIB request that came back with something other than a record or a 404.
@@ -168,20 +176,30 @@ final class LyricsStore: ObservableObject {
         if let duration, duration >= 1, duration <= 3600 {
             get.append(URLQueryItem(name: "duration", value: String(Int(duration.rounded()))))
         }
-        if let record = try await ask("/api/get", get) as? [String: Any] {
-            return lyrics(from: record, artist: artist, song: song)
+        // An exact match whose timing has a hole in it (a minute and more with no line while the
+        // record is still being sung, written up as "(...)") is kept only until the search turns
+        // up a copy of the same song timed all the way through. LRCLIB's exact match for the Gap
+        // Band's "You Dropped a Bomb On Me" skips 76 s of singing; four other records don't.
+        var holed: Lyrics?
+        if let record = try await ask("/api/get", get) as? [String: Any],
+           let got = lyrics(from: record, artist: artist, song: song) {
+            guard got.hasHole else { return got }
+            holed = got
         }
         // The live channels tack a decade or a note onto the title ("Break Free (14)",
         // "All She Wants To Do Is Dance (85)"), which no LRCLIB record has. Ask again without it.
         let plainSong = withoutParentheses(song), plainArtist = withoutParentheses(artist)
-        if plainSong != song || plainArtist != artist,
+        if holed == nil, plainSong != song || plainArtist != artist,
            let record = try await ask("/api/get", [URLQueryItem(name: "track_name", value: plainSong),
-                                                   URLQueryItem(name: "artist_name", value: plainArtist)]) as? [String: Any] {
-            return lyrics(from: record, artist: artist, song: song)
+                                                   URLQueryItem(name: "artist_name", value: plainArtist)]) as? [String: Any],
+           let got = lyrics(from: record, artist: artist, song: song) {
+            guard got.hasHole else { return got }
+            holed = got
         }
         let found = try await ask("/api/search", [URLQueryItem(name: "track_name", value: plainSong),
                                                   URLQueryItem(name: "artist_name", value: plainArtist)])
         guard let records = found as? [[String: Any]], !records.isEmpty else {
+            if let holed { return holed }
             // Nothing from any of the three: a miss only if none of them was an error.
             if let failure { throw failure }
             return nil
@@ -189,9 +207,12 @@ final class LyricsStore: ObservableObject {
         // Only a record that really is this song. The search endpoint answers with whatever it has
         // (a search for Ed Sheeran's "Don't" came back as a Chinese song that happened to carry
         // timestamps), and the wrong lyrics are worse than none, so artist and title must both fit.
-        let best = records.first { $0["syncedLyrics"] is String && matches(plainArtist, $0) && isSong(plainSong, $0) }
-            ?? records.first { matches(plainArtist, $0) && isSong(plainSong, $0) }
-        guard let best else { return nil }
+        let mine = records.filter { matches(plainArtist, $0) && isSong(plainSong, $0) }
+        let timed = mine.filter { $0["syncedLyrics"] is String }.compactMap { lyrics(from: $0, artist: artist, song: song) }
+        if let whole = timed.first(where: { $0.synced && !$0.hasHole }) { return whole }
+        if let holed { return holed }
+        if let first = timed.first { return first }
+        guard let best = mine.first else { return nil }
         return lyrics(from: best, artist: artist, song: song)
     }
 
