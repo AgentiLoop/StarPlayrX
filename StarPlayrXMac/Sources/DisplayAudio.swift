@@ -171,3 +171,137 @@ enum DisplayAudio {
         return nil
     }
 }
+
+/// Cross-fades StarPlayrX's own sound from one display's speakers to another's with one player.
+/// The app's output is tapped (Core Audio process tap, muted while tapped) into a private
+/// aggregate device holding just the two speakers in the move; an IO proc copies the tapped
+/// samples to both, each with its own software gain. The speakers' volume is never touched.
+/// Gone again as soon as the fade ends: the player then plays straight to the new speakers.
+@available(macOS 14.2, *)
+final class SpeakerCrossfade {
+    private var tapID = AudioObjectID(kAudioObjectUnknown)
+    private var aggregateID = AudioObjectID(kAudioObjectUnknown)
+    private var procID: AudioDeviceIOProcID?
+    /// [old gain, new gain, loudest sample heard]: written here, read on the audio thread.
+    private let shared = UnsafeMutablePointer<Float>.allocate(capacity: 3)
+
+    init?(from old: String, to new: String) {
+        shared.initialize(repeating: 0, count: 3)
+        shared[0] = 1
+        var pid = getpid()
+        var process = AudioObjectID(kAudioObjectUnknown)
+        var address = AudioObjectPropertyAddress(mSelector: kAudioHardwarePropertyTranslatePIDToProcessObject,
+                                                 mScope: kAudioObjectPropertyScopeGlobal,
+                                                 mElement: kAudioObjectPropertyElementMain)
+        var size = UInt32(MemoryLayout<AudioObjectID>.size)
+        guard AudioObjectGetPropertyData(AudioObjectID(kAudioObjectSystemObject), &address,
+                                         UInt32(MemoryLayout<pid_t>.size), &pid, &size, &process) == noErr,
+              process != kAudioObjectUnknown else { stop(); return nil }
+        let tap = CATapDescription(stereoMixdownOfProcesses: [process])
+        tap.uuid = UUID()
+        tap.muteBehavior = .mutedWhenTapped
+        tap.isPrivate = true
+        guard AudioHardwareCreateProcessTap(tap, &tapID) == noErr else { stop(); return nil }
+        let description: [String: Any] = [
+            kAudioAggregateDeviceNameKey: "StarPlayrX Crossfade",
+            kAudioAggregateDeviceUIDKey: "com.starplayrx.crossfade.\(UUID().uuidString)",
+            kAudioAggregateDeviceIsPrivateKey: true,
+            kAudioAggregateDeviceIsStackedKey: false,
+            kAudioAggregateDeviceMainSubDeviceKey: new,
+            kAudioAggregateDeviceSubDeviceListKey: [
+                [kAudioSubDeviceUIDKey: old, kAudioSubDeviceDriftCompensationKey: true],
+                [kAudioSubDeviceUIDKey: new],
+            ],
+            kAudioAggregateDeviceTapListKey: [
+                [kAudioSubTapUIDKey: tap.uuid.uuidString, kAudioSubTapDriftCompensationKey: true],
+            ],
+            kAudioAggregateDeviceTapAutoStartKey: true,
+        ]
+        guard AudioHardwareCreateAggregateDevice(description as CFDictionary, &aggregateID) == noErr
+        else { stop(); return nil }
+        // The output buffers come one per stream, the old speakers' streams first.
+        let oldStreams = Self.outputStreams(of: old)
+        let shared = shared
+        let status = AudioDeviceCreateIOProcIDWithBlock(&procID, aggregateID, nil) { _, input, _, output, _ in
+            let outs = UnsafeMutableAudioBufferListPointer(output)
+            let ins = UnsafeMutableAudioBufferListPointer(UnsafeMutablePointer(mutating: input))
+            // The tap's stream comes after any of the speakers' own input streams.
+            guard let source = ins.last, let samples = source.mData?.assumingMemoryBound(to: Float.self) else {
+                for buffer in outs { if let d = buffer.mData { memset(d, 0, Int(buffer.mDataByteSize)) } }
+                return
+            }
+            let sourceChannels = max(1, Int(source.mNumberChannels))
+            let frames = Int(source.mDataByteSize) / (MemoryLayout<Float>.size * sourceChannels)
+            var loudest = shared[2]
+            for i in 0..<(frames * sourceChannels) { loudest = max(loudest, abs(samples[i])) }
+            shared[2] = loudest
+            for (index, buffer) in outs.enumerated() {
+                guard let data = buffer.mData?.assumingMemoryBound(to: Float.self) else { continue }
+                let channels = max(1, Int(buffer.mNumberChannels))
+                let capacity = Int(buffer.mDataByteSize) / (MemoryLayout<Float>.size * channels)
+                let gain = index < oldStreams ? shared[0] : shared[1]
+                let n = min(frames, capacity)
+                for frame in 0..<n {
+                    for channel in 0..<channels {
+                        data[frame * channels + channel] = samples[frame * sourceChannels + channel % sourceChannels] * gain
+                    }
+                }
+                for i in (n * channels)..<(capacity * channels) { data[i] = 0 }
+            }
+
+        }
+        guard status == noErr, let procID, AudioDeviceStart(aggregateID, procID) == noErr else { stop(); return nil }
+    }
+
+    /// Software gain for the old and the new speakers, 0...1.
+    func set(old: Float, new: Float) {
+        shared[0] = old
+        shared[1] = new
+    }
+
+    /// Whether any sound has come through the tap yet. It stays silent if the system's audio
+    /// recording permission was refused, and then the fade must not be used.
+    var heardSound: Bool { shared[2] > 0 }
+
+    /// Tears everything down; the player is unmuted and plays to the system output again.
+    func stop() {
+        if let procID {
+            AudioDeviceStop(aggregateID, procID)
+            AudioDeviceDestroyIOProcID(aggregateID, procID)
+            self.procID = nil
+        }
+        if aggregateID != kAudioObjectUnknown {
+            AudioHardwareDestroyAggregateDevice(aggregateID)
+            aggregateID = AudioObjectID(kAudioObjectUnknown)
+        }
+        if tapID != kAudioObjectUnknown {
+            AudioHardwareDestroyProcessTap(tapID)
+            tapID = AudioObjectID(kAudioObjectUnknown)
+        }
+    }
+
+    deinit {
+        stop()
+        shared.deallocate()
+    }
+
+    private static func outputStreams(of uid: String) -> Int {
+        var id = AudioObjectID(kAudioObjectUnknown)
+        var cfUID = uid as CFString
+        var address = AudioObjectPropertyAddress(mSelector: kAudioHardwarePropertyTranslateUIDToDevice,
+                                                 mScope: kAudioObjectPropertyScopeGlobal,
+                                                 mElement: kAudioObjectPropertyElementMain)
+        var size = UInt32(MemoryLayout<AudioObjectID>.size)
+        _ = withUnsafeMutablePointer(to: &cfUID) {
+            AudioObjectGetPropertyData(AudioObjectID(kAudioObjectSystemObject), &address,
+                                       UInt32(MemoryLayout<CFString>.size), $0, &size, &id)
+        }
+        var streams = AudioObjectPropertyAddress(mSelector: kAudioDevicePropertyStreams,
+                                                 mScope: kAudioObjectPropertyScopeOutput,
+                                                 mElement: kAudioObjectPropertyElementMain)
+        var bytes: UInt32 = 0
+        guard id != kAudioObjectUnknown, AudioObjectGetPropertyDataSize(id, &streams, 0, nil, &bytes) == noErr
+        else { return 1 }
+        return max(1, Int(bytes) / MemoryLayout<AudioStreamID>.size)
+    }
+}

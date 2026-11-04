@@ -27,6 +27,7 @@ targets:
         CFBundleShortVersionString: "1.1.22"
         CFBundleVersion: "28"
         LSUIElement: true
+        NSAudioCaptureUsageDescription: "StarPlayrX listens to its own sound to cross-fade it smoothly between your displays' speakers."
         NSAppleScriptEnabled: true
         OSAScriptingDefinition: StarPlayrX.sdef
         LSApplicationCategoryType: public.app-category.music
