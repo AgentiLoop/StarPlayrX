@@ -219,6 +219,8 @@ final class Radio: ObservableObject {
         let pause: UInt64 = 15_000_000
         let full = player.volume > 0 ? player.volume : 1
         let low = full * 0.5
+        let cool = DisplayAudio.warmUp(uid)
+        defer { cool() }
         for i in 1...steps {
             setVolume(full - (full - low) * Float(i) / Float(steps))
             try? await Task.sleep(nanoseconds: pause)

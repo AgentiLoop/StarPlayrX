@@ -38,6 +38,24 @@ enum DisplayAudio {
         return outputDevices().first(where: { $0.id == id })?.uid
     }
 
+    /// Starts the speakers `uid` playing silence, so they are already running when the player
+    /// switches to them: a device that has to start up first leaves a gap in the sound. Call the
+    /// returned closure to stop the silence once the player is on them.
+    static func warmUp(_ uid: String) -> () -> Void {
+        guard let id = outputDevices().first(where: { $0.uid == uid })?.id else { return {} }
+        var proc: AudioDeviceIOProcID?
+        let made = AudioDeviceCreateIOProcIDWithBlock(&proc, id, nil) { _, _, _, output, _ in
+            for buffer in UnsafeMutableAudioBufferListPointer(output) {
+                if let data = buffer.mData { memset(data, 0, Int(buffer.mDataByteSize)) }
+            }
+        }
+        guard made == noErr, let proc, AudioDeviceStart(id, proc) == noErr else { return {} }
+        return {
+            AudioDeviceStop(id, proc)
+            AudioDeviceDestroyIOProcID(id, proc)
+        }
+    }
+
     /// Whether the device with this UID is already the Mac's sound output.
     static func isSystemOutput(_ uid: String) -> Bool {
         outputDevices().first(where: { $0.uid == uid })?.id == systemOutput()
