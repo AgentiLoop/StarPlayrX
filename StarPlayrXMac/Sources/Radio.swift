@@ -205,7 +205,6 @@ final class Radio: ObservableObject {
     func routeAudio(to screen: NSScreen?) {
         guard let screen, let uid = DisplayAudio.device(for: screen), !DisplayAudio.isSystemOutput(uid) else { return }
         let old = DisplayAudio.systemOutputUID()
-        menuLog.log("route → \(uid.suffix(12), privacy: .public) from \(old?.suffix(12) ?? "nil", privacy: .public)")
         routeFade?.cancel()
         routeFade = Task { @MainActor [weak self] in await self?.crossfade(from: old, to: uid) }
     }
@@ -230,7 +229,6 @@ final class Radio: ObservableObject {
             setVolume(0)   // the ghost is carrying the old speakers now
         }
         // The main player follows the system output, so this moves it (and the volume keys).
-        try? "ghost=\(ghost != nil)\n".write(toFile: "/tmp/xf.txt", atomically: true, encoding: .utf8)
         DisplayAudio.makeSystemOutput(uid)
         try? await Task.sleep(nanoseconds: 60_000_000)   // let the new device start
         for i in 1...steps {
