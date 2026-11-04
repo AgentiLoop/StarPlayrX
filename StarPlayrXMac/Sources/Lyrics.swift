@@ -100,7 +100,7 @@ struct LyricsError: LocalizedError {
 /// (`LyricsCache`) for every run after it. Misses are remembered too, for a day. Plain text is
 /// shown but never kept, so a song that has only ever turned up as words is asked after again.
 @MainActor
-final class LyricsStore: ObservableObject {
+class LyricsStore: ObservableObject {
     static let shared = LyricsStore()
 
     @Published private(set) var lyrics: Lyrics?
@@ -220,11 +220,29 @@ final class LyricsStore: ObservableObject {
     private static let userAgent =
         "StarPlayrX \(MenuView.version) (https://github.com/AgentiLoop/StarPlayrX)"
 
+    /// One fetch of lyrics from every source in turn. The store overrides this in tests to serve
+    /// canned lyrics, so a lookup round can be exercised with no network.
+    /// One fetch of lyrics from every source in turn. The store overrides this in tests to serve
+    /// canned lyrics, so a lookup round can be exercised with no network.
+    static func find(artist: String, song: String, duration: TimeInterval?) async throws -> Lyrics? {
+        try await LyricsEngine.find(artist: artist, song: song, duration: duration)
+    }
+}
+
+/// The search across all sources (LRCLIB, NetEase, QQ Music, Kugou, lyrics.ovh). Separate from
+/// `LyricsStore` so tests can drive a full lookup through the store without any network.
+enum LyricsEngine {
+    @MainActor private static let session = URLSession(configuration: .ephemeral)
+
+    /// LRCLIB asks every client to name itself (and gives named clients a higher rate limit).
+    private nonisolated static let userAgent =
+        "StarPlayrX \(MenuView.version) (https://github.com/AgentiLoop/StarPlayrX)"
+
     /// LRCLIB first, then the backups, so a 503 or a missing record isn't the end of it: three
     /// more LRC sources — NetEase, QQ Music and Kugou, timestamped like LRCLIB — and after them
     /// lyrics.ovh, which has only the words.
     /// An error is only raised when every source failed — a plain miss everywhere is nil.
-    private static func find(artist: String, song: String, duration: TimeInterval?) async throws -> Lyrics? {
+    static func find(artist: String, song: String, duration: TimeInterval?) async throws -> Lyrics? {
         var failure: Error?
         var plain: Lyrics?
         // Timed lyrics in ALL CAPS: kept in case nothing else turns up, but the next source gets
@@ -563,12 +581,12 @@ final class LyricsStore: ObservableObject {
         return trimmed.isEmpty ? text : trimmed
     }
 
-    private static func matches(_ artist: String, _ record: [String: Any]) -> Bool {
+    static func matches(_ artist: String, _ record: [String: Any]) -> Bool {
         guard let name = record["artistName"] as? String else { return false }
         return matches(artist, name: name)
     }
 
-    private static func matches(_ artist: String, name: String) -> Bool {
+    static func matches(_ artist: String, name: String) -> Bool {
         !name.isEmpty && (name.localizedCaseInsensitiveContains(artist) || artist.localizedCaseInsensitiveContains(name))
     }
 

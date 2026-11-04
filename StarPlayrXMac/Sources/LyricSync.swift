@@ -263,7 +263,7 @@ final class LyricSync: ObservableObject {
         let parts = key.split(separator: "|", maxSplits: 1).map(String.init)
         guard parts.count == 2 else { return false }
         func plain(_ s: String) -> String {
-            LyricsStore.withoutParentheses(s).lowercased().filter { $0.isLetter || $0.isNumber }
+            LyricsEngine.withoutParentheses(s).lowercased().filter { $0.isLetter || $0.isNumber }
         }
         let (artist, song) = (plain(parts[0]), plain(parts[1]))
         let (heardArtist, heardSong) = (plain(match.artist), plain(match.title))
