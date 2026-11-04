@@ -233,9 +233,14 @@ struct MenuView: View {
             // Channel, song and artist read as one line, then what a click does.
             .accessibilityElement(children: .combine)
             .accessibilityAddTraits(.isButton)
-            .accessibilityHint(menu.lyrics ? "Shows the channel list" : "Shows the song's lyrics")
+            .accessibilityHint(bigArtURL != nil ? "Shows the \(menu.lyrics ? "lyrics" : "channel list") again"
+                               : menu.lyrics ? "Shows the channel list" : "Shows the song's lyrics")
             // Click the song/artist: the lyrics take the channel list's place, and back again.
-            .simultaneousGesture(TapGesture().onEnded { menu.bigArt = false; menu.lyrics.toggle() })
+            // Over big art it first just closes the art, so the user sees which view is underneath.
+            .simultaneousGesture(TapGesture().onEnded {
+                if menu.bigArt { menu.bigArt = false; return }
+                menu.lyrics.toggle()
+            })
             Button {
                 radio.togglePlayPause()
             } label: {
