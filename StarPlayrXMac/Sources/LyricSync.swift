@@ -94,15 +94,17 @@ final class LyricSync: ObservableObject {
     /// under the music playing at that moment. `remember` keeps it for the next time the song
     /// turns up, which only means the same thing on a live channel — an Xtra track's position is
     /// the file's own, not a cut's stamp.
-    func pin(shift: Double, forKey key: String, remember: Bool) {
+    @discardableResult
+    func pin(shift: Double, forKey key: String, remember: Bool) -> Bool {
         // A click a minute or more away from where the song is can't be "this line is being sung
         // now" (a stray click, or the pane drawn from a stale position): it threw a song 2 minutes out.
-        guard abs(shift) <= 60 else { return }
+        guard abs(shift) <= 60 else { return false }
         self.key = key
         self.shift = shift
         isPinned = true
         report = String(format: "pinned by hand %+.1fs", shift)
         if remember { LyricsCache.shared.saveShift(shift, for: key) }
+        return true
     }
 
     /// Called on the model's own tick (`tick`). Measures once per newly decoded segment, and only replaces what

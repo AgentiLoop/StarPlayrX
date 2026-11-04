@@ -34,10 +34,17 @@ final class ShazamSync: @unchecked Sendable {
     /// Only listen while the lyrics want it (the pane's tick renews this), so a closed pane
     /// costs nothing and asks Shazam nothing.
     private var wantedUntil = Date.distantPast
-    private var busy = false
+    /// Set while the newest match isn't the song playing now (a new song, a skip): ask on every
+    /// segment until one is, instead of waiting out `refresh` with the lyrics out of step.
+    private var eager = false
+    /// When the request in flight went out. A session that never answers used to leave `busy` set
+    /// for good, and Shazam never matched again until the app was restarted.
+    private var askedAt: Date?
+    private var asks = 0
     /// Shazam matches stay good while the song plays, so once one is in, ask again only now and
     /// then, to follow a new song or a skip, not every segment.
     static let refresh: TimeInterval = 30
+    static let timeout: TimeInterval = 20
 
     /// The newest match, and why there isn't one if matching keeps failing.
     var current: (match: Match?, error: String?) {
@@ -45,9 +52,18 @@ final class ShazamSync: @unchecked Sendable {
         return (latest, lastError)
     }
 
-    /// Called from the lyrics pane's tick: keep matching for the next half minute.
-    func want() {
-        lock.lock(); wantedUntil = Date().addingTimeInterval(30); lock.unlock()
+    /// Called from the lyrics pane's tick: keep matching for the next half minute. `eager` when the
+    /// newest match isn't for the song playing now.
+    func want(eager: Bool = false) {
+        lock.lock(); wantedUntil = Date().addingTimeInterval(30); self.eager = eager; lock.unlock()
+    }
+
+    /// Takes the one request slot when it is free (or its request has gone unanswered too long).
+    private func claim(_ now: Date) -> Int? {
+        if let askedAt, now.timeIntervalSince(askedAt) < Self.timeout { return nil }
+        askedAt = now
+        asks += 1
+        return asks
     }
 
     /// A live segment has just been decoded to `file`, whose first sample went out on air at `real`.
@@ -55,21 +71,48 @@ final class ShazamSync: @unchecked Sendable {
     func segment(_ file: URL, real: Date) {
         lock.lock()
         let now = Date()
-        let due = now < wantedUntil && !busy
-            && (latest.map { now.timeIntervalSince($0.found) >= Self.refresh } ?? true)
-        if due { busy = true }
+        let due = now < wantedUntil
+            && (eager || (latest.map { now.timeIntervalSince($0.found) >= Self.refresh } ?? true))
+        let ask = due ? claim(now) : nil
         lock.unlock()
-        guard due else { return }
-        guard let signature = Self.signature(file) else { finish(nil, "no signature"); return }
+        guard let ask else { return }
+        guard let signature = Self.signature(file) else { finish(ask) { $0.lastError = "no signature" }; return }
+        match(signature, ask) { [self] media, error in
+            finish(ask) {
+                if let media, let title = media.title {
+                    $0.latest = Match(artist: media.artist ?? "", title: title, offset: media.matchOffset, real: real, found: Date())
+                    $0.lastError = nil
+                } else { $0.lastError = error }
+            }
+        }
+    }
+
+    /// An Xtra track: matches the ~12 s of the downloaded file from `seconds` on. `done` gets the
+    /// match, whose `offset` is how far into the record the file is at `seconds` (nil on no match,
+    /// or when another request is in flight).
+    func track(_ file: URL, at seconds: Double, done: @escaping @Sendable (Match?) -> Void) {
+        lock.lock()
+        let ask = claim(Date())
+        lock.unlock()
+        guard let ask else { done(nil); return }
+        queue.async { [self] in
+            guard let signature = Self.signature(file, from: seconds, length: 12) else {
+                finish(ask) { _ in }; done(nil); return
+            }
+            match(signature, ask) { [self] media, _ in
+                finish(ask) { _ in }
+                guard let media, let title = media.title else { done(nil); return }
+                done(Match(artist: media.artist ?? "", title: title, offset: media.matchOffset, real: Date(), found: Date()))
+            }
+        }
+    }
+
+    private func match(_ signature: SHSignature, _ ask: Int, done: @escaping (SHMatchedMediaItem?, String?) -> Void) {
         queue.async { [self] in
             let session = SHSession()
-            let delegate = Delegate { [self] media, error in
-                guard let media, let title = media.title else { finish(nil, error); return }
-                finish(Match(artist: media.artist ?? "", title: title, offset: media.matchOffset,
-                             real: real, found: Date()), nil)
-            }
+            let delegate = Delegate(done)
             session.delegate = delegate
-            lock.lock(); pending = (session, delegate); lock.unlock()   // the session holds its delegate weakly
+            lock.lock(); if asks == ask { pending = (session, delegate) }; lock.unlock()   // the session holds its delegate weakly
             session.match(signature)
         }
     }
@@ -77,19 +120,29 @@ final class ShazamSync: @unchecked Sendable {
     /// The session in flight and its delegate, kept alive until the answer comes back.
     private var pending: (SHSession, Delegate)?
 
-    private func finish(_ match: Match?, _ error: String?) {
+    /// Applies a request's answer and frees the slot, unless the request timed out and a newer
+    /// one has taken its place.
+    private func finish(_ ask: Int, _ apply: (ShazamSync) -> Void) {
         lock.lock()
-        if let match { latest = match; lastError = nil } else { lastError = error }
-        busy = false
-        pending = nil
+        if ask == asks {
+            apply(self)
+            askedAt = nil
+            pending = nil
+        }
         lock.unlock()
     }
 
-    /// The whole segment as one signature; Shazam wants at least a few seconds, and ~9.75 s is plenty.
-    private static func signature(_ file: URL) -> SHSignature? {
-        guard let audio = try? AVAudioFile(forReading: file),
-              let buffer = AVAudioPCMBuffer(pcmFormat: audio.processingFormat, frameCapacity: AVAudioFrameCount(audio.length)),
-              (try? audio.read(into: buffer)) != nil, buffer.frameLength > 0 else { return nil }
+    /// The whole segment as one signature (or `length` seconds of it from `from`); Shazam wants at
+    /// least a few seconds, and ~9.75 s is plenty.
+    private static func signature(_ file: URL, from: Double = 0, length: Double? = nil) -> SHSignature? {
+        guard let audio = try? AVAudioFile(forReading: file) else { return nil }
+        let rate = audio.processingFormat.sampleRate
+        let start = AVAudioFramePosition(max(0, from) * rate)
+        guard rate > 0, start < audio.length else { return nil }
+        audio.framePosition = start
+        let frames = min(audio.length - start, length.map { AVAudioFramePosition($0 * rate) } ?? audio.length)
+        guard let buffer = AVAudioPCMBuffer(pcmFormat: audio.processingFormat, frameCapacity: AVAudioFrameCount(frames)),
+              (try? audio.read(into: buffer, frameCount: AVAudioFrameCount(frames))) != nil, buffer.frameLength > 0 else { return nil }
         let generator = SHSignatureGenerator()
         guard (try? generator.append(buffer, at: nil)) != nil else { return nil }
         return generator.signature()

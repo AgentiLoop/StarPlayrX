@@ -219,14 +219,39 @@ final class Radio: ObservableObject {
         guard routeTask == nil else { return }
         routeTask = Task { @MainActor [weak self] in
             guard let self else { return }
-            defer { routeTask = nil }
+            defer {
+                routeTask = nil
+                silentSince = nil
+            }
             while let uid = pendingOutputUID {
                 pendingOutputUID = nil
-                // Leave both players on the default output. Do not touch their device, volume,
-                // item or playback state while the panel moves between displays.
-                await Task.detached {
+                let live = player
+                let queued = xtraPlayer
+                // Fade and switch off the UI thread, without pausing, seeking or replacing items.
+                await Task.detached(priority: .userInitiated) {
                     guard !DisplayAudio.isSystemOutput(uid) else { return }
+                    let liveVolume = live.volume
+                    let queuedVolume = queued.volume
+                    defer {
+                        live.volume = liveVolume
+                        queued.volume = queuedVolume
+                    }
+                    let cool = DisplayAudio.warmUp(uid)
+                    defer { cool() }
+                    for step in 1...12 {
+                        let gain = Float(1 + cos(Double(step) / 12 * .pi)) / 2
+                        live.volume = liveVolume * gain
+                        queued.volume = queuedVolume * gain
+                        try? await Task.sleep(nanoseconds: 15_000_000)
+                    }
                     DisplayAudio.makeSystemOutput(uid)
+                    try? await Task.sleep(nanoseconds: 100_000_000)
+                    for step in 1...16 {
+                        let gain = Float(1 - cos(Double(step) / 16 * .pi)) / 2
+                        live.volume = liveVolume * gain
+                        queued.volume = queuedVolume * gain
+                        try? await Task.sleep(nanoseconds: 15_000_000)
+                    }
                 }.value
             }
         }
@@ -284,6 +309,8 @@ final class Radio: ObservableObject {
     }
 
     private func checkPlayback() {
+        // A device handoff is not a dead stream; do not retune it during the fade.
+        guard routeTask == nil else { silentSince = nil; return }
         // A live tune sets isPlaying only after the stream URL comes back; stop() is what ends the watchdog.
         guard isPlaying, let channel = current else { silentSince = nil; return }
         guard isSilent else { silentSince = nil; recoveryAttempts = 0; return }
