@@ -34,6 +34,8 @@ final class MenuController: NSObject, ObservableObject {
     private var pressRelease: Any?
     /// When the current expanded-interface session began (see statusItemDidEndExpandedInterfaceSession).
     fileprivate var sessionBeganAt = 0.0
+    /// The display the closing press was on: a press on another display's icon isn't its echo.
+    fileprivate var closingScreen: NSScreen?
 
     func install() {
         _ = panel
@@ -98,6 +100,8 @@ final class MenuController: NSObject, ObservableObject {
     private func awaitPressRelease() {
         closingPress = true
         closingPressAt = CACurrentMediaTime()
+        let at = NSEvent.mouseLocation
+        closingScreen = NSScreen.screens.first { NSMouseInRect(at, $0.frame, false) }
         guard pressRelease == nil else { return }
         pressRelease = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseUp, .rightMouseUp]) { [weak self] _ in
             Task { @MainActor in
@@ -397,13 +401,14 @@ extension MenuController: @preconcurrency NSStatusItemExpandedInterfaceDelegate 
         // The press that just closed the panel can also begin a session: cancel it, or the click
         // that closed the panel opens it straight back up. (If its mouse-up was somehow missed,
         // don't stay stuck: a press can't last that long.)
-        if closingPress, CACurrentMediaTime() - closingPressAt < 2 {
+        let iconScreen = statusItem.button?.window?.screen
+        if closingPress, CACurrentMediaTime() - closingPressAt < 2,
+           iconScreen == nil || closingScreen == nil || iconScreen == closingScreen {
             session.cancel()
             return
         }
         closingPress = false
         // Already open under the icon on this display: this session is the highlight for it.
-        let iconScreen = statusItem.button?.window?.screen
         if panel.isVisible, !detached, iconScreen == nil || iconScreen == panel.screen {
             lit?.invalidate(); lit = nil; return
         }
