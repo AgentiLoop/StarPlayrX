@@ -121,6 +121,7 @@ final class MenuController: NSObject, ObservableObject {
         menuLog.log("show visible=\(self.panel.isVisible) detached=\(self.detached)")
         // Shaded and torn off: glide back still rolled up, then unroll once in place.
         let unshade = panel.isVisible && detached && shaded
+        let wasTornOff = panel.isVisible && detached
         if !unshade {
             detached = false
             shaded = false
@@ -129,7 +130,7 @@ final class MenuController: NSObject, ObservableObject {
             let screen = statusItem.button?.window?.screen?.visibleFrame ?? .infinite
             let x = min(button.minX, screen.maxX - panel.frame.width)
             let top = NSPoint(x: x, y: button.minY - 4)
-            if panel.isVisible {
+            if wasTornOff {
                 // Torn off: glide back under the menu bar instead of jumping. Stepped by hand
                 // (top-left point per frame) so the unshade resize can't cut the animation short.
                 let start = NSPoint(x: panel.frame.minX, y: panel.frame.maxY)
