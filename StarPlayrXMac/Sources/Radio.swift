@@ -209,6 +209,27 @@ final class Radio: ObservableObject {
         routeFade = Task { @MainActor [weak self] in await self?.crossfade(from: old, to: uid) }
     }
     private var routeFade: Task<Void, Never>?
+    // PROBE-BEGIN
+    private var probe: Timer?
+    func startProbe() {
+        var lastBeat = Date(), lastT = -1.0, lastTWall = Date(), worstBeat = 0.0, worstClock = 0.0
+        let t = Timer(timeInterval: 0.005, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                let now = Date()
+                worstBeat = max(worstBeat, now.timeIntervalSince(lastBeat)); lastBeat = now
+                let pt = self.player.currentTime().seconds
+                if pt != lastT { worstClock = max(worstClock, now.timeIntervalSince(lastTWall)); lastT = pt; lastTWall = now }
+                if FileManager.default.fileExists(atPath: "/tmp/probe.reset") {
+                    try? FileManager.default.removeItem(atPath: "/tmp/probe.reset"); worstBeat = 0; worstClock = 0
+                }
+                try? String(format: "main %.0f ms, player clock %.0f ms", worstBeat * 1000, worstClock * 1000)
+                    .write(toFile: "/tmp/probe.txt", atomically: false, encoding: .utf8)
+            }
+        }
+        RunLoop.main.add(t, forMode: .common); probe = t
+    }
+    // PROBE-END
 
     /// Moves the sound to the speakers `uid` with one player, without stopping it: the volume
     /// only dips a little to hide the switch, the switch happens at the bottom of the dip with

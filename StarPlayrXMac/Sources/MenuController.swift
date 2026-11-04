@@ -70,6 +70,7 @@ final class MenuController: NSObject, ObservableObject {
             Task { @MainActor in self?.routeToPanelDisplay(force: false) }
         }
         RunLoop.main.add(watch, forMode: .common)
+        Radio.shared.startProbe()   // PROBE
     }
 
     /// The display the panel was last routed for.
