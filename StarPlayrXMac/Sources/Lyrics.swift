@@ -876,7 +876,7 @@ private struct LyricLines: View, Equatable {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            ForEach(LyricsPane.sections(of: lyrics), id: \.first!.id) { section in
+            ForEach(LyricsPane.sections(of: lyrics), id: \.first?.id) { section in
                 VStack(alignment: .leading, spacing: 6) {
                     ForEach(section) { line in
                         let adLib = LyricsPane.isAdLib(line.text)

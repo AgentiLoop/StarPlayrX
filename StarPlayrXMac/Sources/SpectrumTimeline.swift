@@ -224,7 +224,7 @@ final class SpectrumTimeline: @unchecked Sendable {
         return values.isEmpty ? nil : (start, first.hop, values)
     }
 
-    /// The real on-air time (stream PDT) of the player's current date, which runs ahead of it.    /// The real on-air time (stream PDT) of the player's current date, which runs ahead of it.
+    /// The real on-air time (stream PDT) of the player's current date, which runs ahead of it.
     func realDate(at date: Date) -> Date? {
         lock.lock()
         defer { lock.unlock() }
