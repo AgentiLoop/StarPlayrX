@@ -757,8 +757,10 @@ struct LyricsPane: View {
                 }
                 .equatable()
                 .padding(.trailing, 12)
-                .background(SkinnyScrollers().frame(width: 0, height: 0))
+                // Timed lyrics scroll themselves: no scroller flashing on every line change.
+                .background(Group { if !lyrics.synced { SkinnyScrollers().frame(width: 0, height: 0) } })
             }
+            .scrollIndicators(lyrics.synced ? .hidden : .automatic)
             .frame(height: menu.listHeight)
             .padding(.trailing, -12)
             .overlay(alignment: .bottom) {
@@ -775,7 +777,11 @@ struct LyricsPane: View {
             }
             .onValueChange(of: current) { line in
                 guard let line else { return }
-                withAnimation(.easeInOut(duration: 0.3)) { proxy.scrollTo(line, anchor: .center) }
+                // Next pass of the run loop: the new line turns bold (and may wrap) in this one, and
+                // centering on its old frame can leave it near or past the edge of the pane.
+                DispatchQueue.main.async {
+                    withAnimation(.easeInOut(duration: 0.3)) { proxy.scrollTo(line, anchor: .center) }
+                }
             }
         }
         .task(id: id) {
