@@ -32,6 +32,8 @@ final class MenuController: NSObject, ObservableObject {
     private var closingPress = false
     private var closingPressAt = 0.0
     private var pressRelease: Any?
+    /// When the current expanded-interface session began (see statusItemDidEndExpandedInterfaceSession).
+    fileprivate var sessionBeganAt = 0.0
 
     func install() {
         _ = panel
@@ -392,6 +394,7 @@ extension MenuController: @preconcurrency NSStatusItemExpandedInterfaceDelegate 
         closingPress = false
         // Already open under the icon: this session is the highlight for it — keep it.
         if panel.isVisible, !detached { lit?.invalidate(); lit = nil; return }
+        sessionBeganAt = CACurrentMediaTime()
         showUnderMenuBar()
     }
 
@@ -399,6 +402,11 @@ extension MenuController: @preconcurrency NSStatusItemExpandedInterfaceDelegate 
         menuLog.log("didEnd visible=\(self.panel.isVisible) detached=\(self.detached)")
         // Torn off, it is no longer the icon's interface: it stays put and only the highlight ends.
         guard panel.isVisible, !detached else { return }
+        // Clicking the icon on a display whose menu bar is dimmed makes that display the active
+        // one, and macOS ends the session a few milliseconds after it began: that took a second
+        // click. Such an instant end isn't the user closing it, so the panel stays (lit by hand;
+        // a click anywhere else still closes it).
+        if CACurrentMediaTime() - sessionBeganAt < 0.5 { keepLit(); return }
         hide()
     }
 }
