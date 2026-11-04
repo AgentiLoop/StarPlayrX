@@ -615,6 +615,8 @@ struct LyricsPane: View {
     @ObservedObject private var store = LyricsStore.shared
     /// The line being sung, by id; only changes when the singing moves on to the next line.
     @State private var current: Int?
+    /// The line last clicked, standing in for `current` while the song's position is unknown.
+    @State private var tapped: Int?
 
     /// The song the pane is about: what's coming out of the speakers, else what the row shows.
     private var showing: NowPlaying? {
@@ -673,6 +675,12 @@ struct LyricsPane: View {
             ScrollView {
                 LyricLines(id: id, lyrics: lyrics, current: current) { line in
                     pin(line, in: lyrics, at: radio.trackPosition)
+                    // Light the clicked line straight away, even when the song's position isn't
+                    // known yet (or never turns up): until it is, the click is the best guess.
+                    if lyrics.synced {
+                        tapped = line.id
+                        current = line.id
+                    }
                 }
                 .equatable()
                 .padding(.trailing, 12)
@@ -686,8 +694,9 @@ struct LyricsPane: View {
             }
         }
         .task(id: id) {
+            tapped = nil
             while !Task.isCancelled {
-                let now = radio.trackPosition.flatMap { Self.line(of: lyrics, at: $0) }
+                let now = radio.trackPosition.flatMap { Self.line(of: lyrics, at: $0) } ?? tapped
                 if now != current { current = now }
                 try? await Task.sleep(nanoseconds: 250_000_000)
             }
@@ -771,7 +780,7 @@ private struct LyricLines: View, Equatable {
                         let adLib = LyricsPane.isAdLib(line.text)
                         Text(line.text)
                             .font(line.id == current ? .body.bold() : adLib ? .callout : .body)
-                            .foregroundStyle(current == nil || line.id == current ? .primary : .secondary)
+                            .foregroundStyle(!lyrics.synced || line.id == current ? .primary : .secondary)
                             .padding(.leading, adLib ? 14 : 0)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             // Click a line to say that is what is being sung right now:
