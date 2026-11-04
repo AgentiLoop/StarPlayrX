@@ -745,7 +745,7 @@ struct LyricsPane: View {
                 LyricLines(id: id, lyrics: lyrics, current: current) { line in
                     if !lyrics.synced {
                         showBubble("Text only lyrics, not timed")
-                    } else if pin(line, in: lyrics, at: radio.trackPosition) {
+                    } else if pin(line, in: lyrics, at: position) {
                         showBubble("Lyrics position set")
                     }
                     // Light the clicked line straight away, even when the song's position isn't
@@ -781,11 +781,21 @@ struct LyricsPane: View {
         .task(id: id) {
             tapped = nil
             while !Task.isCancelled {
-                let now = radio.trackPosition.flatMap { Self.line(of: lyrics, at: $0) } ?? tapped
+                let now = position.flatMap { Self.line(of: lyrics, at: $0) } ?? tapped
                 if now != current { current = now }
-                try? await Task.sleep(nanoseconds: 250_000_000)
+                try? await Task.sleep(nanoseconds: 100_000_000)
             }
         }
+    }
+
+    /// Where the pane treats the song as being: the track's position plus `displayLead`, so a line
+    /// lights as its first word is sung rather than a word or two after (an LRC stamp is the
+    /// first syllable, and the eye needs the line before the voice reaches it).
+    private var position: TimeInterval? { radio.trackPosition.map { $0 + Self.displayLead } }
+
+    /// `defaults write com.starplayrx.mac lyricsDisplayLead -float 1.0` moves it without a rebuild.
+    static var displayLead: TimeInterval {
+        UserDefaults.standard.object(forKey: "lyricsDisplayLead") as? Double ?? 0.7
     }
 
     /// The line the user clicked is the line being sung: the shift that makes the song's position
