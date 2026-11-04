@@ -32,6 +32,12 @@ enum DisplayAudio {
         return outputs.first { matches($0, screen: screen, among: outputs) }?.uid
     }
 
+    /// The Core Audio UID of the Mac's sound output right now.
+    static func systemOutputUID() -> String? {
+        let id = systemOutput()
+        return outputDevices().first(where: { $0.id == id })?.uid
+    }
+
     /// Whether the device with this UID is already the Mac's sound output.
     static func isSystemOutput(_ uid: String) -> Bool {
         outputDevices().first(where: { $0.uid == uid })?.id == systemOutput()
