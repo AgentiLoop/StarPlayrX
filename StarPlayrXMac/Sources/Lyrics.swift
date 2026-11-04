@@ -20,6 +20,10 @@ struct LyricLine: Identifiable {
     /// Seconds into the track; nil when the record only has plain (unsynced) lyrics.
     let at: TimeInterval?
     let text: String
+    /// When each word starts, seconds into the track, where the source times every word (NetEase
+    /// YRC, Kugou KRC, enhanced LRC `<mm:ss.xx>` tags). Empty otherwise. Only the aligner uses
+    /// them: a word is another moment the voice arrives, many more of them than line starts.
+    var words: [TimeInterval] = []
 }
 
 struct Lyrics {
@@ -219,11 +223,14 @@ final class LyricsStore: ObservableObject {
         var lyric = URLComponents(string: "https://music.163.com/api/song/lyric")!
         lyric.queryItems = [URLQueryItem(name: "id", value: String(id)),
                             URLQueryItem(name: "lv", value: "1"),
-                            URLQueryItem(name: "tv", value: "-1")]
-        guard let lrc = (try await json(lyric.url!) as? [String: Any])?["lrc"] as? [String: Any],
+                            URLQueryItem(name: "tv", value: "-1"),
+                            URLQueryItem(name: "yv", value: "1")]   // YRC: every word timed
+        let record = try await json(lyric.url!) as? [String: Any]
+        guard let lrc = record?["lrc"] as? [String: Any],
               let text = lrc["lyric"] as? String else { return nil }
-        let lines = timed(text).filter { !isCredit($0.text) }
-            .enumerated().map { LyricLine(id: $0.offset, at: $0.element.at, text: $0.element.text) }
+        let yrc = (record?["yrc"] as? [String: Any])?["lyric"] as? String ?? ""
+        let lines = withWords(timed(text).filter { !isCredit($0.text) }, from: yrc)
+            .enumerated().map { LyricLine(id: $0.offset, at: $0.element.at, text: $0.element.text, words: $0.element.words) }
         guard !lines.isEmpty else { return nil }
         return Lyrics(artist: (best["artists"] as? [[String: Any]])?.first?["name"] as? String ?? artist,
                       song: best["name"] as? String ?? song, lines: lines, synced: true)
@@ -320,8 +327,16 @@ final class LyricsStore: ObservableObject {
         guard let encoded = (try await json(download.url!) as? [String: Any])?["content"] as? String,
               let decoded = Data(base64Encoded: encoded),
               let text = String(data: decoded, encoding: .utf8) else { return nil }
-        let lines = lrcLines(text)
+        var lines = lrcLines(text)
         guard !lines.isEmpty else { return nil }
+        // The same lyric as a KRC times every word. Worth one more ask, but only a bonus: the LRC
+        // above is the answer whether this works or not.
+        download.queryItems?.removeAll { $0.name == "fmt" }
+        download.queryItems?.append(URLQueryItem(name: "fmt", value: "krc"))
+        if let encoded = (try? await json(download.url!) as? [String: Any])?["content"] as? String,
+           let krc = decryptKRC(encoded) {
+            lines = withWords(lines, from: krc)
+        }
         return Lyrics(artist: best["SingerName"] as? String ?? artist,
                       song: best["SongName"] as? String ?? song, lines: lines, synced: true)
     }
@@ -331,7 +346,55 @@ final class LyricsStore: ObservableObject {
     private static func lrcLines(_ text: String) -> [LyricLine] {
         var lines = timed(text).filter { !isCredit($0.text) }
         if let first = lines.first, (first.at ?? 0) < 1, first.text.contains(" - ") { lines.removeFirst() }
-        return lines.enumerated().map { LyricLine(id: $0.offset, at: $0.element.at, text: $0.element.text) }
+        return lines.enumerated().map { LyricLine(id: $0.offset, at: $0.element.at, text: $0.element.text, words: $0.element.words) }
+    }
+
+    /// Word-timed lyrics, NetEase YRC and Kugou KRC, as (line start, word starts) in seconds. Both
+    /// open a line with `[startMs,durationMs]`; YRC then gives each word as `(absoluteMs,dur,0)`,
+    /// KRC as `<msIntoLine,dur,0>`. Metadata and JSON credit lines have no such opening.
+    static func wordTimed(_ text: String) -> [(at: TimeInterval, words: [TimeInterval])] {
+        var out = [(at: TimeInterval, words: [TimeInterval])]()
+        for raw in text.components(separatedBy: .newlines) {
+            guard raw.hasPrefix("["), let close = raw.firstIndex(of: "]") else { continue }
+            let head = raw[raw.index(after: raw.startIndex)..<close].split(separator: ",")
+            guard head.count == 2, let start = Double(head[0]) else { continue }
+            var words = [TimeInterval]()
+            var rest = raw[raw.index(after: close)...]
+            while let open = rest.firstIndex(where: { $0 == "(" || $0 == "<" }) {
+                let shut: Character = rest[open] == "(" ? ")" : ">"
+                guard let end = rest[open...].firstIndex(of: shut) else { break }
+                let fields = rest[rest.index(after: open)..<end].split(separator: ",")
+                if fields.count == 3, let ms = Double(fields[0]) {
+                    words.append((shut == ")" ? ms : start + ms) / 1000)
+                }
+                rest = rest[rest.index(after: end)...]
+            }
+            if !words.isEmpty { out.append((start / 1000, words)) }
+        }
+        return out
+    }
+
+    /// Hangs the word times of a YRC/KRC on the LRC lines they belong to: the word-timed line that
+    /// starts within a second of the LRC line's stamp. Lines with no partner keep what they had.
+    static func withWords(_ lines: [LyricLine], from text: String) -> [LyricLine] {
+        let timed = wordTimed(text)
+        guard !timed.isEmpty else { return lines }
+        return lines.map { line in
+            guard let at = line.at,
+                  let match = timed.min(by: { abs($0.at - at) < abs($1.at - at) }), abs(match.at - at) < 1
+            else { return line }
+            return LyricLine(id: line.id, at: line.at, text: line.text, words: match.words)
+        }
+    }
+
+    /// Kugou's KRC: Base64 of "krc1" + a zlib stream XORed with a fixed 16-byte key.
+    static func decryptKRC(_ base64: String) -> String? {
+        let key: [UInt8] = [0x40, 0x47, 0x61, 0x77, 0x5e, 0x32, 0x74, 0x47, 0x51, 0x36, 0x31, 0x2d, 0xce, 0xd2, 0x6e, 0x69]
+        guard let data = Data(base64Encoded: base64), data.count > 6, data.prefix(4) == Data("krc1".utf8) else { return nil }
+        let plain = Data(data.dropFirst(4).enumerated().map { $0.element ^ key[$0.offset % key.count] })
+        // Foundation's .zlib is raw DEFLATE: skip the two-byte zlib header.
+        guard let inflated = try? (plain.dropFirst(2) as NSData).decompressed(using: .zlib) as Data else { return nil }
+        return String(data: inflated, encoding: .utf8)
     }
 
     /// lyrics.ovh: plain text only, no timestamps, but it has songs the other two don't. Last resort.
@@ -434,7 +497,7 @@ final class LyricsStore: ObservableObject {
     /// LRC: `[mm:ss.xx] text`, one or more timestamps per line. Metadata tags (`[ar:…]`) have no
     /// digits where the minutes go and are dropped.
     static func timed(_ lrc: String) -> [LyricLine] {
-        var out = [(TimeInterval, String)]()
+        var out = [(TimeInterval, String, [TimeInterval])]()
         for raw in lrc.components(separatedBy: .newlines) {
             var rest = Substring(raw)
             var stamps = [TimeInterval]()
@@ -446,10 +509,28 @@ final class LyricsStore: ObservableObject {
                 rest = rest[rest.index(after: close)...]
             }
             guard !stamps.isEmpty else { continue }
-            let text = rest.trimmingCharacters(in: .whitespaces)
-            for at in stamps { out.append((at, text)) }
+            // Enhanced LRC: `<mm:ss.xx>` before each word. Taken out of the text, kept as word times
+            // relative to the line, so a line stamped more than once gets them at every stamp.
+            var words = [TimeInterval]()
+            var plain = ""
+            while let open = rest.firstIndex(of: "<") {
+                plain += rest[..<open]
+                guard let close = rest[open...].firstIndex(of: ">") else { break }
+                let parts = rest[rest.index(after: open)..<close].split(separator: ":")
+                if parts.count == 2, let minutes = Double(parts[0]), let seconds = Double(parts[1]) {
+                    words.append(minutes * 60 + seconds - stamps[0])
+                } else {
+                    plain += rest[open...close]
+                }
+                rest = rest[rest.index(after: close)...]
+            }
+            plain += rest
+            let text = plain.trimmingCharacters(in: .whitespaces)
+            for at in stamps { out.append((at, text, words.map { at + $0 })) }
         }
-        return out.sorted { $0.0 < $1.0 }.enumerated().map { LyricLine(id: $0.offset, at: $0.element.0, text: $0.element.1) }
+        return out.sorted { $0.0 < $1.0 }.enumerated().map {
+            LyricLine(id: $0.offset, at: $0.element.0, text: $0.element.1, words: $0.element.2)
+        }
     }
 }
 

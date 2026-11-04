@@ -137,10 +137,14 @@ final class LyricsCache {
 
     // MARK: Lines as JSON
 
-    /// `[{"at": 11.07, "text": "…"}]`; a line with no timestamp has no `at`.
+    /// `[{"at": 11.07, "text": "…", "words": [11.07, 11.4]}]`; a line with no timestamp has no
+    /// `at`, one with no word times no `words`.
     static func json(from lines: [LyricLine]) -> String {
         let array = lines.map { line -> [String: Any] in
-            line.at.map { ["at": $0, "text": line.text] } ?? ["text": line.text]
+            var entry: [String: Any] = ["text": line.text]
+            if let at = line.at { entry["at"] = at }
+            if !line.words.isEmpty { entry["words"] = line.words }
+            return entry
         }
         guard let data = try? JSONSerialization.data(withJSONObject: array),
               let text = String(data: data, encoding: .utf8) else { return "[]" }
@@ -151,6 +155,7 @@ final class LyricsCache {
         guard let data = json.data(using: .utf8),
               let array = (try? JSONSerialization.jsonObject(with: data)) as? [[String: Any]] else { return [] }
         return array.enumerated().map { LyricLine(id: $0.offset, at: $0.element["at"] as? TimeInterval,
-                                                  text: $0.element["text"] as? String ?? "") }
+                                                  text: $0.element["text"] as? String ?? "",
+                                                  words: $0.element["words"] as? [TimeInterval] ?? []) }
     }
 }
