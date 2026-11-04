@@ -33,6 +33,13 @@ final class LyricSync: ObservableObject {
     /// `SpectrumTimeline.decodedSegments` at the last measurement; -1 forces one right away.
     private var lastSegment = -1
 
+    /// What placed the current shift this song: Shazam, or the aligner with that confidence.
+    /// nil = nothing yet (or only a shift remembered from last time), so any lock replaces it.
+    private enum Source: Equatable { case shazam, aligner(Double) }
+    private var heldBy: Source?
+    /// An aligner lock within this many seconds of the one held is the same lock, refined.
+    private static let agree = 1.0
+
     /// The model's own tick. Measuring used to ride on the lyrics pane's redraw timer, and macOS
     /// stops redrawing a hidden window, so with the window hidden nothing was measured, Shazam
     /// stopped matching and a new song's lyrics never loaded: the words came back way out of step.
@@ -171,6 +178,7 @@ final class LyricSync: ObservableObject {
             shift = LyricsCache.shared.shift(for: key)
             report = shift.map { "remembered \(String(format: "%+.1f", $0))s" } ?? "no measurement yet"
             isPinned = false
+            heldBy = nil
             lastSegment = -1
         }
         let segment = SpectrumTimeline.shared.decodedSegments
@@ -192,12 +200,15 @@ final class LyricSync: ObservableObject {
             // (it used to be thrown away past a minute, leaving the lyrics way off until a re-tune).
             let found = match.offset - match.real.timeIntervalSince(songStart)
             if abs(found) <= 600 {
+                heldBy = .shazam
                 shift = found
                 report = String(format: "%+.1fs (Shazam: %@ – %@ at %.1fs)", found, match.artist, match.title, match.offset)
                 LyricsCache.shared.saveShift(found, for: key)
                 return
             }
         }
+        // Shazam already placed this song (its match since gone stale or moved on): keep that.
+        if heldBy == .shazam { return }
         let shazam = error.map { " · Shazam: \($0)" } ?? ""
         // Only lines the pane draws: an LRC times the gaps between verses as empty lines, and
         // nobody sings those, so they would drag the match towards silence. Where the source times
@@ -219,8 +230,18 @@ final class LyricSync: ObservableObject {
             report = String(format: "no confident match (%.0fs of audio, %d lines)", audio, times.count) + shazam
             return
         }
-        // The newest measurement wins: every one looks at more of the song than the last, and a
-        // later lock is the one that had the most to go on.
+        // A lock this song already has isn't thrown away for a later one that lands somewhere else:
+        // a chorus or a repeated line is a rival peak a line or two away, and the newest-wins rule
+        // let one of those drag good lyrics back two lines mid-song. Shazam's word is never
+        // overruled by the aligner; an aligner lock only moves by more than `agree` for a lock that
+        // stands out further than it did. Small refinements are always taken.
+        if case .aligner(let held) = heldBy, let shift, abs(found.shift - shift) > Self.agree,
+           found.confidence <= held {
+            report = String(format: "kept %+.1fs; ignored %+.1fs (confidence %.1f <= %.1f)",
+                            shift, found.shift, found.confidence, held) + shazam
+            return
+        }
+        heldBy = .aligner(found.confidence)
         shift = found.shift
         report = String(format: "%+.1fs (confidence %.1f, margin %.2f, %d lines, %.0fs of audio)",
                         found.shift, found.confidence, found.margin, found.lines, audio) + shazam
