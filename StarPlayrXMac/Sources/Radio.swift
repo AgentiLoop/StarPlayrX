@@ -515,11 +515,14 @@ final class Radio: ObservableObject {
         // The item's timeline walked over the real segment lengths, exactly as the equalizer is:
         // the item's date jumps when the playlist window slides and drifts off the 10 s grid.
         let time = item.currentTime().seconds
-        if time.isFinite, let real = SpectrumTimeline.shared.realDate(time: time) {
-            if let old, Date().timeIntervalSince(lastHeardLog) > 10 {
-                lastHeardLog = Date()
-                Self.log.notice("heard: walk vs date \(real.timeIntervalSince(old), privacy: .public)s")
-            }
+        let walked = time.isFinite ? SpectrumTimeline.shared.realDate(time: time) : nil
+        if Date().timeIntervalSince(lastHeardLog) > 5 {
+            lastHeardLog = Date()
+            let line = "\(Date()) t=\(time) walk=\(walked.map { "\($0.timeIntervalSince1970)" } ?? "nil") date=\(old.map { "\($0.timeIntervalSince1970)" } ?? "nil") diff=\(walked.flatMap { w in old.map { w.timeIntervalSince($0) } } ?? .nan)\n"
+            if let h = FileHandle(forWritingAtPath: "/tmp/heard.txt") { h.seekToEndOfFile(); h.write(Data(line.utf8)); h.closeFile() }
+            else { try? line.write(toFile: "/tmp/heard.txt", atomically: true, encoding: .utf8) }
+        }
+        if let real = walked {
             return real
         }
         return old ?? at.addingTimeInterval(-streamLag)
