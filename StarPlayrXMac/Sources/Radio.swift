@@ -488,6 +488,10 @@ final class Radio: ObservableObject {
 
     // MARK: Xtra playback
 
+    private func printXtra(_ line: String) {
+        Logger(subsystem: "com.starplayrx.mac", category: "xtra").notice("\(line, privacy: .public)")
+    }
+
     private func playXtra(_ channel: Channel, id: String) {
         isPlaying = true
         // Tuning again returns a different track than the peek, so start with the peeked track
@@ -496,7 +500,7 @@ final class Radio: ObservableObject {
             XtraTrack(id: $0.id, artist: $0.artist, title: $0.title, url: $0.url, keyID: $0.keyID,
                       imageURL: $0.imageURL, startOffset: 0)
         }
-        print("XTRA play \(channel.id) shown=\(nowPlaying[channel.id]?.song ?? "nil") peeked=\(peeked?.title ?? "nil")")
+        printXtra("XTRA play \(channel.id) shown=\(nowPlaying[channel.id]?.song ?? "nil") peeked=\(peeked?.title ?? "nil")")
         if peeked == nil {
             xtraNowPlaying[channel.id] = nil
             nowPlaying[channel.id] = nil
@@ -519,7 +523,7 @@ final class Radio: ObservableObject {
                         first = false
                     }
                 } catch {
-                    print("XTRA peeked download failed \(channel.id) \(peeked.title): \(error.localizedDescription) url=\(peeked.url)")
+                    printXtra("XTRA peeked download failed \(channel.id) \(peeked.title): \(error.localizedDescription) url=\(peeked.url)")
                 }
             }
             do {
@@ -544,7 +548,7 @@ final class Radio: ObservableObject {
                 }
             } catch is CancellationError {
             } catch {
-                print("Xtra playback error: \(error.localizedDescription)")
+                printXtra("Xtra playback error: \(error.localizedDescription)")
                 if first, !Task.isCancelled, playbackID == session { stop() }
             }
         }
@@ -564,7 +568,7 @@ final class Radio: ObservableObject {
         guard let track = playbackState.track, let current, current.xtraID != nil else { return }
         let np = NowPlaying(artist: track.artist, song: track.title, image: track.imageURL)
         // Called from both the queue observer and playXtra for the same item: log the track once.
-        if xtraNowPlaying[current.id] != np { print("XTRA playing \(current.id) \(track.artist) – \(track.title)") }
+        if xtraNowPlaying[current.id] != np { printXtra("XTRA playing \(current.id) \(track.artist) – \(track.title)") }
         xtraNowPlaying[current.id] = np
         nowPlaying[current.id] = np
         updateNowPlayingInfo()
