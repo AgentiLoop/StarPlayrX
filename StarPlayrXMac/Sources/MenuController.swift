@@ -119,6 +119,7 @@ final class MenuController: NSObject, ObservableObject {
         // Like MenuBarExtra: the app becomes active, so controls draw active rather than greyed.
         NSApp.activate(ignoringOtherApps: true)
         panel.makeKeyAndOrderFront(nil)
+        Radio.shared.routeAudio(to: statusItem.button?.window?.screen ?? panel.screen)
         // In a session AppKit draws the real highlight itself; only light it by hand without one.
         if #available(macOS 27, *), statusItem.expandedInterfaceSession != nil {} else { keepLit() }
 

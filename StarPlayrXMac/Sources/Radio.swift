@@ -8,6 +8,7 @@
 //
 
 import Foundation
+import AppKit
 import AVFoundation
 import MediaPlayer
 import Combine
@@ -195,6 +196,15 @@ final class Radio: ObservableObject {
 
     func togglePlayPause() {
         if isPlaying { stop() } else if let current { play(current) }
+    }
+
+    /// Plays through the speakers of the display `screen`, when the Mac's sound is on a display's
+    /// speakers (see `DisplayAudio`); otherwise back to following the system output.
+    func routeAudio(to screen: NSScreen?) {
+        let uid = screen.flatMap(DisplayAudio.device(for:))
+        guard player.audioOutputDeviceUniqueID != uid else { return }
+        player.audioOutputDeviceUniqueID = uid
+        xtraPlayer.audioOutputDeviceUniqueID = uid
     }
 
     func stop() {
