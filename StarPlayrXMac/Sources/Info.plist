@@ -32,7 +32,7 @@
 	<key>NSAppleScriptEnabled</key>
 	<true/>
 	<key>NSAudioCaptureUsageDescription</key>
-	<string>StarPlayrX listens to its own sound to cross-fade it smoothly from one displays speakers to anothers.</string>
+	<string>StarPlayrX listens to its own sound to cross-fade it smoothly between your displays' speakers.</string>
 	<key>OSAScriptingDefinition</key>
 	<string>StarPlayrX.sdef</string>
 </dict>
