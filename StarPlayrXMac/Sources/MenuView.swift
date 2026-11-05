@@ -211,7 +211,12 @@ struct MenuView: View {
             .accessibilityLabel(radio.current.map { isAlbumArt ? "Album art, \($0.name)" : "Channel art, \($0.name)" } ?? "StarPlayrX")
             .accessibilityHint(bigArtURL == nil ? (shownArtURL != nil ? "Shows the art full size" : "Shows the channel in the list")
                                : "Switches between the album art, channel logo and show art")
-            .simultaneousGesture(TapGesture().onEnded {
+            // Sequenced before a double tap so a double-click on the header (roll up) doesn't also
+            // fire this single tap twice. Attached with .gesture (not .simultaneousGesture): a
+            // sequenced gesture inside simultaneousGesture never fires its first half on macOS,
+            // which killed single clicks entirely.
+            .gesture(TapGesture().sequenced(before: TapGesture(count: 2)).onEnded { value in
+                guard case .first = value else { return }
                 // Click the art: always full size over the list or lyrics first (album, channel or show art).
                 // While it's big, each click steps album art → channel logo → show art, as the channel has
                 // them (remembered per channel); with nothing to switch to it closes the big art again.
@@ -240,7 +245,12 @@ struct MenuView: View {
                                : menu.lyrics ? "Shows the channel list" : "Shows the song's lyrics")
             // Click the song/artist: the lyrics take the channel list's place, and back again.
             // Over big art it first just closes the art, so the user sees which view is underneath.
-            .simultaneousGesture(TapGesture().onEnded {
+            // Sequenced before a double tap so a double-click on the header (roll up) doesn't also
+            // toggle the lyrics. Attached with .gesture (not .simultaneousGesture): a sequenced
+            // gesture inside simultaneousGesture never fires its first half on macOS, which
+            // killed single clicks entirely.
+            .gesture(TapGesture().sequenced(before: TapGesture(count: 2)).onEnded { value in
+                guard case .first = value else { return }
                 if menu.bigArt { menu.bigArt = false; return }
                 menu.lyrics.toggle()
             })
