@@ -57,6 +57,7 @@ final class MenuController: NSObject, ObservableObject {
     private lazy var statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
     private var outsideClick: Any?
     private var glide: Timer?
+    private var lit: Timer?
     private var playing: AnyCancellable?
     /// The mouse press that just closed the panel (on the icon or anywhere else) is still down:
     /// a session AppKit begins for that same press is its echo and is cancelled. Cleared when that
@@ -83,7 +84,8 @@ final class MenuController: NSObject, ObservableObject {
             statusItem.button?.sendAction(on: .leftMouseUp)
         }
         playing = Radio.shared.$isPlaying.sink { [weak self] on in
-            self?.isPlayingIcon = on
+            self?.statusItem.button?.image = NSImage(systemSymbolName: on ? "dot.radiowaves.left.and.right" : "radio",
+                                                      accessibilityDescription: "StarPlayrX")
         }
         // Sound follows the panel: a torn-off panel dragged onto another display plays through
         // that display's speakers (opening it under a menu bar is handled in showUnderMenuBar).
@@ -229,9 +231,8 @@ final class MenuController: NSObject, ObservableObject {
         // The panel's own screen, now it is placed: with a menu bar on every display, the status
         // item's window can be on a different display than the one the panel opened on.
         routeToPanelDisplay(force: true)
-        // Lit for as long as it hangs under the icon, session or not: the session's own highlight
-        // doesn't reliably show.
-        keepLit()
+        // In a session AppKit draws the real highlight itself; only light it by hand without one.
+        if #available(macOS 27, *), statusItem.expandedInterfaceSession != nil {} else { keepLit() }
 
         // Under the menu bar it behaves like a menu: any click outside the panel closes it. On
         // macOS 27 the menu bar belongs to MenuBarAgent, so a click on our own icon lands here too
@@ -281,38 +282,27 @@ final class MenuController: NSObject, ObservableObject {
         endSession()
     }
 
-    /// Lights the icon while the panel hangs under it. The menu bar wipes
-    /// highlight(), so the icon image itself carries the capsule: a template image whose capsule
-    /// is drawn at low alpha, so the menu bar tints it like the system highlight (light and dark).
+    /// No session (pre-27, or a reopen AppKit began none for): the system highlight via
+    /// highlight(true). The button un-highlights itself when its mouse tracking ends, so it is
+    /// re-asserted while the panel hangs under the icon.
     private func keepLit() {
-        handLit = true
+        lit?.invalidate()
+        statusItem.button?.highlight(true)
+        let timer = Timer(timeInterval: 0.05, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                guard let self, self.panel.isVisible, !self.detached else { return }
+                if self.statusItem.button?.isHighlighted == false { self.statusItem.button?.highlight(true) }
+            }
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        lit = timer
     }
 
     private func endSession() {
-        handLit = false
+        lit?.invalidate()
+        lit = nil
         statusItem.button?.highlight(false)
         if #available(macOS 27, *) { statusItem.expandedInterfaceSession?.cancel() }
-    }
-
-    private var isPlayingIcon = false { didSet { updateIcon() } }
-    private var handLit = false { didSet { if handLit != oldValue { updateIcon() } } }
-
-    private func updateIcon() {
-        let symbol = NSImage(systemSymbolName: isPlayingIcon ? "dot.radiowaves.left.and.right" : "radio",
-                             accessibilityDescription: "StarPlayrX")
-        guard handLit, let symbol else { statusItem.button?.image = symbol; return }
-        let side = NSStatusBar.system.thickness - 2
-        let lit = NSImage(size: NSSize(width: side, height: side), flipped: false) { rect in
-            NSColor.black.withAlphaComponent(0.25).setFill()
-            NSBezierPath(roundedRect: rect, xRadius: 6, yRadius: 6).fill()
-            let s = symbol.size
-            symbol.draw(in: NSRect(x: (rect.width - s.width) / 2, y: (rect.height - s.height) / 2,
-                                   width: s.width, height: s.height))
-            return true
-        }
-        lit.isTemplate = true
-        lit.accessibilityDescription = "StarPlayrX"
-        statusItem.button?.image = lit
     }
 
     private func removeOutsideClick() {
@@ -487,7 +477,7 @@ extension MenuController: @preconcurrency NSStatusItemExpandedInterfaceDelegate 
         // Already open under the icon on this display: this session is the highlight for it.
         let openOn = reopenTarget ?? iconScreen
         if panel.isVisible, !detached, openOn == nil || openOn == panel.screen {
-            keepLit(); return
+            lit?.invalidate(); lit = nil; return
         }
         // Closed, or open under another display's icon: open (or move) it under this one.
         sessionBeganAt = CACurrentMediaTime()
