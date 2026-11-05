@@ -523,6 +523,15 @@ final class MenuPanel: NSPanel {
     /// so the bar stayed on the display of whatever was clicked before. Activating on the press
     /// (a user event, which macOS lets an app activate for) makes this display the active one.
     override func sendEvent(_ event: NSEvent) {
+        // Space plays/pauses, as in a media player. Caught here, before the search field (usually
+        // first responder) can type it, but only while the search is empty: once something is
+        // typed, a space is part of the search ("the beatles").
+        if event.type == .keyDown, event.keyCode == 49, !event.isARepeat,
+           event.modifierFlags.intersection([.command, .option, .control, .shift]).isEmpty,
+           MenuController.shared.search.isEmpty, Radio.shared.current != nil {
+            Radio.shared.togglePlayPause()
+            return
+        }
         if event.type == .leftMouseDown || event.type == .rightMouseDown, !NSApp.isActive {
             NSApp.activate(ignoringOtherApps: true)
             makeKey()
