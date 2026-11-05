@@ -204,6 +204,8 @@ struct MenuView: View {
             }
             .frame(width: 64, height: 64)
             .clipShape(RoundedRectangle(cornerRadius: 14.5, style: .continuous))   // squircle, app-icon ratio
+            // Load the big album art, channel logo and show art ahead, so clicking shows them at once.
+            .task(id: bigArtCandidates.map(\.url)) { prefetchBigArt() }
             .accessibilityElement()
             .accessibilityAddTraits(.isButton)
             .accessibilityLabel(radio.current.map { isAlbumArt ? "Album art, \($0.name)" : "Channel art, \($0.name)" } ?? "StarPlayrX")
@@ -286,12 +288,33 @@ struct MenuView: View {
     /// The art shown full size over the list or lyrics; nil when it's off or there is no art.
     private var bigArtURL: String? { menu.bigArt ? shownArtURL : nil }
 
+    /// Points the big art is loaded at.
+    private static let bigArtSize: CGFloat = 336
+
+    /// Every art the current channel has (album art, channel logo, show art) with whether it's a logo,
+    /// so the big versions are loaded before the user opens or cycles them.
+    private var bigArtCandidates: [(url: String, isLogo: Bool)] {
+        guard let ch = radio.current else { return [] }
+        let np = radio.nowPlaying[ch.id]
+        return [(np?.image ?? "", false), (ch.imageURL, true), (np?.showImage ?? "", false)].filter { !$0.url.isEmpty }
+    }
+
+    private func prefetchBigArt() {
+        for art in bigArtCandidates {
+            ArtCache.shared.prefetch(art.url, pixels: ArtCache.pixels(Self.bigArtSize), trimBorder: !art.isLogo)
+        }
+    }
+
     /// Full-size art, as wide as the panel's content; clicking it shows the list or lyrics again.
     private func bigArt(_ url: String) -> some View {
         let isLogo = radio.current.map { radio.shownArt($0.id) == .channel } ?? false
-        return CachedArt(url: url, size: 336, isAlbumArt: !isLogo) { art, _ in
-            // Color.clear until it loads: an empty view never runs CachedArt's .task, so nothing would load.
-            if let art { Image(nsImage: art).resizable().scaledToFit() } else { Color.clear }
+        return CachedArt(url: url, size: Self.bigArtSize, isAlbumArt: !isLogo) { art, _ in
+            // Until the full size arrives, the small tile's bitmap stretched, so the big art appears at once.
+            // Color.clear when there's neither: an empty view never runs CachedArt's .task, so nothing would load.
+            if let art = ArtCache.shared.cached(url, pixels: ArtCache.pixels(Self.bigArtSize))
+                ?? ArtCache.shared.cached(url, pixels: ArtCache.pixels(64)) ?? art {
+                Image(nsImage: art).resizable().scaledToFit()
+            } else { Color.clear }
         }
         .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
         .frame(maxWidth: .infinity, maxHeight: .infinity)

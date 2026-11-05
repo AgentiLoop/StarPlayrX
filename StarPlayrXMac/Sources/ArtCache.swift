@@ -138,7 +138,8 @@ final class ArtCache {
         let key = "\(pixels) \(url)"
         if let image = images.object(forKey: key as NSString) { return image }
         guard !url.isEmpty, let address = URL(string: url) else { return nil }
-        let task = loading[key] ?? Task.detached(priority: .utility) {
+        // Big art (Now Playing full size) is waited on by the user; list thumbnails can trail behind.
+        let task = loading[key] ?? Task.detached(priority: pixels > 300 ? .userInitiated : .utility) {
             guard let data = try? await ArtCache.session.data(from: address).0,
                   let thumb = ArtCache.thumbnail(data, pixels: pixels, trimBorder: trimBorder) else { return nil }
             return Thumbnail(image: thumb)
