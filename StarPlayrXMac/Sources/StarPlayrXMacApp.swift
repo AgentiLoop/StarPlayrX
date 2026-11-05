@@ -35,6 +35,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             await CredentialPrompt.signIn()
         }
     }
+
+    /// Clicking the app's icon while it's running opens the panel on the display clicked on.
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        MainActor.assumeIsolated { MenuController.shared.showOnMouseDisplay() }
+        return false
+    }
 }
 
 /// Native username / password prompt. Credentials go straight from this dialog to the Keychain.

@@ -149,8 +149,22 @@ final class MenuController: NSObject, ObservableObject {
         showUnderMenuBar()
     }
 
+    /// Clicking the app's icon while it runs (Finder, Launchpad, Spotlight): open under the menu bar
+    /// of the display the click was on. Already open under that display's menu bar: stays open.
+    func showOnMouseDisplay() {
+        let at = NSEvent.mouseLocation
+        let screen = NSScreen.screens.first { NSMouseInRect(at, $0.frame, false) }
+        if panel.isVisible, !detached, screen == nil || panel.screen == screen {
+            NSApp.activate(ignoringOtherApps: true)
+            panel.makeKeyAndOrderFront(nil)
+            return
+        }
+        showUnderMenuBar(on: screen)
+    }
+
     /// Puts the panel under the menu bar — gliding it back first if it was torn off.
-    private func showUnderMenuBar() {
+    /// `target`: that display's menu bar instead of the one the status item's window is on.
+    private func showUnderMenuBar(on target: NSScreen? = nil) {
         menuLog.log("show visible=\(self.panel.isVisible) detached=\(self.detached)")
         // Shaded and torn off: glide back still rolled up, then unroll once in place.
         let unshade = panel.isVisible && detached && shaded
@@ -161,8 +175,14 @@ final class MenuController: NSObject, ObservableObject {
             detached = false
             shaded = false
         }
-        if let button = statusItem.button?.window?.frame {
-            let screen = statusItem.button?.window?.screen?.visibleFrame ?? .infinite
+        if var button = statusItem.button?.window?.frame {
+            let iconScreen = statusItem.button?.window?.screen
+            // Same spot under the other display's menu bar: same distance from its left and top edges.
+            if let target, let iconScreen, target != iconScreen {
+                button.origin = NSPoint(x: target.frame.minX + button.minX - iconScreen.frame.minX,
+                                        y: target.frame.maxY - (iconScreen.frame.maxY - button.minY))
+            }
+            let screen = (target ?? iconScreen)?.visibleFrame ?? .infinite
             let x = min(button.minX, screen.maxX - panel.frame.width)
             let top = NSPoint(x: x, y: button.minY - 4)
             if wasTornOff {
