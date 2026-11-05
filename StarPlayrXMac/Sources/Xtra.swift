@@ -380,6 +380,7 @@ final class LiveLoader: NSObject, AVAssetResourceLoaderDelegate {
     var isActive = true
     private let lock = NSLock()
     private var analyzed = Set<String>()   // segment names already handed to the EQ
+    private var undated = [String: (url: URL, name: String)]()   // fetched while no playlist had dated them yet
     private var keys = [String: Data]()
 
     static func asset(for url: URL, client: XtraClient) -> (AVURLAsset, LiveLoader) {
@@ -431,12 +432,32 @@ final class LiveLoader: NSObject, AVAssetResourceLoaderDelegate {
         lock.lock()
         let fresh = segments.suffix(4).filter { analyzed.insert($0.name).inserted }
         lock.unlock()
+        // A segment the playlist hasn't dated yet (it arrived with a playlist that was replaced
+        // before it was processed, or the channel was just switched): the fetch is kept and handed
+        // over again once its playlist names it, instead of being dropped for good.
+        var pending = [String: (url: URL, name: String)]()
         for seg in fresh {
-            Task {
-                guard let data = try? await client.fetchData(seg.url), let key = try? await key(id: keyID), isActive else { return }
-                SpectrumTimeline.shared.liveSegment(seg.name, data, key, iv: iv)
+            if SpectrumTimeline.shared.hasDate(seg.name) {
+                Task { await fetch(seg, keyID: keyID, iv: iv) }
+            } else {
+                pending[seg.name] = seg
             }
         }
+        if !pending.isEmpty { lock.lock(); undated.merge(pending) { _, new in new }; lock.unlock() }
+        // Anything still undated from before: retry those whose playlist has since named them.
+        var retry = [(url: URL, name: String)]()
+        lock.lock()
+        for (name, seg) in undated where SpectrumTimeline.shared.hasDate(name) {
+            undated.removeValue(forKey: name)
+            retry.append(seg)
+        }
+        lock.unlock()
+        for seg in retry { Task { await fetch(seg, keyID: keyID, iv: iv) } }
+    }
+
+    private func fetch(_ seg: (url: URL, name: String), keyID: String, iv: Data?) async {
+        guard let data = try? await client.fetchData(seg.url), let key = try? await key(id: keyID), isActive else { return }
+        SpectrumTimeline.shared.liveSegment(seg.name, data, key, iv: iv)
     }
     func resourceLoader(_ resourceLoader: AVAssetResourceLoader,
                         shouldWaitForLoadingOfRequestedResource req: AVAssetResourceLoadingRequest) -> Bool {

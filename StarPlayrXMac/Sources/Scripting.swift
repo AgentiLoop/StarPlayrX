@@ -281,7 +281,10 @@ final class SPXCommand: NSScriptCommand {
                 return "\(played == shown ? "MATCH" : "MISMATCH")\t\(channel.id)\t\(shown)\t\(played)"
             }
         case "show menu":
-            if !(menu.panel.isVisible) || menu.detached { menu.statusItemClicked() }
+            // Hidden: open. Attached and visible: nothing to do. Torn off and visible: put it
+            // back under the menu bar — the same as "reattach menu", never hide it.
+            if menu.detached { menu.hide(); menu.statusItemClicked() }
+            else if !menu.panel.isVisible { menu.statusItemClicked() }
         case "hide menu":
             menu.hide()
         case "detach menu":

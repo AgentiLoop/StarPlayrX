@@ -47,6 +47,11 @@ final class SpectrumTimeline: @unchecked Sendable {
     /// Live channels: LiveLoader hands over each playlist and the newest segments as it fetches them.
     func livePlaylist(_ text: String) { playlist(text) }
     func liveSegment(_ name: String, _ data: Data, _ key: Data?, iv: Data? = nil) { queue.async { self.segment(name, data, key, iv: iv) } }
+    /// Whether some playlist has dated this segment yet (its place on the player's 10 s grid).
+    func hasDate(_ name: String) -> Bool {
+        lock.lock(); defer { lock.unlock() }
+        return segmentDates[name] != nil
+    }
 
     // MARK: Live
 

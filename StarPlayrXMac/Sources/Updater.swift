@@ -100,8 +100,9 @@ final class Updater: NSObject {
             return ""
         }
         if !interactive {
-            if release.version == skippedVersion { return release.version }
-            if let until = snoozedUntil, until > Date() { scheduleSnooze(until); return release.version }
+            // Skipped or snoozed: not offered, so there is no version to report — empty, like up to date.
+            if release.version == skippedVersion { return "" }
+            if let until = snoozedUntil, until > Date() { scheduleSnooze(until); return "" }
         }
         await offer(release)
         return release.version

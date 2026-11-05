@@ -492,11 +492,13 @@ final class Radio: ObservableObject {
     }
 
     /// True while the current channel is making no sound at all. Buffering counts: it is only acted
-    /// on after `stallSeconds` of it. An Xtra channel between downloaded tracks does not count.
+    /// on after `stallSeconds` of it. An Xtra channel mid-download does not count either: the queue can
+    /// sit empty for longer than `stallSeconds` while the next track is still coming down a slow link,
+    /// and re-tuning a healthy channel over that is what killed it.
     private var isSilent: Bool {
         guard let current else { return false }
         guard current.xtraID == nil else {
-            return playbackState.xtraStatus != .playing && playbackState.queueCount == 0
+            return playbackState.xtraStatus != .playing && playbackState.queueCount == 0 && xtraTask == nil
         }
         return playbackState.liveStatus != .playing
     }
@@ -731,8 +733,10 @@ final class Radio: ObservableObject {
             // same constant for everything else only until that lands.
             let lead = LyricSync.shared.shift(forKey: LyricsStore.key(np.artist, np.song)) ?? Self.liveLyricsLead
             let at = heard.timeIntervalSince(started) + lead
-            // A talk segment or a stale cut can run for hours; past that these aren't its lyrics.
-            return (0...900).contains(at) ? at : nil
+            // A late cut stamp or a large negative measured shift can put the opening seconds just
+            // below zero: clamp them rather than showing nothing. Past that, a talk segment or a
+            // stale cut runs for hours and these aren't its lyrics.
+            return (0...900).contains(at) ? at : (at < 0 ? 0 : nil)
         }
         let state = playbackState
         guard state.xtraStatus != .paused else { return nil }

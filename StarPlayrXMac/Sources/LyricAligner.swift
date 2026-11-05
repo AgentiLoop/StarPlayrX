@@ -165,7 +165,9 @@ enum LyricAligner {
         let heldScore = score(of: heldShift, lineTimes: lineTimes, songStart: songStart, onsets: onsets)
         let candidateScore = score(of: candidate.shift, lineTimes: lineTimes, songStart: songStart, onsets: onsets)
         if let h = heldScore, let c = candidateScore, h >= c { return held }
-        if heldScore != nil, candidateScore == nil { return held }
+        // The audio says nothing about either shift (too few lines inside it): no evidence to
+        // replace the held lock with, so keep it rather than taking the candidate on nothing.
+        if heldScore == nil { return held }
         return candidate
     }
 

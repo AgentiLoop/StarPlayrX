@@ -54,9 +54,15 @@ enum DisplayAudio {
         }
         let outputs = outputDevices()
         var map = [String: CGDirectDisplayID]()
+        var claimed = Set<String>()   // speaker UIDs already tied to a display
         for screen in NSScreen.screens {
-            guard let number = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID,
-                  let speaker = outputs.first(where: { matches($0, screen: screen, among: outputs) }) else { continue }
+            guard let number = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID
+            else { continue }
+            // Two identical displays ("DELL U2720Q" twice) both name-match the same first device;
+            // skip a speaker already claimed so each screen gets its own.
+            let candidates = outputs.filter { !claimed.contains($0.uid) && matches($0, screen: screen, among: outputs) }
+            guard let speaker = candidates.first else { continue }
+            claimed.insert(speaker.uid)
             map[speaker.uid] = number
         }
         cache = map

@@ -409,8 +409,11 @@ final class MenuController: NSObject, ObservableObject {
                        stars: starsOnly ? Radio.shared.presets : nil)
     }
 
-    /// The channel list's NSScrollView (the SwiftUI ScrollView's backing view): the one with the tallest content.
+    /// The channel list's NSScrollView (the SwiftUI ScrollView's backing view): the one with the tallest
+    /// content. Nil while the lyrics pane (or the big art) has replaced the list — there is no channel
+    /// list on screen then, so scroll offset / top visible channel / scroll-to have nothing to act on.
     var channelScrollView: NSScrollView? {
+        guard !lyrics, !bigArt else { return nil }
         func all(_ view: NSView) -> [NSScrollView] {
             ((view as? NSScrollView).map { [$0] } ?? []) + view.subviews.flatMap(all)
         }

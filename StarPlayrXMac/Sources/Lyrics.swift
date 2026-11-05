@@ -659,6 +659,8 @@ enum LyricsEngine {
                 guard let close = rest[open...].firstIndex(of: ">") else { break }
                 let parts = rest[rest.index(after: open)..<close].split(separator: ":")
                 if parts.count == 2, let minutes = Double(parts[0]), let seconds = Double(parts[1]) {
+                    // Word times are relative to the line's FIRST stamp; each later stamp of the same
+                    // (repeated) line offsets them by that stamp, not by the first.
                     words.append(minutes * 60 + seconds - stamps[0])
                 } else {
                     plain += rest[open...close]
@@ -667,7 +669,7 @@ enum LyricsEngine {
             }
             plain += rest
             let text = plain.trimmingCharacters(in: .whitespaces)
-            for at in stamps { out.append((at, text, words.map { at + $0 })) }
+            for (_, base) in stamps.enumerated() { out.append((base, text, words.map { $0 + (base - stamps[0]) })) }
         }
         return out.sorted { $0.0 < $1.0 }.enumerated().map {
             LyricLine(id: $0.offset, at: $0.element.0, text: $0.element.1, words: $0.element.2)
