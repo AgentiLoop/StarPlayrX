@@ -151,6 +151,7 @@ final class MenuController: NSObject, ObservableObject {
 
     /// Clicking the app's icon while it runs (Finder, Launchpad, Spotlight): open under the menu bar
     /// of the display the click was on. Already open under that display's menu bar: stays open.
+    /// Goes through the menu bar icon like a click on it, so the icon lights up as for a real click.
     func showOnMouseDisplay() {
         let at = NSEvent.mouseLocation
         let screen = NSScreen.screens.first { NSMouseInRect(at, $0.frame, false) }
@@ -159,8 +160,18 @@ final class MenuController: NSObject, ObservableObject {
             panel.makeKeyAndOrderFront(nil)
             return
         }
-        showUnderMenuBar(on: screen)
+        reopenTarget = screen
+        defer { reopenTarget = nil }
+        closingPress = false
+        statusItem.button?.performClick(nil)
+        menuLog.log("reopen performClick visible=\(self.panel.isVisible)")
+        // The click began no session (or there is no button): open it directly, lit by hand.
+        if !panel.isVisible { showUnderMenuBar(on: screen) }
     }
+
+    /// The display an app-icon reopen asked for, while its simulated icon click runs.
+    private var reopenTarget: NSScreen?
+
 
     /// Puts the panel under the menu bar — gliding it back first if it was torn off.
     /// `target`: that display's menu bar instead of the one the status item's window is on.
@@ -465,12 +476,13 @@ extension MenuController: @preconcurrency NSStatusItemExpandedInterfaceDelegate 
         }
         closingPress = false
         // Already open under the icon on this display: this session is the highlight for it.
-        if panel.isVisible, !detached, iconScreen == nil || iconScreen == panel.screen {
+        let openOn = reopenTarget ?? iconScreen
+        if panel.isVisible, !detached, openOn == nil || openOn == panel.screen {
             lit?.invalidate(); lit = nil; return
         }
         // Closed, or open under another display's icon: open (or move) it under this one.
         sessionBeganAt = CACurrentMediaTime()
-        showUnderMenuBar()
+        showUnderMenuBar(on: reopenTarget)
     }
 
     func statusItemDidEndExpandedInterfaceSession(_ statusItem: NSStatusItem, animated: Bool) {
