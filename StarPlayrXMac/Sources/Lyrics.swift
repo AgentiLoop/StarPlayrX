@@ -740,8 +740,8 @@ struct LyricsPane: View {
             }
             Spacer()
             Button("Art") { menu.bigArt = true }
-                .disabled(radio.current.flatMap { radio.nowPlaying[$0.id]?.image }.map(\.isEmpty) ?? true)
-                .help("Show the album art full size")
+                .disabled(radio.current == nil)
+                .help("Show the art full size")
             Button("Chs") { menu.lyrics = false }
                 .help("Back to the channel list")
                 .accessibilityLabel("Channels")

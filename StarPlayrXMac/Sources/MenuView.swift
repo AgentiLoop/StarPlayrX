@@ -207,15 +207,16 @@ struct MenuView: View {
             .accessibilityElement()
             .accessibilityAddTraits(.isButton)
             .accessibilityLabel(radio.current.map { isAlbumArt ? "Album art, \($0.name)" : "Channel art, \($0.name)" } ?? "StarPlayrX")
-            .accessibilityHint(bigArtURL != nil ? "Shows the \(menu.lyrics ? "lyrics" : "channel list") again"
-                               : songArtURL != nil ? "Shows the album art full size"
-                               : "Switches between the channel logo and the show art")
+            .accessibilityHint(bigArtURL == nil ? (shownArtURL != nil ? "Shows the art full size" : "Shows the channel in the list")
+                               : "Switches between the album art, channel logo and show art")
             .simultaneousGesture(TapGesture().onEnded {
-                // Click song art: full size over the list or lyrics, and back (same as clicking the big art).
-                // Otherwise channel logo ⇄ show art, remembered per channel. When there's nothing
-                // to switch (no show art) it scrolls the list to the channel as before.
-                if songArtURL != nil { menu.bigArt.toggle(); return }
-                if let id = radio.current?.id, radio.toggleShowArt(id) { return }
+                // Click the art: always full size over the list or lyrics first (album, channel or show art).
+                // While it's big, each click steps album art → channel logo → show art, as the channel has
+                // them (remembered per channel); with nothing to switch to it closes the big art again.
+                // With no art at all it scrolls the list to the channel as before.
+                if !menu.bigArt, shownArtURL != nil { menu.bigArt = true; return }
+                if let id = radio.current?.id, radio.cycleArt(id) { return }
+                if menu.bigArt { menu.bigArt = false; return }
                 revealCurrent()
             })
 
@@ -276,17 +277,19 @@ struct MenuView: View {
         if let id = radio.current?.id { menu.reveal(id) }
     }
 
-    /// The current song's own album art (not the show art a channel may show instead), nil when there is none.
-    private var songArtURL: String? {
-        radio.current.flatMap { radio.nowPlaying[$0.id]?.image }.flatMap { $0.isEmpty ? nil : $0 }
+    /// The art the small tile shows now (album art, show art or the channel logo), nil when there is none.
+    private var shownArtURL: String? {
+        radio.current.flatMap { ch in radio.displayed(ch.id).map(\.image).flatMap { $0.isEmpty ? nil : $0 } ?? ch.imageURL }
+            .flatMap { $0.isEmpty ? nil : $0 }
     }
 
-    /// The album art shown full size over the list or lyrics; nil when it's off or the song has no art.
-    private var bigArtURL: String? { menu.bigArt ? songArtURL : nil }
+    /// The art shown full size over the list or lyrics; nil when it's off or there is no art.
+    private var bigArtURL: String? { menu.bigArt ? shownArtURL : nil }
 
-    /// Full-size album art, as wide as the panel's content; clicking it shows the list or lyrics again.
+    /// Full-size art, as wide as the panel's content; clicking it shows the list or lyrics again.
     private func bigArt(_ url: String) -> some View {
-        CachedArt(url: url, size: 336, isAlbumArt: true) { art, _ in
+        let isLogo = radio.current.map { radio.shownArt($0.id) == .channel } ?? false
+        return CachedArt(url: url, size: 336, isAlbumArt: !isLogo) { art, _ in
             // Color.clear until it loads: an empty view never runs CachedArt's .task, so nothing would load.
             if let art { Image(nsImage: art).resizable().scaledToFit() } else { Color.clear }
         }
@@ -296,7 +299,7 @@ struct MenuView: View {
         .onTapGesture { menu.bigArt = false }
         .accessibilityElement()
         .accessibilityAddTraits(.isButton)
-        .accessibilityLabel("Album art")
+        .accessibilityLabel(isLogo ? "Channel art" : "Album art")
         .accessibilityHint(menu.lyrics ? "Shows the lyrics" : "Shows the channel list")
     }
 

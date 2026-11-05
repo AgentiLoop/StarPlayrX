@@ -236,12 +236,50 @@ final class Radio: ObservableObject {
     /// Logo is the default; the choice is per channel and remembered.
     @Published private(set) var showArtChannels = Set(UserDefaults.standard.stringArray(forKey: "showArtChannels") ?? [])
 
-    /// Now playing as shown: song art if any, else the show's art on channels where the user chose it,
-    /// else no image (the channel logo is drawn).
+    /// Which art the now-playing tile shows.
+    enum ArtKind { case album, channel, show }
+
+    /// Channels where the user clicked past the song's album art to the channel logo or show art
+    /// (this session only). Without song art, `showArtChannels` decides instead.
+    @Published private(set) var artChoice = [String: ArtKind]()
+
+    /// The art a channel has right now, in click order: album art, channel logo, show art.
+    func artKinds(_ id: String) -> [ArtKind] {
+        guard let np = nowPlaying[id] else { return [.channel] }
+        return (np.image.isEmpty ? [] : [.album]) + [.channel] + (np.showImage.isEmpty ? [] : [.show])
+    }
+
+    /// The art shown for a channel: song art unless the user clicked past it, else the show's art
+    /// on channels where the user chose it, else the channel logo.
+    func shownArt(_ id: String) -> ArtKind {
+        let kinds = artKinds(id)
+        if kinds.contains(.album) {
+            return artChoice[id].flatMap { kinds.contains($0) ? $0 : nil } ?? .album
+        }
+        return showArtChannels.contains(id) && kinds.contains(.show) ? .show : .channel
+    }
+
+    /// Now playing as shown: the image of `shownArt` (empty for the channel logo, which is drawn instead).
     func displayed(_ id: String) -> NowPlaying? {
         guard var np = nowPlaying[id] else { return nil }
-        if np.image.isEmpty, showArtChannels.contains(id) { np.image = np.showImage }
+        switch shownArt(id) {
+        case .album: break
+        case .channel: np.image = ""
+        case .show: np.image = np.showImage
+        }
         return np
+    }
+
+    /// Clicking the small artwork steps album art → channel logo → show art, skipping what the channel
+    /// doesn't have. Returns false when there is nothing to switch to.
+    @discardableResult
+    func cycleArt(_ id: String) -> Bool {
+        let kinds = artKinds(id)
+        guard kinds.contains(.album) else { return toggleShowArt(id) }
+        guard kinds.count > 1, let i = kinds.firstIndex(of: shownArt(id)) else { return false }
+        let next = kinds[(i + 1) % kinds.count]
+        artChoice[id] = next == .album ? nil : next
+        return true
     }
 
     /// Clicking the artwork switches between the channel logo and the show's art, for that channel only.
