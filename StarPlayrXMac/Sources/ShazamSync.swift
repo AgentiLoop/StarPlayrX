@@ -87,7 +87,8 @@ final class ShazamSync: @unchecked Sendable {
         }
     }
 
-    /// An Xtra track: matches the ~12 s of the downloaded file from `seconds` on. `done` gets the
+    /// An Xtra track: matches 9.75 s of the downloaded file from `seconds` on — one segment's worth,
+    /// as on the live channels. `done` gets the
     /// match, whose `offset` is how far into the record the file is at `seconds` (nil on no match,
     /// or when another request is in flight).
     func track(_ file: URL, at seconds: Double, done: @escaping @Sendable (Match?) -> Void) {
@@ -96,7 +97,7 @@ final class ShazamSync: @unchecked Sendable {
         lock.unlock()
         guard let ask else { done(nil); return }
         queue.async { [self] in
-            guard let signature = Self.signature(file, from: seconds, length: 12) else {
+            guard let signature = Self.signature(file, from: seconds, length: 9.75) else {
                 finish(ask) { _ in }; done(nil); return
             }
             match(signature, ask) { [self] media, _ in

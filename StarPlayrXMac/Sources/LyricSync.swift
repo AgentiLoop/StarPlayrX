@@ -117,24 +117,39 @@ final class LyricSync: ObservableObject {
     /// Xtra tracks: the player knows where the file is, but not where the record is — the file can
     /// be another edit, or have its own lead-in, and the lyrics are timed to the record. Shazam
     /// says how far into the record a stretch of the file is, so the difference is the shift.
-    /// One match per track is enough: the file doesn't drift.
+    /// One match per track is enough: the file doesn't drift. Until Shazam has one (no match, no
+    /// timing, or a shift too large to be right) the aligner measures the file's own audio, the
+    /// same fallback the live channels have; with neither, the player's position stands.
     private var xtraFile: URL?
     private var xtraFound: Double?
     private var xtraTries = 0
     private var xtraAsked = Date.distantPast
+    /// The aligner's shift for this file, and when it last measured.
+    private var xtraAligned: Double?
+    private var xtraAlignedAt = Date.distantPast
+    /// Xtra tracks come as the same ~9.75 s segments as the live channels: Shazam hears one
+    /// segment's worth at a time, one segment apart, and the aligner measures as often.
+    private static let xtraSegment: TimeInterval = 9.75
+    /// A file position more than one segment away from the record is way off, not a lead-in:
+    /// anything larger is thrown away rather than moving the lyrics.
+    private static let xtraMaxShift: TimeInterval = 9.75
 
-    /// The Shazam shift for this Xtra file, once there is one.
-    func xtraShift(for file: URL) -> Double? { file == xtraFile ? xtraFound : nil }
+    /// The shift for this Xtra file: Shazam's once there is one, else the aligner's.
+    func xtraShift(for file: URL) -> Double? { file == xtraFile ? (xtraFound ?? xtraAligned) : nil }
 
     private func xtra() {
         // Timed lyrics to line up, or none at all under the station's names: then Shazam's names
         // are the next thing to look them up by.
         guard let (file, at) = Radio.shared.xtraNow, let np = Radio.shared.playingNow,
               LyricsStore.shared.missed || LyricsStore.shared.lyrics?.synced == true else { return }
-        if file != xtraFile { xtraFile = file; xtraFound = nil; xtraTries = 0; xtraAsked = .distantPast }
+        if file != xtraFile {
+            xtraFile = file; xtraFound = nil; xtraTries = 0; xtraAsked = .distantPast
+            xtraAligned = nil; xtraAlignedAt = .distantPast
+        }
+        if xtraFound == nil { xtraAlign(file) }
         // Wait out the first seconds (a fade-in or silence matches nothing), then a few tries,
-        // spaced so a request that failed has had its answer.
-        guard xtraFound == nil, xtraTries < 6, at >= 3, Date().timeIntervalSince(xtraAsked) >= 12 else { return }
+        // one segment apart, so a request that failed has had its answer.
+        guard xtraFound == nil, xtraTries < 6, at >= 3, Date().timeIntervalSince(xtraAsked) >= Self.xtraSegment else { return }
         xtraTries += 1
         xtraAsked = Date()
         let key = LyricsStore.key(np.artist, np.song)
@@ -147,20 +162,61 @@ final class LyricSync: ObservableObject {
                     store.tryHeard(artist: match.artist, song: match.title, duration: Radio.shared.trackDuration)
                 }
                 guard let match, store.missed || Self.heard(match, key: key) else {
-                    sync.report = "Xtra: no Shazam match yet (try \(sync.xtraTries))"
+                    sync.report = "Xtra: no Shazam match yet (try \(sync.xtraTries))" + sync.xtraFallback
                     return
                 }
-                // No usable timing from Shazam: the player's own position (no shift) stands.
+                // No usable timing from Shazam: the fallback (aligner, else the player's position) stands.
                 guard Self.hasTiming(match, lyrics: store.lyrics) else {
-                    sync.report = "Xtra: Shazam gave no timing, using the player's position (try \(sync.xtraTries))"
+                    sync.report = "Xtra: Shazam gave no timing (try \(sync.xtraTries))" + sync.xtraFallback
                     return
                 }
                 let found = match.offset - at
-                guard abs(found) <= 120 else { return }
+                guard abs(found) <= Self.xtraMaxShift else {
+                    sync.report = String(format: "Xtra: ignored Shazam %+.1fs, more than %.2fs is way off (try %d)",
+                                         found, Self.xtraMaxShift, sync.xtraTries) + sync.xtraFallback
+                    return
+                }
                 sync.xtraFound = found
                 sync.report = String(format: "Xtra %+.1fs (Shazam: %@ – %@ at %.1fs)", found, match.artist, match.title, match.offset)
             }
         }
+    }
+
+    /// What the Xtra lyrics are timed by while Shazam has nothing usable, for the report.
+    private var xtraFallback: String {
+        xtraAligned.map { String(format: " · using aligner %+.1fs", $0) } ?? " · using the player's position"
+    }
+
+    /// The live channels' fallback, on the Xtra file: the aligner lines the lyrics up with the
+    /// file's own audio, once a segment, until Shazam places it.
+    private func xtraAlign(_ file: URL) {
+        guard let lyrics = LyricsStore.shared.lyrics, lyrics.synced,
+              Date().timeIntervalSince(xtraAlignedAt) >= Self.xtraSegment,
+              let onsets = SpectrumTimeline.shared.onsets(track: file) else { return }
+        xtraAlignedAt = Date()
+        let times = Self.lineTimes(lyrics)
+        guard times.count >= LyricAligner.minimumLines,
+              let found = LyricAligner.align(lineTimes: times, songStart: Date(timeIntervalSinceReferenceDate: 0),
+                                             onsets: onsets) else { return }
+        // The aligner says line t is sung at t + shift seconds into the file; the lyrics are drawn
+        // at file position + Xtra shift, so the Xtra shift is the opposite of it.
+        let shift = -found.shift
+        guard abs(shift) <= Self.xtraMaxShift else { return }
+        xtraAligned = shift
+        if xtraFound == nil {
+            report = String(format: "Xtra %+.1fs (aligner: confidence %.1f, margin %.2f, %d lines)",
+                            shift, found.confidence, found.margin, found.lines)
+        }
+    }
+
+    /// The moments the aligner lines up with the audio: only lines the pane draws (an LRC times
+    /// the gaps between verses as empty lines, and nobody sings those), plus every word where the
+    /// source times them. Words within a tenth of a second of the last are the same moment.
+    static func lineTimes(_ lyrics: Lyrics) -> [Double] {
+        let stamps = lyrics.lines.flatMap { $0.text.isEmpty ? [] : ($0.at.map { [$0] } ?? []) + $0.words }
+        var times = [Double]()
+        for at in stamps.sorted() where at - (times.last ?? -.infinity) >= 0.1 { times.append(at) }
+        return times
     }
 
     /// Takes the user's word for where the song is: the shift that puts the line they clicked

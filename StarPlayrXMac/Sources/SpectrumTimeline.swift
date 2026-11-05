@@ -236,6 +236,34 @@ final class SpectrumTimeline: @unchecked Sendable {
         return values.isEmpty ? nil : (start, first.hop, values)
     }
 
+    /// The same onset curve for a downloaded Xtra track, on the file's own clock: the start is
+    /// "seconds into the file" counted from the reference date, so `LyricAligner` run with a song
+    /// start of `Date(timeIntervalSinceReferenceDate: 0)` measures against the file position.
+    /// Same voice-band rise as `onsets()`; Xtra frames have no classifier weighting.
+    func onsets(track file: URL) -> (start: Date, step: Double, values: [Float])? {
+        lock.lock()
+        let t = tracks[file]
+        lock.unlock()
+        guard let t, t.hop > 0, !t.frames.isEmpty else { return nil }
+        var values = [Float]()
+        var previous: [Float]?
+        for frame in t.frames {
+            var flux: Float = 0
+            if let previous, previous.count == frame.count, frame.count >= Self.vocal.upperBound {
+                var inside: Float = 0, outside: Float = 0
+                for i in 0..<frame.count {
+                    let rise = max(0, frame[i] - previous[i])
+                    if Self.vocal.contains(i) { inside += rise } else { outside += rise }
+                }
+                let n = Float(Self.vocal.count)
+                flux = max(0, inside / n - outside / (Float(frame.count) - n))
+            }
+            values.append(flux)
+            previous = frame
+        }
+        return (Date(timeIntervalSinceReferenceDate: Double(t.first) * t.hop), t.hop, values)
+    }
+
     /// The real on-air time (stream PDT) of the player's current date, which runs ahead of it.
     func realDate(at date: Date) -> Date? {
         lock.lock()
