@@ -150,6 +150,11 @@ final class LyricSync: ObservableObject {
                     sync.report = "Xtra: no Shazam match yet (try \(sync.xtraTries))"
                     return
                 }
+                // No usable timing from Shazam: the player's own position (no shift) stands.
+                guard Self.hasTiming(match, lyrics: store.lyrics) else {
+                    sync.report = "Xtra: Shazam gave no timing, using the player's position (try \(sync.xtraTries))"
+                    return
+                }
                 let found = match.offset - at
                 guard abs(found) <= 120 else { return }
                 sync.xtraFound = found
@@ -210,9 +215,13 @@ final class LyricSync: ObservableObject {
         // aligner below have its say.
         let (match, error) = ShazamSync.shared.current
         let heard = match.map { Self.heard($0, key: key) } ?? false
-        // Until Shazam has heard this song, ask on every segment rather than every half minute.
-        ShazamSync.shared.want(eager: !heard)
-        if let match, heard {
+        // Shazam knew the song but gave no usable timing for it: its names still count, its offset
+        // doesn't, and the lyrics stay on the fallback (the aligner, else the remembered shift or
+        // the cut's stamp) instead of being thrown wherever a bad offset puts them.
+        let timed = match.map { Self.hasTiming($0, lyrics: lyrics) } ?? false
+        // Until Shazam has timed this song, ask on every segment rather than every half minute.
+        ShazamSync.shared.want(eager: !(heard && timed))
+        if let match, heard, timed {
             // At broadcast time `match.real` the record was `match.offset` seconds in; the cut's
             // stamp put that moment `real - songStart` in. The difference is the shift. Shazam
             // heard this very song, so its word stands even when the cut's stamp is minutes out
@@ -229,7 +238,8 @@ final class LyricSync: ObservableObject {
         }
         // Shazam already placed this song (its match since gone stale or moved on): keep that.
         if heldBy == .shazam { return }
-        let shazam = error.map { " · Shazam: \($0)" } ?? ""
+        let shazam = (heard && !timed ? " · Shazam: no timing, using fallback" : "")
+            + (error.map { " · Shazam: \($0)" } ?? "")
         // Only lines the pane draws: an LRC times the gaps between verses as empty lines, and
         // nobody sings those, so they would drag the match towards silence. Where the source times
         // every word, each word is a moment too: a rap verse gives the aligner ten points a line
@@ -284,6 +294,16 @@ final class LyricSync: ObservableObject {
         report = String(format: "%+.1fs (confidence %.1f, margin %.2f, %d lines, %.0fs of audio)",
                         found.shift, found.confidence, found.margin, found.lines, audio) + shazam
         LyricsCache.shared.saveShift(found.shift, for: key)
+    }
+
+    /// Whether a match says where in the record it was heard. Shazam names a song it has no timing
+    /// for with an offset of zero, and an offset past the end of the lyrics (plus a minute for an
+    /// outro) can't be this record either; trusting either throws every line out, so the caller
+    /// stays on its fallback timing instead.
+    static func hasTiming(_ match: ShazamSync.Match, lyrics: Lyrics?) -> Bool {
+        guard match.offset.isFinite, match.offset > 0.5 else { return false }
+        guard let last = lyrics?.lines.compactMap(\.at).max() else { return true }
+        return match.offset <= last + 60
     }
 
     /// Shazam heard the song on now: by the station's names, or by the names the lyrics were found
