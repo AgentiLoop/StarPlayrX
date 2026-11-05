@@ -161,12 +161,48 @@ final class MenuController: NSObject, ObservableObject {
             return
         }
         reopenTarget = screen
-        defer { reopenTarget = nil }
         closingPress = false
-        statusItem.button?.performClick(nil)
-        menuLog.log("reopen performClick visible=\(self.panel.isVisible)")
-        // The click began no session (or there is no button): open it directly, lit by hand.
-        if !panel.isVisible { showUnderMenuBar(on: screen) }
+        // Our own posted click mustn't count as a click outside the panel that closes it.
+        removeOutsideClick()
+        guard clickMenuBarIcon(on: screen) else {
+            // No real click possible (no Accessibility permission, or no button): the old way.
+            defer { reopenTarget = nil }
+            statusItem.button?.performClick(nil)
+            menuLog.log("reopen performClick visible=\(self.panel.isVisible)")
+            if !panel.isVisible { showUnderMenuBar(on: screen) }
+            return
+        }
+        // The real click begins AppKit's session (and its genuine highlight) asynchronously.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+            guard let self else { return }
+            self.reopenTarget = nil
+            menuLog.log("reopen click visible=\(self.panel.isVisible)")
+            if !self.panel.isVisible { self.showUnderMenuBar(on: screen) }
+        }
+    }
+
+    /// Posts a genuine mouse click on the menu bar icon (on `target`'s menu bar), then puts the
+    /// pointer back. False when it can't (needs Accessibility permission to post events).
+    private func clickMenuBarIcon(on target: NSScreen?) -> Bool {
+        guard AXIsProcessTrusted(), let window = statusItem.button?.window,
+              let primary = NSScreen.screens.first else { return false }
+        var frame = window.frame
+        if let target, let iconScreen = window.screen, target != iconScreen {
+            frame.origin = NSPoint(x: target.frame.minX + frame.minX - iconScreen.frame.minX,
+                                   y: target.frame.maxY - (iconScreen.frame.maxY - frame.minY))
+        }
+        // Cocoa (y up from the primary screen's bottom) to Quartz (y down from its top).
+        let point = CGPoint(x: frame.midX, y: primary.frame.maxY - frame.midY)
+        let back = CGPoint(x: NSEvent.mouseLocation.x, y: primary.frame.maxY - NSEvent.mouseLocation.y)
+        let source = CGEventSource(stateID: .hidSystemState)
+        guard let down = CGEvent(mouseEventSource: source, mouseType: .leftMouseDown, mouseCursorPosition: point, mouseButton: .left),
+              let up = CGEvent(mouseEventSource: source, mouseType: .leftMouseUp, mouseCursorPosition: point, mouseButton: .left)
+        else { return false }
+        down.post(tap: .cghidEventTap)
+        up.post(tap: .cghidEventTap)
+        CGWarpMouseCursorPosition(back)
+        CGAssociateMouseAndMouseCursorPosition(1)
+        return true
     }
 
     /// The display an app-icon reopen asked for, while its simulated icon click runs.
