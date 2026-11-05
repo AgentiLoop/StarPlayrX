@@ -93,6 +93,82 @@ enum LyricAligner {
         return zip(values, background).map { $0 / max($1, floor) }
     }
 
+    /// The onset curve with its running totals staged for `arrivalScore`: where each line falls
+    /// on the curve in frames when nothing is shifted, the normalized curve, and prefix sums, so
+    /// comparing a window either side of a stamp costs four lookups whatever the window's width,
+    /// instead of sixty adds per line per shift.
+    private static func prepared(lineTimes: [Double], songStart: Date,
+                                 onsets: (start: Date, step: Double, values: [Float]))
+    -> (frames: [Double], curve: [Float], sums: [Double], step: Double)? {
+        guard onsets.step > 0, !onsets.values.isEmpty, !lineTimes.isEmpty else { return nil }
+        let offset = songStart.timeIntervalSince(onsets.start) / onsets.step
+        let frames = lineTimes.map { offset + $0 / onsets.step }
+        let curve = normalized(smoothed(onsets.values, radius: Int(smoothing / onsets.step)))
+        var sums = [Double](repeating: 0, count: curve.count + 1)
+        for i in 0..<curve.count { sums[i + 1] = sums[i] + Double(curve[i]) }
+        return (frames, curve, sums, onsets.step)
+    }
+
+    /// The mean arrival score of one shift, and how many lines it counted: how much the music
+    /// OPENS UP on each line's stamp, not how loud it is there — the moment the line starts,
+    /// against the lull it came out of. A busy bar scores nothing unless the busyness ARRIVES on
+    /// the stamp, which is what the start of a sung line is. That is the difference between
+    /// landing on the line and landing near it: the level stays just as high for half a second
+    /// after the voice comes in, and half a second is the word or two the highlight was out by,
+    /// while the rise is only at the frame it actually happens. An average, not a sum, so a shift
+    /// that drags more lines into the window doesn't win on count alone. Each line's contribution
+    /// is floored at nothing: a line that lands on a fade-out says nothing and mustn't pay for the
+    /// lines that did land on a voice. Nil when too few lines fall inside the audio to say
+    /// anything about this shift.
+    private static func arrivalScore(_ shift: Double, frames: [Double], lineTimes: [Double],
+                                     curve: [Float], sums: [Double], step: Double) -> (score: Double, lines: Int, span: Double)? {
+        let delta = shift / step
+        let window = max(1, Int(arrival / step))
+        let back = max(window + 1, Int(lull / step))
+        var total = 0.0
+        var counted = 0
+        var first = Double.infinity
+        var last = -Double.infinity
+        for (i, frame) in frames.enumerated() {
+            let index = Int((frame + delta).rounded())
+            guard index - back >= 0, index + window <= curve.count else { continue }
+            let before = (sums[index] - sums[index - back]) / Double(back)
+            let after = (sums[index + window] - sums[index]) / Double(window)
+            total += max(0, after - before)
+            counted += 1
+            first = min(first, lineTimes[i])
+            last = max(last, lineTimes[i])
+        }
+        guard counted >= minimumLines, last - first >= minimumSpan else { return nil }
+        return (total / Double(counted), counted, last - first)
+    }
+
+    /// The score one shift gets on this audio. `align` scores a whole range of shifts this way;
+    /// a lock already held is checked against fresh audio by scoring it alone, so the two are
+    /// compared on the SAME audio. Nil when too few lines fall inside to say anything.
+    static func score(of shift: Double, lineTimes: [Double], songStart: Date,
+                      onsets: (start: Date, step: Double, values: [Float])) -> Double? {
+        guard let p = prepared(lineTimes: lineTimes, songStart: songStart, onsets: onsets) else { return nil }
+        return arrivalScore(shift, frames: p.frames, lineTimes: lineTimes, curve: p.curve, sums: p.sums, step: p.step)?.score
+    }
+
+    /// Which of two locks to keep. A candidate within `agree` of the held one is a refinement of
+    /// it and always wins; one further away is a rival peak (a chorus echoing a verse, a line
+    /// away), and the two confidences were earned on different amounts of audio, so comparing
+    /// them says nothing — both shifts are re-scored on the audio the candidate was just
+    /// measured on, and the one that fits THAT better is the lock. That is what lets a highlight
+    /// parked a line out correct itself once enough audio has come in to tell the lines apart.
+    static func choose(held: Alignment, heldShift: Double, candidate: Alignment,
+                       lineTimes: [Double], songStart: Date,
+                       onsets: (start: Date, step: Double, values: [Float]), agree: Double) -> Alignment {
+        guard abs(candidate.shift - heldShift) > agree else { return candidate }
+        let heldScore = score(of: heldShift, lineTimes: lineTimes, songStart: songStart, onsets: onsets)
+        let candidateScore = score(of: candidate.shift, lineTimes: lineTimes, songStart: songStart, onsets: onsets)
+        if let h = heldScore, let c = candidateScore, h >= c { return held }
+        if heldScore != nil, candidateScore == nil { return held }
+        return candidate
+    }
+
     /// `lineTimes` are seconds into the recording (the LRC stamps of lines that have words).
     /// `songStart` is where the broadcast says the cut began, `onsets` the curve from
     /// `SpectrumTimeline.onsets(channel:)`. Nil when there isn't enough to be sure.
@@ -107,49 +183,15 @@ enum LyricAligner {
     static func align(lineTimes: [Double], songStart: Date,
                       onsets: (start: Date, step: Double, values: [Float]),
                       over range: ClosedRange<Double>) -> Alignment? {
-        guard onsets.step > 0, !onsets.values.isEmpty, !lineTimes.isEmpty else { return nil }
-        // Where each line falls on the onset curve when nothing is shifted, in frames.
-        let offset = songStart.timeIntervalSince(onsets.start) / onsets.step
-        let frames = lineTimes.map { offset + $0 / onsets.step }
-        let curve = normalized(smoothed(onsets.values, radius: Int(smoothing / onsets.step)))
-        // Running totals, so comparing a window either side of a stamp costs four lookups whatever
-        // the window's width, instead of sixty adds per line per shift.
-        var sums = [Double](repeating: 0, count: curve.count + 1)
-        for i in 0..<curve.count { sums[i + 1] = sums[i] + Double(curve[i]) }
-        let window = max(1, Int(arrival / onsets.step))
-        let back = max(window + 1, Int(lull / onsets.step))
+        guard let p = prepared(lineTimes: lineTimes, songStart: songStart, onsets: onsets) else { return nil }
+        let (frames, curve, sums, step0) = p
 
         var scores = [(shift: Double, score: Double, lines: Int)]()
         var shift = range.lowerBound
         while shift <= range.upperBound {
-            let delta = shift / onsets.step
-            var total = 0.0
-            var counted = 0
-            var first = Double.infinity
-            var last = -Double.infinity
-            for (i, frame) in frames.enumerated() {
-                let index = Int((frame + delta).rounded())
-                guard index - back >= 0, index + window <= curve.count else { continue }
-                // How much the music OPENS UP on the stamp, not how loud it is there: the moment
-                // the line starts, against the lull it came out of. A busy bar scores nothing
-                // unless the busyness ARRIVES on the stamp, which is what the start of a sung line
-                // is. That is the difference between landing on the line and landing near it — the
-                // level stays just as high for half a second after the voice comes in, and half a
-                // second is the word or two the highlight was out by, while the rise is only at
-                // the frame it actually happens.
-                let before = (sums[index] - sums[index - back]) / Double(back)
-                let after = (sums[index + window] - sums[index]) / Double(window)
-                // Floored at nothing: a line that lands on a fade-out says nothing about the
-                // shift, and mustn't pay for the lines that did land on a voice.
-                total += max(0, after - before)
-                counted += 1
-                first = min(first, lineTimes[i])
-                last = max(last, lineTimes[i])
-            }
-            // An average, not a sum: a shift that happens to drag more lines into the window
-            // mustn't win on count alone.
-            if counted >= minimumLines, last - first >= minimumSpan {
-                scores.append((shift, total / Double(counted), counted))
+            if let a = arrivalScore(shift, frames: frames, lineTimes: lineTimes,
+                                    curve: curve, sums: sums, step: step0) {
+                scores.append((shift, a.score, a.lines))
             }
             shift += step
         }

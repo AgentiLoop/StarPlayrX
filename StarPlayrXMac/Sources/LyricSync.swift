@@ -32,6 +32,9 @@ final class LyricSync: ObservableObject {
     /// decoded so far, so the later ones have more to go on than the first.
     /// `SpectrumTimeline.decodedSegments` at the last measurement; -1 forces one right away.
     private var lastSegment = -1
+    /// `NowPlaying.startedAt` at the lock, so the same song playing again (a replay an hour later)
+    /// is a new song, not the same one whose lock is still good.
+    private var lockedAt: Date?
 
     /// What placed the current shift this song: Shazam, or the aligner with that confidence.
     /// nil = nothing yet (or only a shift remembered from last time), so any lock replaces it.
@@ -186,10 +189,19 @@ final class LyricSync: ObservableObject {
             report = remembered.map { "remembered \(String(format: "%+.1f", $0))s" } ?? "no measurement yet"
             isPinned = false
             heldBy = nil
+            lockedAt = nil
             lastSegment = -1
         }
         let segment = SpectrumTimeline.shared.decodedSegments
         guard !isPinned, lyrics.synced, segment != lastSegment else { return }
+        // The same song again (replayed later, or re-tuned): its old lock was measured against the
+        // last time it played, so start clean rather than holding a lock for a song that isn't on.
+        if let locked = lockedAt, abs(songStart.timeIntervalSince(locked)) > 120 {
+            heldBy = nil
+            shift = nil
+            lockedAt = nil
+            report = "same song again: re-measuring"
+        }
 
         lastSegment = segment
         // Shazam first: when it has heard this very song, it knows outright how far into the
@@ -209,6 +221,7 @@ final class LyricSync: ObservableObject {
             if abs(found) <= 600 {
                 heldBy = .shazam
                 shift = found
+                lockedAt = songStart
                 report = String(format: "%+.1fs (Shazam: %@ – %@ at %.1fs)", found, match.artist, match.title, match.offset)
                 LyricsCache.shared.saveShift(found, for: key)
                 return
@@ -237,19 +250,37 @@ final class LyricSync: ObservableObject {
             report = String(format: "no confident match (%.0fs of audio, %d lines)", audio, times.count) + shazam
             return
         }
-        // A lock this song already has isn't thrown away for a later one that lands somewhere else:
-        // a chorus or a repeated line is a rival peak a line or two away, and the newest-wins rule
-        // let one of those drag good lyrics back two lines mid-song. Shazam's word is never
-        // overruled by the aligner; an aligner lock only moves by more than `agree` for a lock that
-        // stands out further than it did. Small refinements are always taken.
-        if case .aligner(let held) = heldBy, let shift, abs(found.shift - shift) > Self.agree,
-           found.confidence <= held {
-            report = String(format: "kept %+.1fs; ignored %+.1fs (confidence %.1f <= %.1f)",
-                            shift, found.shift, found.confidence, held) + shazam
+        // A lock this song already has: a new measurement replaces it when it is a refinement of
+        // it (within `agree`), otherwise the two are re-scored on the audio just decoded and the
+        // one that fits THAT better wins — a chorus echoing a verse is a rival peak a line or two
+        // away, and with enough audio behind the measurement the real lock stands out further than
+        // the rival, which is what corrects a highlight that is parked a line out. Shazam's word
+        // is never overruled by the aligner.
+        if case .aligner(let held) = heldBy, let shift, abs(found.shift - shift) > Self.agree {
+            let winner = LyricAligner.choose(held: LyricAligner.Alignment(shift: shift, confidence: held, margin: 0, lines: found.lines),
+                                             heldShift: shift, candidate: found,
+                                             lineTimes: times, songStart: songStart, onsets: onsets, agree: Self.agree)
+            if winner.shift == shift {
+                report = String(format: "kept %+.1fs; ignored %+.1fs (scores %.3f vs %.3f on this audio)",
+                                shift, found.shift,
+                                LyricAligner.score(of: shift, lineTimes: times, songStart: songStart, onsets: onsets) ?? 0,
+                                LyricAligner.score(of: found.shift, lineTimes: times, songStart: songStart, onsets: onsets) ?? 0) + shazam
+                return
+            }
+            heldBy = .aligner(winner.confidence)
+            self.shift = winner.shift
+            lockedAt = songStart
+            report = String(format: "%+.1fs (moved from %+.1fs, scores %.3f vs %.3f, confidence %.1f)",
+                            winner.shift, shift,
+                            LyricAligner.score(of: winner.shift, lineTimes: times, songStart: songStart, onsets: onsets) ?? 0,
+                            LyricAligner.score(of: shift, lineTimes: times, songStart: songStart, onsets: onsets) ?? 0,
+                            winner.confidence) + shazam
+            LyricsCache.shared.saveShift(winner.shift, for: key)
             return
         }
         heldBy = .aligner(found.confidence)
         shift = found.shift
+        lockedAt = songStart
         report = String(format: "%+.1fs (confidence %.1f, margin %.2f, %d lines, %.0fs of audio)",
                         found.shift, found.confidence, found.margin, found.lines, audio) + shazam
         LyricsCache.shared.saveShift(found.shift, for: key)

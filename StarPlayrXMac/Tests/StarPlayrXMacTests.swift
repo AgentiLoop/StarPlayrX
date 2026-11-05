@@ -107,14 +107,14 @@ final class LogicTests: XCTestCase {
 
     func testSearchDropsTheBracketsLiveTitlesCarry() {
         // The live channels tag titles with a decade; LRCLIB has no record under that name.
-        XCTAssertEqual(LyricsStore.withoutParentheses("Break Free (14)"), "Break Free")
-        XCTAssertEqual(LyricsStore.withoutParentheses("All She Wants To Do Is Dance (85)"), "All She Wants To Do Is Dance")
-        XCTAssertEqual(LyricsStore.withoutParentheses("Gold [Radio Edit]"), "Gold")
-        XCTAssertEqual(LyricsStore.withoutParentheses("I'm Good (Blue) (22)"), "I'm Good")
+        XCTAssertEqual(LyricsEngine.withoutParentheses("Break Free (14)"), "Break Free")
+        XCTAssertEqual(LyricsEngine.withoutParentheses("All She Wants To Do Is Dance (85)"), "All She Wants To Do Is Dance")
+        XCTAssertEqual(LyricsEngine.withoutParentheses("Gold [Radio Edit]"), "Gold")
+        XCTAssertEqual(LyricsEngine.withoutParentheses("I'm Good (Blue) (22)"), "I'm Good")
         // Nothing to drop.
-        XCTAssertEqual(LyricsStore.withoutParentheses("Mrs. Robinson"), "Mrs. Robinson")
+        XCTAssertEqual(LyricsEngine.withoutParentheses("Mrs. Robinson"), "Mrs. Robinson")
         // Nothing but brackets: keep it, or there's nothing left to search for.
-        XCTAssertEqual(LyricsStore.withoutParentheses("(14)"), "(14)")
+        XCTAssertEqual(LyricsEngine.withoutParentheses("(14)"), "(14)")
     }
 
     func testHighlightSkipsTheTimedGapsBetweenVerses() {
@@ -251,6 +251,51 @@ final class LogicTests: XCTestCase {
         let huddled = stride(from: 40.0, to: 70.0, by: 2).map { $0 }
         XCTAssertNil(LyricsPane.alignment(lineTimes: huddled, songStart: start,
                                           onsets: (start, 1.0 / 86.0, onsetCurve(lineTimes: huddled, shift: 1))))
+    }
+
+    /// The lock the song already has is re-scored on the SAME audio as a rival candidate, so a
+    /// highlight parked a line out can correct itself once enough audio has come in: a candidate
+    /// within `agree` is always a refinement, a rival wins only when it scores higher on the
+    /// audio just decoded.
+    func testChooseReScoresBothLocksOnTheSameAudio() {
+        let lines = songLines
+        let start = Date(timeIntervalSince1970: 1_000_000)
+        let onsets = (start, 1.0 / 86.0, sungCurve(lineTimes: lines, shift: 2.0, seconds: 240))
+        let truth = 2.0
+        // Within `agree`: a refinement, always taken.
+        let held = LyricAligner.Alignment(shift: truth, confidence: 3.0, margin: 2.0, lines: 20)
+        let near = LyricAligner.Alignment(shift: truth + 0.3, confidence: 1.0, margin: 1.0, lines: 20)
+        XCTAssertEqual(LyricAligner.choose(held: held, heldShift: truth, candidate: near,
+                                           lineTimes: lines, songStart: start, onsets: onsets, agree: 0.5).shift,
+                       truth + 0.3)
+        // A rival a line out: it wins only because it fits the audio better here (the curve was
+        // sung at `truth`, so a rival at -2 does not).
+        let rival = LyricAligner.Alignment(shift: truth - 4.0, confidence: 4.0, margin: 3.0, lines: 20)
+        XCTAssertEqual(LyricAligner.choose(held: held, heldShift: truth, candidate: rival,
+                                           lineTimes: lines, songStart: start, onsets: onsets, agree: 0.5).shift,
+                       truth)
+        // A rival that really does fit better (the audio was sung shifted to it) takes the lock,
+        // whatever confidence the old one carried.
+        let onsets2 = (start, 1.0 / 86.0, sungCurve(lineTimes: lines, shift: truth - 4.0, seconds: 240))
+        XCTAssertEqual(LyricAligner.choose(held: held, heldShift: truth, candidate: rival,
+                                           lineTimes: lines, songStart: start, onsets: onsets2, agree: 0.5).shift,
+                       truth - 4.0)
+    }
+
+    /// `score(of:)` is the same measurement `align` makes of a whole range: the truth it was
+    /// sung at scores best, a line away scores worse, and it is nil when too few lines fall
+    /// inside the audio to say anything.
+    func testScoreOfMatchesAlignsOwnMeasurement() {
+        let lines = songLines
+        let start = Date(timeIntervalSince1970: 1_000_000)
+        let onsets = (start, 1.0 / 86.0, sungCurve(lineTimes: lines, shift: 1.5, seconds: 240))
+        let at = LyricAligner.score(of: 1.5, lineTimes: lines, songStart: start, onsets: onsets)
+        let out = LyricAligner.score(of: 1.5 - 4.0, lineTimes: lines, songStart: start, onsets: onsets)
+        XCTAssertNotNil(at)
+        XCTAssertGreaterThan(at ?? 0, out ?? 0)
+        // Too few lines inside the audio: nothing to say about any shift.
+        let short = [Float](repeating: 0.5, count: 86 * 30)
+        XCTAssertNil(LyricAligner.score(of: 0, lineTimes: lines, songStart: start, onsets: (start, 1.0 / 86.0, short)))
     }
 
     func testCachedLinesSurviveTheRoundTrip() {
