@@ -38,6 +38,9 @@ final class SpectrumTimeline: @unchecked Sendable {
     private var cursor: (sequence: Int, time: Double, duration: Double)?
     /// Tagged segment length (EXTINF): ~9.75 s from the API (LiveLoader); read from the playlist.
     private var nominal = 10.0
+    /// Measured segment length: what the decoded audio of a segment really ran to (~9.75 s), so
+    /// PDT extrapolation doesn't assume 10 s per segment and drift ahead of the real stream time.
+    private var measured = 10.0
     private var live = [Chunk]()
     private var tracks = [URL: Track]()
 
@@ -122,6 +125,10 @@ final class SpectrumTimeline: @unchecked Sendable {
         live.append(Chunk(channel: Self.channel(name), start: start, real: realDates[name], sequence: sequence,
                           hop: hop, duration: duration, frames: frames, voice: voice))
         if live.count > 30 { live.removeFirst(live.count - 30) }
+        // What segments really hold, from the decoded audio: the player's date runs on the tagged
+        // EXTINF per segment, so every untagged segment it stamps ran ~0.25 s further ahead than the
+        // real PDT; this is what puts it back on the real time.
+        if duration > 1, duration < nominal * 1.5 { measured = measured * 0.5 + duration * 0.5 }
         decodedCount += 1
         lock.unlock()
     }
@@ -228,10 +235,14 @@ final class SpectrumTimeline: @unchecked Sendable {
     func realDate(at date: Date) -> Date? {
         lock.lock()
         defer { lock.unlock() }
+        // The player counts each segment as its tagged slot (EXTINF, ~10 s) but the segment holds
+        // `measured` seconds of audio (~9.75 s), so within the slot the real time runs behind the
+        // player's by that ratio — measured from the decoded audio, not assumed.
+        let scale = min(1, measured / max(nominal, 1e-6))
         for (name, start) in segmentDates {
             let t = date.timeIntervalSince(start)
             guard t >= 0, t < nominal, let real = realDates[name] else { continue }
-            return real.addingTimeInterval(t * min(1, 9.7524 / nominal))   // a 10 s slot holds ~9.75 s of audio
+            return real.addingTimeInterval(t * scale)
         }
         return nil
     }

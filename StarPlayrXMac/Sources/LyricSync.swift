@@ -38,7 +38,9 @@ final class LyricSync: ObservableObject {
     private enum Source: Equatable { case shazam, aligner(Double) }
     private var heldBy: Source?
     /// An aligner lock within this many seconds of the one held is the same lock, refined.
-    private static let agree = 1.0
+    /// 0.5 s rather than a second: a lock that moves by more than half a second is a different
+    /// place in the song, and keeping the old one is what parked the highlight a line or two out.
+    private static let agree = 0.5
 
     /// The model's own tick. Measuring used to ride on the lyrics pane's redraw timer, and macOS
     /// stops redrawing a hidden window, so with the window hidden nothing was measured, Shazam
@@ -175,8 +177,13 @@ final class LyricSync: ObservableObject {
     func update(lyrics: Lyrics, key: String, songStart: Date) {
         if key != self.key {
             self.key = key
-            shift = LyricsCache.shared.shift(for: key)
-            report = shift.map { "remembered \(String(format: "%+.1f", $0))s" } ?? "no measurement yet"
+            // Only trust a remembered shift that measured this song in THIS cut: a shift saved from a
+            // different edit of the same song (a radio edit against the album record) is out by more
+            // than the search allows for and drags every line off. A shift of a second or less comes
+            // from the same cut and is safe to start from.
+            let remembered = LyricsCache.shared.shift(for: key).flatMap { abs($0) <= 2 ? $0 : nil }
+            shift = remembered
+            report = remembered.map { "remembered \(String(format: "%+.1f", $0))s" } ?? "no measurement yet"
             isPinned = false
             heldBy = nil
             lastSegment = -1

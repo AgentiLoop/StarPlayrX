@@ -36,12 +36,16 @@ enum LyricAligner {
     /// one chorus can't decide where the whole thing sits.
     static let minimumSpan: Double = 60
     /// How far above the average score the winner has to stand (in standard deviations).
-    static let minimumConfidence = 2.0
+    /// 1.5 rather than a stricter gate: a song whose lines land on the curve a little less
+    /// cleanly (a busy mix, a fast rap) still gets its measured shift, which is what keeps the
+    /// highlight on the line instead of falling back to a constant that is wrong for this song.
+    static let minimumConfidence = 1.5
     /// How much better than the best *other* alignment the winner has to be. A song built on a
     /// repeated phrase ("doo doobie doo…") scores nearly as well a bar or a verse away, and that
     /// near-miss is what puts the highlight four lines out — so when the runner-up is close, the
-    /// measurement is thrown away instead of believed.
-    static let minimumMargin = 1.25
+    /// measurement is thrown away instead of believed. 1.15 still throws away those near-misses
+    /// while letting a chorus that echoes itself through.
+    static let minimumMargin = 1.15
     /// Two peaks closer together than this are the same peak, not a rival.
     static let peakSpacing = 2.5
     /// When the words we were given are not the same CUT of the record as the one on air, they are

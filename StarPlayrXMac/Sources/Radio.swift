@@ -767,12 +767,13 @@ final class Radio: ObservableObject {
 
     /// Seconds added to where the cut's timestamp says we are. A live cut is stamped a little
     /// before the recording's own zero (the station fades in over the end of the last song, and the
-    /// stamp is published early), so without this the lines run ahead of the singing. How far is
-    /// per song — a radio edit is cut differently from the record LRCLIB has — so this is the
-    /// middle of what the live channels show; `defaults write com.starplayrx.mac lyricsLiveLead
-    /// -float -1` (or 0, or -3) moves it without a rebuild.
+    /// stamp is published early), so a small negative trim often lands closer than zero — but the
+    /// real answer is measured from the audio (Shazam, then the aligner) within one decoded segment,
+    /// so this is only the fallback until that lands, and zero is the honest one. How far is per
+    /// song — a radio edit is cut differently from the record LRCLIB has — `defaults write
+    /// com.starplayrx.mac lyricsLiveLead -float -1` (or 0, or -3) moves it without a rebuild.
     static var liveLyricsLead: TimeInterval {
-        UserDefaults.standard.object(forKey: "lyricsLiveLead") as? Double ?? 0.5
+        UserDefaults.standard.object(forKey: "lyricsLiveLead") as? Double ?? 0
     }
 
     /// Length of the Xtra track in the player, which sharpens LRCLIB's matching. Nil on live channels.

@@ -814,12 +814,14 @@ struct LyricsPane: View {
 
     /// Where the pane treats the song as being: the track's position plus `displayLead`, so a line
     /// lights as its first word is sung rather than a word or two after (an LRC stamp is the
-    /// first syllable, and the eye needs the line before the voice reaches it).
+    /// first syllable, and the eye needs the line just before the voice reaches it). Kept small:
+    /// with the position measured from the audio a large lead is what puts the highlight a word or
+    /// two ahead of the singing.
     private var position: TimeInterval? { radio.trackPosition.map { $0 + Self.displayLead } }
 
     /// `defaults write com.starplayrx.mac lyricsDisplayLead -float 1.0` moves it without a rebuild.
     static var displayLead: TimeInterval {
-        UserDefaults.standard.object(forKey: "lyricsDisplayLead") as? Double ?? 0.7
+        UserDefaults.standard.object(forKey: "lyricsDisplayLead") as? Double ?? 0.3
     }
 
     /// The line the user clicked is the line being sung: the shift that makes the song's position
