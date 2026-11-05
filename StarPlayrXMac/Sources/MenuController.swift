@@ -161,19 +161,24 @@ final class MenuController: NSObject, ObservableObject {
             return
         }
         reopenTarget = screen
-        defer { reopenTarget = nil }
         closingPress = false
         // macOS 27: ask AppKit for a real expanded-interface session, exactly what a click on the
-        // icon begins. didBegin opens the panel (on reopenTarget) and the menu bar draws the real
-        // highlight. performClick begins no session, so it never lit the icon.
+        // icon begins. didBegin (a moment later) opens the panel on reopenTarget and the menu bar
+        // draws the real highlight. performClick begins no session, so it never lit the icon.
         let request = Selector(("_requestExpandedInterfaceSession"))
         if #available(macOS 27, *), statusItem.responds(to: request) {
             statusItem.perform(request)
-        } else {
-            statusItem.button?.performClick(nil)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
+                guard let self else { return }
+                self.reopenTarget = nil
+                menuLog.log("reopen visible=\(self.panel.isVisible)")
+                // No session began: open it directly, lit by hand.
+                if !self.panel.isVisible { self.showUnderMenuBar(on: screen) }
+            }
+            return
         }
-        menuLog.log("reopen visible=\(self.panel.isVisible)")
-        // No session began: open it directly, lit by hand.
+        defer { reopenTarget = nil }
+        statusItem.button?.performClick(nil)
         if !panel.isVisible { showUnderMenuBar(on: screen) }
     }
 
