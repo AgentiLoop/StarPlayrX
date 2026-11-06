@@ -284,6 +284,10 @@ struct ChannelList: View {
         let list = ChannelGroup.filter(filtered, group: app.category, sub: app.genre)
         ScrollViewReader { proxy in
             VStack(spacing: 0) {
+                // Under the header's EQ bars, over the chips; stays put while the list scrolls.
+                SearchField(text: $app.search, prompt: "Search channels, artists, songs")
+                    .padding(.horizontal)
+                    .padding(.top, 8)
                 // The category chips (StarPlayrKit's ChannelGroup) stay put over the list while it scrolls.
                 CategoryBar(titles: ChannelGroup.groups(radio.channels), all: "All Channels", selected: $app.category)
                 // Picking a group opens a second row with its detailed chips (Sports → NFL, NBA, …).
@@ -304,6 +308,7 @@ struct ChannelList: View {
                     .id(ch.id)
                 }
                 .listStyle(.plain)
+                .scrollDismissesKeyboard(.immediately)
                 .overlay {
                     if list.isEmpty {
                         Text(app.starsOnly && app.search.isEmpty && app.category == nil ? "No starred channels" : "No matches")
@@ -311,10 +316,38 @@ struct ChannelList: View {
                     }
                 }
             }
-            .searchable(text: $app.search, placement: .navigationBarDrawer(displayMode: .always),
-                        prompt: "Search channels, artists, songs")
             .onAppear { if let id = radio.current?.id { proxy.scrollTo(id, anchor: .center) } }
         }
+    }
+}
+
+/// The search bar in the list's own column (`.searchable` would put it in the navigation bar,
+/// above the now-playing header).
+struct SearchField: View {
+    @Binding var text: String
+    let prompt: String
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
+            TextField(prompt, text: $text)
+                .focused($focused)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+                .submitLabel(.search)
+                .onSubmit { focused = false }
+            if !text.isEmpty {
+                Button { text = "" } label: {
+                    Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Clear search")
+            }
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 7)
+        .background(Color(.tertiarySystemFill), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
 }
 
