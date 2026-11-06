@@ -399,15 +399,20 @@ final class MenuController: NSObject, ObservableObject {
     @Published var search = ""
     /// The star beside the search field: only the starred channels are listed.
     @Published var starsOnly = false
+    /// The category chip over the list (Music, Sports, …; StarPlayrKit's ChannelGroup); nil is "All Channels".
+    @Published var category: String? { didSet { if category != oldValue { subcategory = nil } } }
+    /// The second-row chip inside `category` (NFL, Rock, …); nil is all of them.
+    @Published var subcategory: String?
     /// Clicking the song/artist in Now Playing puts the lyrics where the channel list was.
     @Published var lyrics = false
     /// Clicking the album art shows it full size over the channel list or lyrics; clicking either art puts them back.
     @Published var bigArt = false
 
-    /// The channels the list shows right now (after the search field and the stars filter).
+    /// The channels the list shows right now (after the search field, the stars filter and the category chips).
     var visibleChannels: [Channel] {
-        Channel.filter(Radio.shared.channels, nowPlaying: Radio.shared.nowPlaying, search: search,
-                       stars: starsOnly ? Radio.shared.presets : nil)
+        ChannelGroup.filter(Channel.filter(Radio.shared.channels, nowPlaying: Radio.shared.nowPlaying, search: search,
+                                           stars: starsOnly ? Radio.shared.presets : nil),
+                            group: category, sub: subcategory)
     }
 
     /// The channel list's NSScrollView (the SwiftUI ScrollView's backing view): the one with the tallest

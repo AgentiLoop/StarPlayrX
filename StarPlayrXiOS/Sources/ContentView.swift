@@ -279,17 +279,14 @@ struct ChannelList: View {
     var body: some View {
         let filtered = Channel.filter(radio.channels, nowPlaying: radio.nowPlaying, search: app.search,
                                       stars: app.starsOnly ? radio.presets : nil)
-        let list = filtered.filter { ch in
-            let place = ChannelGroup.place(ch)
-            return (app.category.map { place.group == $0 } ?? true) && (app.genre.map { place.sub == $0 } ?? true)
-        }
+        let list = ChannelGroup.filter(filtered, group: app.category, sub: app.genre)
         ScrollViewReader { proxy in
             VStack(spacing: 0) {
-                // The genre chips stay put over the list while it scrolls.
-                CategoryBar(titles: groups, all: "All Channels", selected: $app.category)
-                // Picking a group opens a second row with its detailed genres (Sports → NFL, NBA, …).
-                if let group = app.category, genres(in: group).count > 1 {
-                    CategoryBar(titles: genres(in: group), all: "All \(group)", selected: $app.genre, small: true)
+                // The category chips (StarPlayrKit's ChannelGroup) stay put over the list while it scrolls.
+                CategoryBar(titles: ChannelGroup.groups(radio.channels), all: "All Channels", selected: $app.category)
+                // Picking a group opens a second row with its detailed chips (Sports → NFL, NBA, …).
+                if let group = app.category, case let subs = ChannelGroup.subs(of: group, in: radio.channels), subs.count > 1 {
+                    CategoryBar(titles: subs, all: "All \(group)", selected: $app.genre, small: true)
                 }
                 List(list) { ch in
                     let isPlaying = ch == radio.current && radio.isPlaying
@@ -317,127 +314,7 @@ struct ChannelList: View {
             .onAppear { if let id = radio.current?.id { proxy.scrollTo(id, anchor: .center) } }
         }
     }
-
-    /// The top-level groups that have channels, in ChannelGroup.order.
-    private var groups: [String] {
-        let present = Set(radio.channels.map { ChannelGroup.place($0).group })
-        return ChannelGroup.order.map(\.group).filter(present.contains)
-    }
-
-    /// The second-row chips of one group that have channels, in ChannelGroup.order.
-    private func genres(in group: String) -> [String] {
-        let present = Set(radio.channels.map(ChannelGroup.place).filter { $0.group == group }.map(\.sub))
-        return (ChannelGroup.order.first { $0.group == group }?.subs ?? []).filter(present.contains)
-    }
 }
-
-/// A fixed, hand-made table from the API's genres (decorations.genre, audited Nov 2026: ~50 genres,
-/// many with 1–5 channels) to five top-level chips and a few second-row chips each. Small genres are
-/// folded into a neighbour so no chip is a lone channel; talk never lands in Music. Xtra channels
-/// carry music genres and sit in Music with the live ones. Search still matches the API's own genre.
-enum ChannelGroup {
-    static let order: [(group: String, subs: [String])] = [
-        ("Music", ["Pop", "Rock", "Hip-Hop & R&B", "Country", "Dance", "Latin & World", "Jazz & Classical",
-                   "Christian", "Chill", "Kids", "Holiday"]),
-        ("Sports", ["Sports Talk", "NFL", "MLB", "NBA", "NHL", "College", "Live Games"]),
-        ("News", ["News", "Business"]),
-        ("Talk", ["Entertainment", "Faith & Health"]),
-        ("Comedy", []),
-    ]
-
-    private static let genres: [String: (group: String, sub: String)] = [
-        "Pop": ("Music", "Pop"),
-        "Rock": ("Music", "Rock"), "Classic Rock": ("Music", "Rock"),
-        "Hard Rock & Metal": ("Music", "Rock"), "Alternative & Indie": ("Music", "Rock"),
-        "Hip-Hop": ("Music", "Hip-Hop & R&B"), "R&B": ("Music", "Hip-Hop & R&B"),
-        "Country": ("Music", "Country"),
-        "Dance & Electronic": ("Music", "Dance"),
-        "Latin": ("Music", "Latin & World"), "International": ("Music", "Latin & World"), "Reggae": ("Music", "Latin & World"),
-        "Jazz": ("Music", "Jazz & Classical"), "Classical": ("Music", "Jazz & Classical"),
-        "Standards": ("Music", "Jazz & Classical"), "Stage & Screen": ("Music", "Jazz & Classical"),
-        "Christian": ("Music", "Christian"),
-        "New Age & Ambient": ("Music", "Chill"),
-        "Family & Kids": ("Music", "Kids"),
-        "Holiday": ("Music", "Holiday"),
-        "Sports Talk": ("Sports", "Sports Talk"),
-        "Live Games": ("Sports", "Live Games"),
-        "News & Politics": ("News", "News"),
-        "Business": ("News", "Business"),
-        "Pop Culture": ("Talk", "Entertainment"), "Society & Culture": ("Talk", "Entertainment"),
-        "Fiction & Drama": ("Talk", "Entertainment"), "True Crime": ("Talk", "Entertainment"),
-        "Religion": ("Talk", "Faith & Health"), "Lifestyle & Health": ("Talk", "Faith & Health"),
-        "Health & Wellness": ("Talk", "Faith & Health"),
-        "Comedy": ("Comedy", ""),
-    ]
-
-    /// Live channels the API sends with no genre (Howard 100, Road Dog, Holy Culture, …).
-    private static let blankLive: [String: (group: String, sub: String)] = [
-        "100": ("Talk", "Entertainment"), "142": ("Talk", "Entertainment"), "143": ("Talk", "Entertainment"),
-        "159": ("Talk", "Entertainment"), "770": ("Talk", "Entertainment"), "790": ("Talk", "Entertainment"),
-        "168": ("Music", "Christian"), "362": ("Music", "Hip-Hop & R&B"), "1999": ("Sports", "Live Games"),
-    ]
-
-    static func place(_ ch: Channel) -> (group: String, sub: String) {
-        if ch.category == "Sports & Recreation" { return ("Sports", sport(ch.id)) }
-        // College Sports Radio and SEC / Big Ten / ACC Radio come as "Sports Talk".
-        if ["84", "256", "257", "258"].contains(ch.id) { return ("Sports", "College") }
-        if let p = genres[ch.category] { return p }
-        if let p = blankLive[ch.id] { return p }
-        // Anything else: Xtra (always music; the blank ones are moods like Rainfall Radio, Lo-Fi Café)
-        // goes to Chill, the Limited Edition pop-ups to Pop, and an unknown talk genre to Talk.
-        if ch.xtraID != nil { return ("Music", "Chill") }
-        if ch.category.isEmpty { return ("Music", "Pop") }
-        return ("Talk", "Entertainment")
-    }
-
-    /// "Sports & Recreation" is the league talk channels (81–91) and every team's play-by-play,
-    /// numbered in league blocks.
-    private static func sport(_ id: String) -> String {
-        switch Int(id) ?? 0 {
-        case 800...832: return "NFL"
-        case 840...871: return "MLB"
-        case 880...909: return "NBA"
-        case 920...951: return "NHL"
-        case 952...962: return "College"
-        case 963...: return "Live Games"
-        default: return "Sports Talk"
-        }
-    }
-}
-
-/// An "All …" chip and one chip per title, scrolling sideways over the channel list.
-struct CategoryBar: View {
-    let titles: [String]
-    let all: String
-    @Binding var selected: String?
-    var small = false
-
-    var body: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                chip(all, value: nil)
-                ForEach(titles, id: \.self) { chip($0, value: $0) }
-            }
-            .padding(.horizontal)
-            .padding(.vertical, small ? 4 : 8)
-        }
-    }
-
-    private func chip(_ title: String, value: String?) -> some View {
-        let isOn = selected == value
-        return Button { selected = value } label: {
-            Text(title)
-                .font(small ? .caption.weight(.medium) : .subheadline.weight(.medium))
-                .padding(.horizontal, small ? 10 : 12)
-                .padding(.vertical, small ? 4 : 6)
-                .background(Capsule().fill(isOn ? Color.accentColor : Color.secondary.opacity(0.15)))
-                .foregroundStyle(isOn ? Color.white : Color.primary)
-        }
-        .buttonStyle(.plain)
-        .accessibilityAddTraits(isOn ? .isSelected : [])
-    }
-}
-
 
 /// One channel: number, art, name, and what it's playing.
 struct ChannelRow: View, Equatable {

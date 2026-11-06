@@ -15,8 +15,9 @@ struct MenuView: View {
     @ObservedObject private var menu = MenuController.shared
 
     private var filtered: [Channel] {
-        Channel.filter(radio.channels, nowPlaying: radio.nowPlaying, search: menu.search,
-                       stars: menu.starsOnly ? radio.presets : nil)
+        ChannelGroup.filter(Channel.filter(radio.channels, nowPlaying: radio.nowPlaying, search: menu.search,
+                                           stars: menu.starsOnly ? radio.presets : nil),
+                            group: menu.category, sub: menu.subcategory)
     }
 
     /// Double-click the tear-off area to roll the panel up to just that area (under the menu bar or torn off).
@@ -84,6 +85,18 @@ struct MenuView: View {
                                 .help(menu.starsOnly ? "Show every channel" : "Show only starred channels")
                                 .accessibilityLabel(menu.starsOnly ? "All Stars On" : "All Stars Off")
                             }
+                            // Category chips, as on iOS (StarPlayrKit's ChannelGroup); a group opens
+                            // a second row with its own chips (Sports → NFL, NBA, …).
+                            VStack(alignment: .leading, spacing: 0) {
+                                CategoryBar(titles: ChannelGroup.groups(radio.channels), all: "All Channels",
+                                            selected: $menu.category, inset: 0)
+                                if let group = menu.category,
+                                   case let subs = ChannelGroup.subs(of: group, in: radio.channels), subs.count > 1 {
+                                    CategoryBar(titles: subs, all: "All \(group)", selected: $menu.subcategory,
+                                                small: true, inset: 0)
+                                }
+                            }
+                            .padding(.vertical, -6)
                             channelList
                         }
                     }
