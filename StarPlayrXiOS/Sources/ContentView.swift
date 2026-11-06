@@ -572,6 +572,8 @@ struct ChannelList: View {
                     }
                     // A 15% tint all but vanishes on the black list in dark mode; there it's much stronger.
                     .listRowBackground(isPlaying ? Color.accentColor.opacity(scheme == .dark ? 0.4 : 0.15) : nil)
+                    // 5 pt less than the default 11 above and below: more channels on screen.
+                    .listRowInsets(EdgeInsets(top: 6, leading: 20, bottom: 6, trailing: 20))
                     .id(ch.id)
                 }
                 .listStyle(.plain)
