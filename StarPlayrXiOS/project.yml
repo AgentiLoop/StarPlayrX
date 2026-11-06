@@ -25,7 +25,10 @@ targets:
           - CFBundleURLName: com.starplayrx.ios
             CFBundleURLSchemes: [starplayrx]
         UIBackgroundModes: [audio]
-        UILaunchScreen: {}
+        UILaunchScreen:
+          UIColorName: LaunchBackground
+          UIImageName: LaunchLogo
+          UIImageRespectsSafeAreaInsets: true
         UIApplicationSceneManifest:
           UIApplicationSupportsMultipleScenes: true
         UISupportedInterfaceOrientations:
