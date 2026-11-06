@@ -125,12 +125,14 @@ struct NowPlayingHeader: View {
     var body: some View {
         VStack(spacing: 6) {
             row
+            controls
             // Same bars as the Mac; before anything has played, keep their space so nothing jumps.
             if radio.current != nil { SpectrumBars(running: app.barsRunning) }
             else { Color.clear.frame(height: CGFloat(SpectrumRenderer.barHeight)) }
         }
     }
 
+    /// Art, channel, song and artist, and the star — the titles get the whole width beside the art.
     private var row: some View {
         HStack(spacing: 12) {
             let np = radio.current.flatMap { radio.displayed($0.id) }
@@ -169,33 +171,35 @@ struct NowPlayingHeader: View {
             .accessibilityAddTraits(.isButton)
             .accessibilityHint(app.lyrics ? "Shows the channel list" : "Shows the song's lyrics")
 
-            // Previous / next: the same playAdjacent the lock screen's ⏮ ⏭ send (RadioSession.swift).
-            Button { radio.playAdjacent(-1) } label: {
-                Image(systemName: "backward.fill").font(.system(size: 20))
-            }
-            .buttonStyle(.plain)
-            .disabled(radio.current == nil)
-            .accessibilityLabel("Previous")
-
-            Button { radio.togglePlayPause() } label: {
-                Image(systemName: radio.isPlaying ? "pause.circle.fill" : "play.circle.fill")
-                    .font(.system(size: 40))
-            }
-            .buttonStyle(.plain)
-            .disabled(radio.current == nil)
-            .accessibilityLabel(radio.isPlaying ? "Pause" : "Play")
-
-            Button { radio.playAdjacent(1) } label: {
-                Image(systemName: "forward.fill").font(.system(size: 20))
-            }
-            .buttonStyle(.plain)
-            .disabled(radio.current == nil)
-            .accessibilityLabel("Next")
-
             if let ch = radio.current {
                 StarButton(isStarred: radio.presets.contains(ch.id), channel: ch.name) { radio.togglePreset(ch.id) }
             }
         }
+    }
+
+    /// Previous, play/pause and next, centred on their own row under the titles.
+    private var controls: some View {
+        HStack(spacing: 44) {
+            // Previous / next: the same playAdjacent the lock screen's ⏮ ⏭ send (RadioSession.swift).
+            Button { radio.playAdjacent(-1) } label: {
+                Image(systemName: "backward.fill").font(.system(size: 22))
+            }
+            .accessibilityLabel("Previous")
+
+            Button { radio.togglePlayPause() } label: {
+                Image(systemName: radio.isPlaying ? "pause.circle.fill" : "play.circle.fill")
+                    .font(.system(size: 44))
+            }
+            .accessibilityLabel(radio.isPlaying ? "Pause" : "Play")
+
+            Button { radio.playAdjacent(1) } label: {
+                Image(systemName: "forward.fill").font(.system(size: 22))
+            }
+            .accessibilityLabel("Next")
+        }
+        .buttonStyle(.plain)
+        .disabled(radio.current == nil)
+        .frame(maxWidth: .infinity)
     }
 }
 
