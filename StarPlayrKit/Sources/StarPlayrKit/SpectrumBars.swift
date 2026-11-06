@@ -20,20 +20,18 @@ public struct SpectrumBars: View {
     @Environment(\.scenePhase) private var phase
     /// False (paused; PlayerState.barsRunning): the bars stay frozen.
     private let running: Bool
-    /// The bars grow out from the middle line both ways (iPhone Duo's side strip, turned on its side).
-    private let centred: Bool
     @AppStorage(BubbleStage.key) private var bubbleStage = BubbleStage.defaultStage
     /// The stage label shown after a tap, and where its tail points (nil: top centre of the bars).
     @State private var popup: (text: String, at: CGPoint?)?
     @State private var shown = 0
 
-    public init(running: Bool = true, centred: Bool = false) { self.running = running; self.centred = centred }
+    public init(running: Bool = true) { self.running = running }
 
     public var body: some View {
         let bg = ContrastColor.background(scheme)
         // The Metal view overhangs the bars on every side so the glow and the blurred blob aren't clipped.
         SpectrumMetalView(fixed: bg, bg: bg, light: bg >= 0.5, bubbles: BubbleStage.strength(bubbleStage),
-                          running: running && phase == .active, centred: centred)
+                          running: running && phase == .active)
             .padding(-CGFloat(SpectrumRenderer.pad))
             .frame(height: CGFloat(SpectrumRenderer.barHeight))
             .contentShape(Rectangle())
@@ -81,7 +79,7 @@ public struct SpectrumBars: View {
 
 
 private struct SpectrumMetalView: UIViewRepresentable {
-    let fixed: Double, bg: Double, light: Bool, bubbles: Double, running: Bool, centred: Bool
+    let fixed: Double, bg: Double, light: Bool, bubbles: Double, running: Bool
 
     func makeCoordinator() -> SpectrumRenderer { SpectrumRenderer() }
 
@@ -99,7 +97,7 @@ private struct SpectrumMetalView: UIViewRepresentable {
 
     func updateUIView(_ view: MTKView, context: Context) {
         let r = context.coordinator
-        (r.fixed, r.bg, r.light, r.bubbles, r.centred) = (fixed, bg, light, bubbles, centred)
+        (r.fixed, r.bg, r.light, r.bubbles) = (fixed, bg, light, bubbles)
         r.setRunning(running, on: view)
     }
 }

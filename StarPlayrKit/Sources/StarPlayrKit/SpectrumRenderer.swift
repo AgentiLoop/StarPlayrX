@@ -23,8 +23,6 @@ public final class SpectrumRenderer: NSObject, MTKViewDelegate {
     public let device = MTLCreateSystemDefaultDevice()
     private lazy var worker = SpectrumRenderWorker(device: device)
     public var fixed = 0.025, bg = 0.025, light = false, bubbles = 0.5
-    /// The bars grow out from the middle line both ways instead of up from the bottom.
-    public var centred = false
     private var rendering = false
 
     public override init() { super.init() }
@@ -38,7 +36,7 @@ public final class SpectrumRenderer: NSObject, MTKViewDelegate {
         let frame = SpectrumRenderWorker.Input(
             surface: SpectrumRenderWorker.Surface(layer),
             width: Float(view.bounds.width), scale: Float(view.drawableSize.width / view.bounds.width),
-            fixed: fixed, bg: bg, light: light, bubbles: bubbles, centred: centred, clearColor: view.clearColor)
+            fixed: fixed, bg: bg, light: light, bubbles: bubbles, clearColor: view.clearColor)
         rendering = true
         worker.render(frame) { [weak self] in
             Task { @MainActor in self?.rendering = false }
@@ -78,7 +76,6 @@ private final class SpectrumRenderWorker: @unchecked Sendable {
         let fixed, bg: Double
         let light: Bool
         let bubbles: Double
-        let centred: Bool
         let clearColor: MTLClearColor
     }
     struct Bar { var base, top, glow, shade, misc, curve: SIMD4<Float> }
@@ -155,7 +152,7 @@ private final class SpectrumRenderWorker: @unchecked Sendable {
             bubble: light ? [0, 0, 0, 0.7] : [1, 1, 1, 1],
             blob: blob,
             blobShape: [Float(80 * blobX), Float(0.6 + 0.3 * sin(viz.phase * 2 * .pi * 2)), Float(0.6 + 0.5 * pulse), 13],
-            glowStyle: [Float(light ? 0.75 + 0.25 * pulse : 0.7 + 0.3 * pulse), Float(1 + 4 * pulse), f, input.centred ? 1 : 0])
+            glowStyle: [Float(light ? 0.75 + 0.25 * pulse : 0.7 + 0.3 * pulse), Float(1 + 4 * pulse), f, 0])
         guard let drawable = input.surface.nextDrawable(), let commands = queue.makeCommandBuffer() else { return }
         let pass = MTLRenderPassDescriptor()
         pass.colorAttachments[0].texture = drawable.texture

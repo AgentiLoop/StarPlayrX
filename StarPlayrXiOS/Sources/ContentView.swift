@@ -199,11 +199,12 @@ struct PlayerView: View {
             }
             .overlay(alignment: .bottomTrailing) {
                 if sideEQ, radio.current != nil {
-                    // The bars' length runs down the strip; turned so its bottom is the low end.
+                    // Turned clockwise: the first (heaviest) bars at the top, each bar growing
+                    // from the strip's left edge to the right.
                     let length = geo.size.height * 0.36
-                    SpectrumBars(running: app.barsRunning, centred: true)
+                    SpectrumBars(running: app.barsRunning)
                         .frame(width: length)
-                        .rotationEffect(.degrees(-90))
+                        .rotationEffect(.degrees(90))
                         .frame(width: CGFloat(SpectrumRenderer.barHeight), height: length)
                         .frame(width: side)
                         .padding(.bottom, 12)
