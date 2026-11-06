@@ -203,9 +203,22 @@ public final class LyricSync: ObservableObject {
     /// out — worse than not moving at all. Only a lead-in or another edit (seconds, not tenths) is
     /// worth taking from it.
     private static let xtraAlignerMinimum: TimeInterval = 1.0
+    /// Once Shazam has placed the track, a confident aligner reading this close to it is the lyric
+    /// file's own timing error, not a misplaced track: the highlight is fine-tuned by the average of
+    /// those readings, never by more than this. Further out is the aligner being wrong, and ignored.
+    private static let xtraTuneLimit: TimeInterval = 1.5
+    /// Each accepted aligner-minus-Shazam reading for this file.
+    private var xtraTunes = [Double]()
+    /// The average of `xtraTunes`, capped at `xtraTuneLimit`; 0 with none.
+    private var xtraTune: Double {
+        guard !xtraTunes.isEmpty else { return 0 }
+        let mean = xtraTunes.reduce(0, +) / Double(xtraTunes.count)
+        return min(max(mean, -Self.xtraTuneLimit), Self.xtraTuneLimit)
+    }
 
-    /// The shift for this Xtra file: Shazam's once there is one, else the aligner's.
-    public func xtraShift(for file: URL) -> Double? { file == xtraFile ? (xtraFound ?? xtraAligned) : nil }
+    /// The shift for this Xtra file: Shazam's fine-tuned by the aligner once there is one, else the
+    /// aligner's. A hand pin overrules both (`pinnedShift`, checked first by the callers).
+    public func xtraShift(for file: URL) -> Double? { file == xtraFile ? (xtraFound.map { $0 + xtraTune } ?? xtraAligned) : nil }
 
     private func xtra() {
         // Timed lyrics to line up, or none at all under the station's names: then Shazam's names
@@ -214,7 +227,7 @@ public final class LyricSync: ObservableObject {
               LyricsStore.shared.missed || LyricsStore.shared.lyrics?.synced == true || Self.isBlank(np) else { return }
         if file != xtraFile {
             xtraFile = file; xtraFound = nil; xtraTries = 0; xtraAsked = .distantPast
-            xtraAligned = nil; xtraAlignedAt = .distantPast
+            xtraAligned = nil; xtraAlignedAt = .distantPast; xtraTunes = []
         }
         xtraAlign(file)
         // Wait out the first seconds (a fade-in or silence matches nothing), then ask once a segment
@@ -266,9 +279,9 @@ public final class LyricSync: ObservableObject {
     }
 
     /// The live channels' fallback, on the Xtra file: the aligner lines the lyrics up with the
-    /// file's own audio, once a segment. It keeps measuring after Shazam has placed the track (its
-    /// answer is then unused) so every track logs the aligner against Shazam: that is how good the
-    /// fallback is, measured on the same audio, without Shazam's help.
+    /// file's own audio, once a segment. It keeps measuring after Shazam has placed the track so
+    /// every track logs the aligner against Shazam, and its confident readings close to Shazam
+    /// fine-tune the highlight (`xtraTune`).
     private func xtraAlign(_ file: URL) {
         guard let lyrics = LyricsStore.shared.lyrics, lyrics.synced,
               Date().timeIntervalSince(xtraAlignedAt) >= Self.xtraSegment,
@@ -296,6 +309,12 @@ public final class LyricSync: ObservableObject {
         // at file position + Xtra shift, so the Xtra shift is the opposite of it.
         let shift = -found.shift
         logCompare(aligner: shift, committed: abs(shift) <= Self.xtraMaxShift, found, by: by)
+        // Confident and close to Shazam: a sample of the lyric file's own timing error.
+        if let shazam = xtraFound, abs(shift - shazam) <= Self.xtraTuneLimit {
+            xtraTunes.append(shift - shazam)
+            report = String(format: "Xtra %+.2fs (Shazam %+.2fs, fine-tuned %+.2fs by the aligner over %d readings)",
+                            shazam + xtraTune, shazam, xtraTune, xtraTunes.count)
+        }
         guard abs(shift) <= Self.xtraMaxShift, abs(shift) >= Self.xtraAlignerMinimum else { xtraAligned = nil; return }
         xtraAligned = shift
         if xtraFound == nil {
