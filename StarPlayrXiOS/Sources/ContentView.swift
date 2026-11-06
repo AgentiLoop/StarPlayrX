@@ -633,10 +633,28 @@ struct ChannelList: View {
                     .overlay(alignment: .trailing) {
                         StarButton(isStarred: radio.presets.contains(ch.id), channel: ch.name) { radio.togglePreset(ch.id) }
                     }
-                    // A 15% tint all but vanishes on the black list in dark mode; there it's much stronger.
-                    .listRowBackground(isPlaying ? Color.accentColor.opacity(scheme == .dark ? 0.4 : 0.15) : nil)
-                    // 5 pt less than the default 11 above and below: more channels on screen.
-                    .listRowInsets(EdgeInsets(top: 6, leading: 20, bottom: 6, trailing: 20))
+                    // The playing channel's row sits on a Liquid Glass squircle (a translucent tint
+                    // before iOS 26), as on the Mac: white-based in dark mode, light gray in light
+                    // mode, darkening toward the star so the blue stands out. No separators.
+                    .listRowBackground(Group {
+                        if isPlaying {
+                            let shape = RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            let highlight = scheme == .dark ? Color(white: 1, opacity: 0.10) : Color(white: 0.75, opacity: 0.5)
+                            ZStack {
+                                if #available(iOS 26.0, *) {
+                                    Color.clear.glassEffect(.regular.tint(highlight), in: shape)
+                                } else {
+                                    shape.fill(highlight)
+                                }
+                                shape.fill(LinearGradient(colors: [.clear, Color(white: 0, opacity: scheme == .dark ? 0.35 : 0.05)],
+                                                          startPoint: .leading, endPoint: .trailing))
+                            }
+                            .padding(.horizontal, 8)
+                        }
+                    })
+                    .listRowSeparator(.hidden)
+                    // 7 pt less than the default 11 above and below: more channels on screen.
+                    .listRowInsets(EdgeInsets(top: 4, leading: 20, bottom: 4, trailing: 20))
                     .id(ch.id)
                 }
                 .listStyle(.plain)
