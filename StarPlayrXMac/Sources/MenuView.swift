@@ -10,21 +10,6 @@
 import SwiftUI
 import StarPlayrKit
 
-extension Channel {
-    /// The search field's matching: number, name, category, "Music Xtra", artist and song.
-    /// With `stars` the list is only those channels first (the "All Stars" filter).
-    static func filter(_ channels: [Channel], nowPlaying: [String: NowPlaying], search: String, stars: Set<String>? = nil) -> [Channel] {
-        let channels = stars.map { stars in channels.filter { stars.contains($0.id) } } ?? channels
-        guard !search.isEmpty else { return channels }
-        return channels.filter { ch in
-            let np = nowPlaying[ch.id]
-            let xtraTerms = ch.xtraID != nil ? "Music Xtra" : ""
-            return [ch.id, ch.name, ch.category, xtraTerms, np?.artist ?? "", np?.song ?? ""]
-                .contains { $0.localizedCaseInsensitiveContains(search) }
-        }
-    }
-}
-
 struct MenuView: View {
     @EnvironmentObject var radio: Radio
     @ObservedObject private var menu = MenuController.shared

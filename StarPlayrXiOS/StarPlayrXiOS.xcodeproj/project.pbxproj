@@ -8,6 +8,8 @@
 
 /* Begin PBXBuildFile section */
 		0B8819CE2E7E93BD7AD18126 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 930224C9BDFD3BD60DA3720F /* ContentView.swift */; };
+		167716ABEEEC355841ADCA35 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 4282E323B938E03C8E49A7EE /* Assets.xcassets */; };
+		5FDA390C937511C469A979D5 /* LyricsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 770C07E6C0265EBCA92F34FA /* LyricsView.swift */; };
 		BF63C3051FA7A9E6DA84DC82 /* StarPlayrXApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 895D2CE6A27D992F30C488F2 /* StarPlayrXApp.swift */; };
 		F0EE46195DDC84398E82B5BB /* StarPlayrKit in Frameworks */ = {isa = PBXBuildFile; productRef = 2A620742C2F4E87712E0AFD6 /* StarPlayrKit */; };
 /* End PBXBuildFile section */
@@ -15,6 +17,8 @@
 /* Begin PBXFileReference section */
 		2C02BA5F2D6CEE2CB60DD800 /* StarPlayrX.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = StarPlayrX.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		31F50F6E629602F3D0E4A609 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		4282E323B938E03C8E49A7EE /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		770C07E6C0265EBCA92F34FA /* LyricsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LyricsView.swift; sourceTree = "<group>"; };
 		895D2CE6A27D992F30C488F2 /* StarPlayrXApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StarPlayrXApp.swift; sourceTree = "<group>"; };
 		930224C9BDFD3BD60DA3720F /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		B24D39FBDF6B488418780136 /* StarPlayrKit */ = {isa = PBXFileReference; lastKnownFileType = folder; name = StarPlayrKit; path = ../StarPlayrKit; sourceTree = SOURCE_ROOT; };
@@ -44,8 +48,10 @@
 		1811178BD50AF9CF760A4584 /* Sources */ = {
 			isa = PBXGroup;
 			children = (
+				4282E323B938E03C8E49A7EE /* Assets.xcassets */,
 				930224C9BDFD3BD60DA3720F /* ContentView.swift */,
 				31F50F6E629602F3D0E4A609 /* Info.plist */,
+				770C07E6C0265EBCA92F34FA /* LyricsView.swift */,
 				895D2CE6A27D992F30C488F2 /* StarPlayrXApp.swift */,
 			);
 			path = Sources;
@@ -75,6 +81,7 @@
 			buildConfigurationList = 2DCC3DEE4FC23CC5B0214118 /* Build configuration list for PBXNativeTarget "StarPlayrX" */;
 			buildPhases = (
 				701FCBFB0B444DAA4788DFD1 /* Sources */,
+				82F0F49A1192D72F83FCA0D0 /* Resources */,
 				7A25AD76AB04C50F467DB143 /* Frameworks */,
 			);
 			buildRules = (
@@ -126,12 +133,24 @@
 		};
 /* End PBXProject section */
 
+/* Begin PBXResourcesBuildPhase section */
+		82F0F49A1192D72F83FCA0D0 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				167716ABEEEC355841ADCA35 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
 /* Begin PBXSourcesBuildPhase section */
 		701FCBFB0B444DAA4788DFD1 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 				0B8819CE2E7E93BD7AD18126 /* ContentView.swift in Sources */,
+				5FDA390C937511C469A979D5 /* LyricsView.swift in Sources */,
 				BF63C3051FA7A9E6DA84DC82 /* StarPlayrXApp.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
