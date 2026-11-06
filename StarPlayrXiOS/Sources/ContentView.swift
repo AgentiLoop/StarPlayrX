@@ -82,13 +82,19 @@ struct PlayerView: View {
     /// the Duo's outer display. The Duo changes it mid-session when it folds, so the layout follows
     /// the size class, never the idiom, the orientation or the screen.
     @Environment(\.horizontalSizeClass) private var hSize
+    /// Compact height is a short, wide window: the Duo's top half when the app has only that
+    /// (laptop pose), or a phone on its side. There's no room for a list under now playing, so
+    /// it's just the player — the Mac panel rolled up to its window shade.
+    @Environment(\.verticalSizeClass) private var vSize
+
+    private var shaded: Bool { vSize == .compact }
 
     var body: some View {
         NavigationStack {
             Group {
-                if hSize == .regular { wide } else { narrow }
+                if shaded { shade } else if hSize == .regular { wide } else { narrow }
             }
-            .navigationTitle(hSize == .regular ? "StarPlayrX" : app.lyrics ? "Lyrics" : "Channels")
+            .navigationTitle(shaded ? "" : hSize == .regular ? "StarPlayrX" : app.lyrics ? "Lyrics" : "Channels")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
@@ -102,20 +108,31 @@ struct PlayerView: View {
                 }
                 ToolbarItemGroup(placement: .topBarTrailing) {
                     AirPlayButton().frame(width: 28, height: 28)
-                    if !app.lyrics {
-                        Button { app.starsOnly.toggle() } label: {
-                            Image(systemName: app.starsOnly ? "star.fill" : "star")
+                    if !shaded {
+                        if !app.lyrics {
+                            Button { app.starsOnly.toggle() } label: {
+                                Image(systemName: app.starsOnly ? "star.fill" : "star")
+                            }
+                            .accessibilityLabel(app.starsOnly ? "All Stars On" : "All Stars Off")
                         }
-                        .accessibilityLabel(app.starsOnly ? "All Stars On" : "All Stars Off")
+                        Button { app.bigArt = false; app.lyrics.toggle() } label: {
+                            Image(systemName: app.lyrics ? "list.bullet" : "quote.bubble")
+                        }
+                        .accessibilityLabel(app.lyrics ? "Channels" : "Lyrics")
                     }
-                    Button { app.bigArt = false; app.lyrics.toggle() } label: {
-                        Image(systemName: app.lyrics ? "list.bullet" : "quote.bubble")
-                    }
-                    .accessibilityLabel(app.lyrics ? "Channels" : "Lyrics")
                 }
             }
         }
     }
+
+    /// The window shade: the art filling the height on the left, the titles, controls and EQ
+    /// laid out beside it, and nothing else.
+    private var shade: some View {
+        NowPlayingHeader(spread: true)
+            .padding(.horizontal, 24)
+            .padding(.vertical, 12)
+    }
+
 
     /// Phones (and the Duo closed): now playing on top, then the channel list or the lyrics.
     private var narrow: some View {
@@ -137,17 +154,26 @@ struct PlayerView: View {
     private var wide: some View {
         GeometryReader { geo in
             if geo.size.height > geo.size.width {
+                // The art sets the now-playing section's height (10% under the width it could have),
+                // so the search field and chips sit right under it, and the slack is left over the
+                // fold rather than pushing them onto it.
+                let art = (geo.size.width - 32) * 0.42 * 0.9
+                // The fold is halfway down the whole window; this view starts under the navigation
+                // bar, so the top half is that much shorter — the bottom half then begins at the fold.
+                let fold = (geo.size.height + geo.safeAreaInsets.top + geo.safeAreaInsets.bottom) / 2
+                    - geo.safeAreaInsets.top
                 VStack(spacing: 0) {
-                    // Top half: now playing spread over it, with the search field and chips along
-                    // its bottom edge. The list, lyrics or art fill the bottom half, so nothing
-                    // straddles the fold.
+                    // Top half: now playing, then the search field and chips. The list, lyrics or
+                    // art fill the bottom half, so nothing straddles the fold.
                     VStack(spacing: 0) {
                         NowPlayingHeader(spread: true)
                             .padding(.horizontal)
                             .padding(.vertical, 10)
-                        if !app.lyrics && !app.bigArt { ChannelFilters().padding(.bottom, 4) }
+                            .frame(height: art + 20)
+                        if !app.lyrics && !app.bigArt { ChannelFilters(keepSubRow: true) }
+                        Spacer(minLength: 0)
                     }
-                    .frame(height: geo.size.height / 2)
+                    .frame(height: fold)
                     Divider()
                     if app.bigArt, let url = radio.shownArtURL { BigArtView(url: url) }
                     else if app.lyrics { LyricsView() } else { ChannelList(filters: false) }
@@ -194,7 +220,7 @@ struct NowPlayingHeader: View {
     private var stacked: some View {
         VStack(spacing: 6) {
             row
-            controls
+            controls()
             bars
         }
     }
@@ -203,22 +229,29 @@ struct NowPlayingHeader: View {
     /// EQ along the bottom edge — a landscape now-playing screen.
     private var wide: some View {
         GeometryReader { geo in
-            HStack(alignment: .top, spacing: 24) {
-                art(size: min(geo.size.height, geo.size.width * 0.42), cornerRadius: 22)
+            // The art fills the height (the Duo's laptop layout hands in the height it wants,
+            // PlayerView.wide); in a wide window it's capped so the titles keep enough room.
+            let size = min(geo.size.height, geo.size.width * 0.45)
+            HStack(alignment: .top, spacing: 28) {
+                art(size: size, cornerRadius: size / 5)
+                    .shadow(color: .black.opacity(0.18), radius: 14, y: 8)
                 VStack(alignment: .leading, spacing: 0) {
                     HStack(alignment: .top, spacing: 12) {
                         titles(large: true)
                         star
                     }
                     Spacer(minLength: 8)
-                    controls
+                    controls(large: true)
                     Spacer(minLength: 8)
                     bars
                 }
-                .frame(maxHeight: .infinity)
+                .frame(height: size)
+                .frame(maxWidth: .infinity)
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
     }
+
 
     /// Same bars as the Mac; before anything has played, keep their space so nothing jumps.
     @ViewBuilder private var bars: some View {
@@ -286,23 +319,24 @@ struct NowPlayingHeader: View {
         }
     }
 
-    /// Previous, play/pause and next, centred on their own row under the titles.
-    private var controls: some View {
-        HStack(spacing: 44) {
+    /// Previous, play/pause and next, centred on their own row under the titles; `large` is the
+    /// wide layout, where they get the room of a full player screen.
+    private func controls(large: Bool = false) -> some View {
+        HStack(spacing: large ? 56 : 44) {
             // Previous / next: the same playAdjacent the lock screen's ⏮ ⏭ send (RadioSession.swift).
             Button { radio.playAdjacent(-1) } label: {
-                Image(systemName: "backward.fill").font(.system(size: 22))
+                Image(systemName: "backward.fill").font(.system(size: large ? 30 : 22))
             }
             .accessibilityLabel("Previous")
 
             Button { radio.togglePlayPause() } label: {
                 Image(systemName: radio.isPlaying ? "pause.circle.fill" : "play.circle.fill")
-                    .font(.system(size: 44))
+                    .font(.system(size: large ? 64 : 44))
             }
             .accessibilityLabel(radio.isPlaying ? "Pause" : "Play")
 
             Button { radio.playAdjacent(1) } label: {
-                Image(systemName: "forward.fill").font(.system(size: 22))
+                Image(systemName: "forward.fill").font(.system(size: large ? 30 : 22))
             }
             .accessibilityLabel("Next")
         }
@@ -450,6 +484,9 @@ struct ChannelList: View {
 struct ChannelFilters: View {
     @EnvironmentObject var radio: Radio
     @ObservedObject private var app = PlayerState.shared
+    /// Keep the second row's space when there are no sub-chips (All Channels), so the layout
+    /// above and below it never moves — the Duo's top half.
+    var keepSubRow = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -462,6 +499,9 @@ struct ChannelFilters: View {
             // Picking a group opens a second row with its detailed chips (Sports → NFL, NBA, …).
             if let group = app.category, case let subs = ChannelGroup.subs(of: group, in: radio.channels), subs.count > 1 {
                 CategoryBar(titles: subs, all: "All \(group)", selected: $app.subcategory, small: true)
+            } else if keepSubRow {
+                // An empty, invisible row of the same height holds the place.
+                CategoryBar(titles: [], all: "All Channels", selected: .constant(nil), small: true).hidden()
             }
         }
     }
