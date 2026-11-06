@@ -198,7 +198,8 @@ struct PlayerView: View {
                 Divider()
                 // Big art lies over the list or lyrics, as on the Mac.
                 if app.bigArt, let url = radio.shownArtURL { BigArtView(url: url) }
-                else if app.lyrics { LyricsView() } else { ChannelList() }
+                // The Duo's outer display (side bar) puts the search and chips on one row.
+                else if app.lyrics { LyricsView() } else { ChannelList(inlineFilters: sideEQ) }
             }
             .ignoresSafeArea(.container, edges: sideEQ ? .top : [])
             .overlay(alignment: .bottomTrailing) {
@@ -241,7 +242,7 @@ struct PlayerView: View {
                             .padding(.horizontal)
                             .padding(.vertical, 10)
                             .frame(height: art + 20)
-                        if !app.lyrics && !app.bigArt { ChannelFilters(keepSubRow: true) }
+                        if !app.lyrics && !app.bigArt { ChannelFilters(keepSubRow: true, inline: true) }
                         Spacer(minLength: 0)
                     }
                     .frame(height: fold)
