@@ -144,6 +144,10 @@ public struct CategoryBar: View {
             .padding(.horizontal, inset)
             .padding(.vertical, small ? 4 : 8)
         }
+        // A horizontal ScrollView runs into the safe area along its axis, so the chips would
+        // scroll under iPhone Duo's side bar (the status bar and toolbar on the outer display's
+        // right edge). Keep them inside the safe area like the search field and the list.
+        .clipped()
     }
 
     private func chip(_ title: String, value: String?) -> some View {

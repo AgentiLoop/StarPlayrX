@@ -130,27 +130,49 @@ struct PlayerView: View {
         }
     }
 
-    /// iPad and the Duo open: now playing with the art or the lyrics under it on the left, the
-    /// channel list beside it. The pane is sized from the space the app has, not the screen.
+    /// iPad and the Duo open: now playing with the art or the lyrics under it, and the channel
+    /// list beside it. Taller than wide (the Duo set down like a laptop, its hinge across the
+    /// middle) now playing takes the top half and the list the bottom half, so neither straddles
+    /// the fold. Sized from the space the app has, not the screen.
     private var wide: some View {
         GeometryReader { geo in
-            HStack(spacing: 0) {
+            if geo.size.height > geo.size.width {
                 VStack(spacing: 0) {
-                    NowPlayingHeader()
-                        .padding(.horizontal)
-                        .padding(.vertical, 10)
+                    // Top half: now playing (and the lyrics under it). The art is never up here;
+                    // tapping it puts it full size in the bottom half, in the list's place.
+                    VStack(spacing: 0) {
+                        NowPlayingHeader()
+                            .padding(.horizontal)
+                            .padding(.vertical, 10)
+                        Divider()
+                        if app.lyrics { LyricsView() } else { Spacer() }
+                    }
+                    .frame(height: geo.size.height / 2)
                     Divider()
-                    if app.bigArt, let url = radio.shownArtURL { BigArtView(url: url) }
-                    else if app.lyrics { LyricsView() }
-                    // With the list in its own pane there's nothing for the art to hide, so it's
-                    // always full size here.
-                    else if let url = radio.shownArtURL { BigArtView(url: url) }
-                    else { Spacer() }
+                    if app.bigArt, let url = radio.shownArtURL { BigArtView(url: url) } else { ChannelList() }
                 }
-                .frame(width: min(max(geo.size.width * 0.45, 320), 440))
-                Divider()
-                ChannelList()
+            } else {
+                HStack(spacing: 0) {
+                    nowPlayingPane.frame(width: min(max(geo.size.width * 0.45, 320), 440))
+                    Divider()
+                    ChannelList()
+                }
             }
+        }
+    }
+
+    private var nowPlayingPane: some View {
+        VStack(spacing: 0) {
+            NowPlayingHeader()
+                .padding(.horizontal)
+                .padding(.vertical, 10)
+            Divider()
+            if app.bigArt, let url = radio.shownArtURL { BigArtView(url: url) }
+            else if app.lyrics { LyricsView() }
+            // With the list in its own pane there's nothing for the art to hide, so it's
+            // always full size here.
+            else if let url = radio.shownArtURL { BigArtView(url: url) }
+            else { Spacer() }
         }
     }
 }

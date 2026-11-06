@@ -44,7 +44,9 @@ struct LyricsView: View {
                 .font(.caption).foregroundStyle(.secondary).lineLimit(1)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 6)
-                .background(.bar)
+                // A background fills the safe area by default; that ran the caption's bar under
+                // iPhone Duo's side bar. Keep it, like the lyrics, inside the safe area.
+                .background(.bar, ignoresSafeAreaEdges: [])
         }
         // Follows the song: a new title (or opening the lyrics) starts the fetch.
         .task(id: "\(showing?.artist ?? "")|\(showing?.song ?? "")") {
