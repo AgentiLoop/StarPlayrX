@@ -154,9 +154,9 @@ struct NowPlayingHeader: View {
 
             VStack(alignment: .leading, spacing: 2) {
                 if let ch = radio.current {
-                    Text("\(ch.id) · \(ch.name)").font(.caption).foregroundStyle(.secondary).lineLimit(1)
-                    Text(np?.song ?? "").font(.headline).lineLimit(1)
-                    Text(np?.artist ?? "").font(.subheadline).lineLimit(1)
+                    MarqueeText(text: "\(ch.id) · \(ch.name)", font: .caption, secondary: true).id("\(ch.id) · \(ch.name)")
+                    MarqueeText(text: np?.song ?? "", font: .headline).id(np?.song ?? "")
+                    MarqueeText(text: np?.artist ?? "", font: .subheadline).id(np?.artist ?? "")
                 } else {
                     Text("Pick a channel").font(.headline)
                 }
@@ -322,9 +322,9 @@ struct ChannelRow: View, Equatable {
             ArtTile(url: (albumArt ? nowPlaying?.image : channel.imageURL) ?? "", size: 44, isAlbumArt: albumArt)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
-                Text(channel.name).font(isCurrent ? .body.bold() : .body).lineLimit(1)
-                Text(nowPlaying.map { "\($0.artist) – \($0.song)" } ?? " ")
-                    .font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                MarqueeText(text: channel.name, font: isCurrent ? .body.bold() : .body).id(channel.name)
+                let line = nowPlaying.map { "\($0.artist) – \($0.song)" } ?? " "
+                MarqueeText(text: line, font: .caption, secondary: true).id(line)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             // Room for the star laid over the row's end.
