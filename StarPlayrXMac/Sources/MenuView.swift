@@ -215,6 +215,7 @@ struct MenuView: View {
             .accessibilityLabel(radio.current.map { isAlbumArt ? "Album art, \($0.name)" : "Channel art, \($0.name)" } ?? "StarPlayrX")
             .accessibilityHint(bigArtURL == nil ? (shownArtURL != nil ? "Shows the art full size" : "Shows the channel in the list")
                                : "Switches between the album art, channel logo and show art")
+            .accessibilityAction { if !PlayerState.shared.tapArt() { revealCurrent() } }
             // Click the art: always full size over the list or lyrics first (album, channel or show art).
             // While it's big, each click steps album art → channel logo → show art, as the channel has
             // them (remembered per channel); with nothing to switch to it closes the big art again.
@@ -242,6 +243,7 @@ struct MenuView: View {
             .accessibilityAddTraits(.isButton)
             .accessibilityHint(bigArtURL != nil ? "Shows the \(menu.lyrics ? "lyrics" : "channel list") again"
                                : menu.lyrics ? "Shows the channel list" : "Shows the song's lyrics")
+            .accessibilityAction { PlayerState.shared.tapTitles() }
             // Click the song/artist: the lyrics take the channel list's place, and back again.
             // Over big art it first just closes the art, so the user sees which view is underneath.
             // Same pattern as the EQ bars: the empty double-tap handler first makes the single tap
@@ -340,6 +342,7 @@ struct MenuView: View {
         .accessibilityAddTraits(.isButton)
         .accessibilityLabel(isLogo ? "Channel art" : "Album art")
         .accessibilityHint(menu.lyrics ? "Shows the lyrics" : "Shows the channel list")
+        .accessibilityAction { menu.bigArt = false }
     }
 
     /// LazyVStack: only rows near the visible part of the list exist, so the hundreds of channels

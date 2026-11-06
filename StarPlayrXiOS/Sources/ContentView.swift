@@ -152,6 +152,7 @@ struct NowPlayingHeader: View {
                 .accessibilityLabel(radio.current.map { isAlbumArt ? "Album art, \($0.name)" : "Channel art, \($0.name)" } ?? "StarPlayrX")
                 .accessibilityHint(app.bigArt ? "Switches between the album art, channel logo and show art"
                                               : "Shows the art full size")
+                .accessibilityAction { app.tapArt() }
 
             VStack(alignment: .leading, spacing: 2) {
                 if let ch = radio.current {
@@ -169,7 +170,9 @@ struct NowPlayingHeader: View {
             .onTapGesture { app.tapTitles() }
             .accessibilityElement(children: .combine)
             .accessibilityAddTraits(.isButton)
-            .accessibilityHint(app.lyrics ? "Shows the channel list" : "Shows the song's lyrics")
+            .accessibilityHint(app.bigArt ? "Shows the \(app.lyrics ? "lyrics" : "channel list") again"
+                               : app.lyrics ? "Shows the channel list" : "Shows the song's lyrics")
+            .accessibilityAction { app.tapTitles() }
 
             if let ch = radio.current {
                 StarButton(isStarred: radio.presets.contains(ch.id), channel: ch.name) { radio.togglePreset(ch.id) }
@@ -227,6 +230,7 @@ struct BigArtView: View {
         .accessibilityAddTraits(.isButton)
         .accessibilityLabel(isLogo ? "Channel art" : "Album art")
         .accessibilityHint(PlayerState.shared.lyrics ? "Shows the lyrics" : "Shows the channel list")
+        .accessibilityAction { PlayerState.shared.bigArt = false }
     }
 }
 
