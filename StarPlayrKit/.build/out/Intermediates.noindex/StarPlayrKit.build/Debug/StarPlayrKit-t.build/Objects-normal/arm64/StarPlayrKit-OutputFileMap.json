@@ -1,0 +1,139 @@
+{
+  "" : {
+    "diagnostics" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/StarPlayrKit-primary.dia",
+    "emit-module-dependencies" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/StarPlayrKit-primary-emit-module.d",
+    "emit-module-diagnostics" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/StarPlayrKit-primary-emit-module.dia",
+    "pch" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/StarPlayrKit-primary-Bridging-header.pch",
+    "swift-dependencies" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/StarPlayrKit-primary.swiftdeps"
+  },
+  "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/Sources/StarPlayrKit/AppVersion.swift" : {
+    "const-values" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/AppVersion.swiftconstvalues",
+    "dependencies" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/AppVersion.d",
+    "diagnostics" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/AppVersion.dia",
+    "index-unit-output-path" : "/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/AppVersion.o",
+    "llvm-bc" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/AppVersion.bc",
+    "object" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/AppVersion.o",
+    "swift-dependencies" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/AppVersion.swiftdeps",
+    "swiftmodule" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/AppVersion~partial.swiftmodule"
+  },
+  "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/Sources/StarPlayrKit/ContrastColor.swift" : {
+    "const-values" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/ContrastColor.swiftconstvalues",
+    "dependencies" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/ContrastColor.d",
+    "diagnostics" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/ContrastColor.dia",
+    "index-unit-output-path" : "/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/ContrastColor.o",
+    "llvm-bc" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/ContrastColor.bc",
+    "object" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/ContrastColor.o",
+    "swift-dependencies" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/ContrastColor.swiftdeps",
+    "swiftmodule" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/ContrastColor~partial.swiftmodule"
+  },
+  "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/Sources/StarPlayrKit/Extensions.swift" : {
+    "const-values" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/Extensions.swiftconstvalues",
+    "dependencies" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/Extensions.d",
+    "diagnostics" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/Extensions.dia",
+    "index-unit-output-path" : "/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/Extensions.o",
+    "llvm-bc" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/Extensions.bc",
+    "object" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/Extensions.o",
+    "swift-dependencies" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/Extensions.swiftdeps",
+    "swiftmodule" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/Extensions~partial.swiftmodule"
+  },
+  "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/Sources/StarPlayrKit/Keychain.swift" : {
+    "const-values" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/Keychain.swiftconstvalues",
+    "dependencies" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/Keychain.d",
+    "diagnostics" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/Keychain.dia",
+    "index-unit-output-path" : "/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/Keychain.o",
+    "llvm-bc" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/Keychain.bc",
+    "object" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/Keychain.o",
+    "swift-dependencies" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/Keychain.swiftdeps",
+    "swiftmodule" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/Keychain~partial.swiftmodule"
+  },
+  "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/Sources/StarPlayrKit/LyricAligner.swift" : {
+    "const-values" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/LyricAligner.swiftconstvalues",
+    "dependencies" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/LyricAligner.d",
+    "diagnostics" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/LyricAligner.dia",
+    "index-unit-output-path" : "/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/LyricAligner.o",
+    "llvm-bc" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/LyricAligner.bc",
+    "object" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/LyricAligner.o",
+    "swift-dependencies" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/LyricAligner.swiftdeps",
+    "swiftmodule" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/LyricAligner~partial.swiftmodule"
+  },
+  "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/Sources/StarPlayrKit/Lyrics.swift" : {
+    "const-values" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/Lyrics.swiftconstvalues",
+    "dependencies" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/Lyrics.d",
+    "diagnostics" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/Lyrics.dia",
+    "index-unit-output-path" : "/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/Lyrics.o",
+    "llvm-bc" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/Lyrics.bc",
+    "object" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/Lyrics.o",
+    "swift-dependencies" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/Lyrics.swiftdeps",
+    "swiftmodule" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/Lyrics~partial.swiftmodule"
+  },
+  "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/Sources/StarPlayrKit/LyricsCache.swift" : {
+    "const-values" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/LyricsCache.swiftconstvalues",
+    "dependencies" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/LyricsCache.d",
+    "diagnostics" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/LyricsCache.dia",
+    "index-unit-output-path" : "/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/LyricsCache.o",
+    "llvm-bc" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/LyricsCache.bc",
+    "object" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/LyricsCache.o",
+    "swift-dependencies" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/LyricsCache.swiftdeps",
+    "swiftmodule" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/LyricsCache~partial.swiftmodule"
+  },
+  "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/Sources/StarPlayrKit/Models.swift" : {
+    "const-values" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/Models.swiftconstvalues",
+    "dependencies" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/Models.d",
+    "diagnostics" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/Models.dia",
+    "index-unit-output-path" : "/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/Models.o",
+    "llvm-bc" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/Models.bc",
+    "object" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/Models.o",
+    "swift-dependencies" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/Models.swiftdeps",
+    "swiftmodule" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/Models~partial.swiftmodule"
+  },
+  "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/Sources/StarPlayrKit/PlaybackWorker.swift" : {
+    "const-values" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/PlaybackWorker.swiftconstvalues",
+    "dependencies" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/PlaybackWorker.d",
+    "diagnostics" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/PlaybackWorker.dia",
+    "index-unit-output-path" : "/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/PlaybackWorker.o",
+    "llvm-bc" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/PlaybackWorker.bc",
+    "object" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/PlaybackWorker.o",
+    "swift-dependencies" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/PlaybackWorker.swiftdeps",
+    "swiftmodule" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/PlaybackWorker~partial.swiftmodule"
+  },
+  "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/Sources/StarPlayrKit/ShazamSync.swift" : {
+    "const-values" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/ShazamSync.swiftconstvalues",
+    "dependencies" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/ShazamSync.d",
+    "diagnostics" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/ShazamSync.dia",
+    "index-unit-output-path" : "/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/ShazamSync.o",
+    "llvm-bc" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/ShazamSync.bc",
+    "object" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/ShazamSync.o",
+    "swift-dependencies" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/ShazamSync.swiftdeps",
+    "swiftmodule" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/ShazamSync~partial.swiftmodule"
+  },
+  "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/Sources/StarPlayrKit/SpectrumTimeline.swift" : {
+    "const-values" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/SpectrumTimeline.swiftconstvalues",
+    "dependencies" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/SpectrumTimeline.d",
+    "diagnostics" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/SpectrumTimeline.dia",
+    "index-unit-output-path" : "/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/SpectrumTimeline.o",
+    "llvm-bc" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/SpectrumTimeline.bc",
+    "object" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/SpectrumTimeline.o",
+    "swift-dependencies" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/SpectrumTimeline.swiftdeps",
+    "swiftmodule" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/SpectrumTimeline~partial.swiftmodule"
+  },
+  "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/Sources/StarPlayrKit/Visualizer.swift" : {
+    "const-values" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/Visualizer.swiftconstvalues",
+    "dependencies" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/Visualizer.d",
+    "diagnostics" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/Visualizer.dia",
+    "index-unit-output-path" : "/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/Visualizer.o",
+    "llvm-bc" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/Visualizer.bc",
+    "object" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/Visualizer.o",
+    "swift-dependencies" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/Visualizer.swiftdeps",
+    "swiftmodule" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/Visualizer~partial.swiftmodule"
+  },
+  "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/Sources/StarPlayrKit/Xtra.swift" : {
+    "const-values" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/Xtra.swiftconstvalues",
+    "dependencies" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/Xtra.d",
+    "diagnostics" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/Xtra.dia",
+    "index-unit-output-path" : "/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/Xtra.o",
+    "llvm-bc" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/Xtra.bc",
+    "object" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/Xtra.o",
+    "swift-dependencies" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/Xtra.swiftdeps",
+    "swiftmodule" : "/Users/toddbruss/Documents/GitHub/StarPlayrX/StarPlayrKit/.build/out/Intermediates.noindex/StarPlayrKit.build/Debug/StarPlayrKit-t.build/Objects-normal/arm64/Xtra~partial.swiftmodule"
+  }
+}

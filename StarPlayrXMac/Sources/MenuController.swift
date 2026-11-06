@@ -10,6 +10,7 @@
 import SwiftUI
 import Combine
 import os
+import StarPlayrKit
 
 let menuLog = Logger(subsystem: "com.starplayrx.mac", category: "menu")
 

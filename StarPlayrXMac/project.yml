@@ -3,12 +3,17 @@ options:
   bundleIdPrefix: com.starplayrx
   deploymentTarget:
     macOS: "13.0"
+packages:
+  StarPlayrKit:
+    path: ../StarPlayrKit
 targets:
   StarPlayrXMac:
     type: application
     platform: macOS
     sources:
       - Sources
+    dependencies:
+      - package: StarPlayrKit
     scheme:
       testTargets:
         - StarPlayrXMacTests

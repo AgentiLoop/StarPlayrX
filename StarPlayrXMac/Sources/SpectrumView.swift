@@ -10,6 +10,7 @@
 import SwiftUI
 import MetalKit
 import ImageIO
+import StarPlayrKit
 
 /// Spectrum bars whose colours follow the music: each bar drifts at the pace of its own band,
 /// onsets push it along, and bass kicks throw a fresh random palette. Every colour is checked

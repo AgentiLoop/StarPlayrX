@@ -1,0 +1,508 @@
+//
+//  Xtra.swift
+//  StarPlayrXMac
+//
+//  Created by Todd Bruss on 10/31/26.
+//  Modified by Todd Bruss on 11/2/26.
+//  Copyright © 2026 Todd Bruss. All rights reserved.
+//
+
+import Foundation
+import AVFoundation
+
+/// SiriusXM's API (api.edge-gateway.siriusxm.com): sign-in, the channel list, live channels and Xtra channels.
+/// The same API serves US and Canadian accounts (can.siriusxm.com is the same web player); Canada only changes the locale.
+/// An Xtra channel is a queue of individual tracks; each track is an encrypted HLS clip with its own key.
+public actor XtraClient {
+    private static let api = "https://api.edge-gateway.siriusxm.com"
+    private static let imageService = "https://imgsrv-sxm-prod-device.streaming.siriusxm.com/"
+    private static let trackArt = "https://siriusxm-priprodart.akamaized.net/"
+    private static let lookAround = "https://lookaround-cache-prod.streaming.siriusxm.com/playbackservices/v1/live/lookAround?delta="
+    // "All channels" curated grouping, the same one the SiriusXM web player shows.
+    private static let allChannelsEntity = "403ab6a5-d3c9-4c2a-a722-a94a6a5fd056"
+    private static let allChannelsContainer = "3JoBfOCIwo6FmTpzM1S2H7"
+    private static let userAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/27.0.1 Safari/605.1.15"
+
+    private let session = URLSession(configuration: .ephemeral)
+    private var user = ""
+    private var pass = ""
+    private var token: String?
+    private var expires = Date.distantPast
+    private var lookAroundChannels = [String: [String: Any]]()
+    private var lookAroundFetched = Date.distantPast
+    private var locale = "en-US"
+
+    public init() {}
+
+    /// "en-US" or "en-CA" (what www. and can.siriusxm.com send); applies to the next channel list.
+    public func setLocale(_ locale: String) { self.locale = locale }
+
+    // MARK: Sign in
+
+    public func signIn(user: String, pass: String) async throws {
+        self.user = user
+        self.pass = pass
+        token = nil
+        try await authenticate()
+    }
+
+    public func signOut() {
+        user = ""; pass = ""; token = nil; expires = .distantPast
+    }
+
+    private func authenticate() async throws {
+        let device = try await json("POST", "/device/v1/devices", body: [
+            "devicePlatform": "web-desktop",
+            "deviceAttributes": ["browser": ["browserVersion": "27.0.1", "browser": "Safari", "userAgent": Self.userAgent,
+                                             "sdk": "web", "app": "web", "sdkVersion": "18.3", "appVersion": "18.3"]]
+        ], bearer: nil)
+        guard let deviceGrant = device["grant"] as? String else { throw XtraError.badResponse("device grant") }
+
+        let anon = try await json("POST", "/session/v1/sessions/anonymous", body: true, bearer: deviceGrant)
+        guard let anonToken = anon["accessToken"] as? String else { throw XtraError.badResponse("anonymous session") }
+
+        let auth = try await json("POST", "/identity/v1/identities/authenticate/password",
+                                  body: ["handle": user, "password": pass], bearer: anonToken)
+        guard let authGrant = auth["grant"] as? String else { throw XtraError.badResponse("password grant") }
+
+        let session = try await json("POST", "/session/v1/sessions/authenticated", body: true, bearer: authGrant)
+        guard let access = session["accessToken"] as? String else { throw XtraError.badResponse("authenticated session") }
+        token = access
+        expires = Self.date(session["accessTokenExpiresAt"] as? String) ?? Date().addingTimeInterval(30 * 60)
+    }
+
+    private func bearer() async throws -> String {
+        if token == nil || Date() > expires.addingTimeInterval(-300) { try await authenticate() }
+        guard let token else { throw XtraError.badResponse("no access token") }
+        return token
+    }
+
+    // MARK: Channels
+
+    public func channels() async throws -> [XtraChannel] {
+        let auth = try await bearer()
+        var result = [XtraChannel]()
+        var seen = Set<String>()
+        var offset = 0
+        // The API returns at most 30 items per page; fetch pages in parallel batches until one comes back empty.
+        while offset < 3000 {
+            let pages = try await withThrowingTaskGroup(of: (Int, [[String: Any]]).self) { group in
+                for i in 0..<6 {
+                    let o = offset + i * 30
+                    // A page the server fails on (it sometimes answers 500) is retried once, then
+                    // treated as the end of the list, so one bad page doesn't lose every tile.
+                    group.addTask {
+                        if let items = try? await self.channelPage(offset: o, bearer: auth) { return (o, items) }
+                        try await Task.sleep(nanoseconds: 500_000_000)
+                        return (o, (try? await self.channelPage(offset: o, bearer: auth)) ?? [])
+                    }
+                }
+                var pages = [(Int, [[String: Any]])]()
+                for try await page in group { pages.append(page) }
+                return pages.sorted { $0.0 < $1.0 }
+            }
+            for (_, items) in pages {
+                for item in items {
+                    guard let ch = Self.channel(from: item), seen.insert(ch.id).inserted else { continue }
+                    result.append(ch)
+                }
+            }
+            if pages.contains(where: { $0.1.isEmpty }) { break }
+            offset += 6 * 30
+        }
+        return result
+    }
+
+    private func channelPage(offset: Int, bearer: String) async throws -> [[String: Any]] {
+        guard var c = URLComponents(string: Self.api + "/relationship/v1/container/all-channels") else { throw XtraError.badResponse("all-channels") }
+        c.queryItems = [
+            .init(name: "entityId", value: Self.allChannelsEntity),
+            .init(name: "entityType", value: "curated-grouping"),
+            .init(name: "containerId", value: Self.allChannelsContainer),
+            .init(name: "maxResponses", value: "30"),
+            .init(name: "offset", value: String(offset)),
+            .init(name: "locale", value: locale),
+            .init(name: "useCuratedContext", value: "false"),
+            .init(name: "supportedMediaType", value: "AUDIO"),
+            .init(name: "setStyle", value: "small_list"),
+            .init(name: "unentitledContent", value: "lock"),
+            .init(name: "preferredImageVariant", value: "default"),
+            .init(name: "setResponseStructure", value: "default"),
+        ]
+        guard let url = c.url else { throw XtraError.badResponse("all-channels") }
+        let page = try await json("GET", url.absoluteString, body: nil, bearer: bearer)
+        let sets = (page["container"] as? [String: Any])?["sets"] as? [[String: Any]] ?? []
+        return sets.flatMap { $0["items"] as? [[String: Any]] ?? [] }
+    }
+
+    private static func channel(from item: [String: Any]) -> XtraChannel? {
+        guard let entity = item["entity"] as? [String: Any],
+              let type = entity["type"] as? String, type == "channel-xtra" || type == "channel-linear",
+              let id = entity["id"] as? String,
+              let name = ((entity["texts"] as? [String: Any])?["title"] as? [String: Any])?["default"] as? String
+        else { return nil }
+        let deco = item["decorations"] as? [String: Any] ?? [:]
+        if type == "channel-xtra", deco["unentitled"] as? Bool == true { return nil }
+        guard let number = deco["channelNumber"].map({ "\($0)" }) else { return nil }
+        let tile = ((entity["images"] as? [String: Any])?["tile"] as? [String: Any])?["aspect_1x1"] as? [String: Any]
+        let key = ((tile?["preferred"] ?? tile?["default"]) as? [String: Any])?["url"] as? String
+        return XtraChannel(id: id, number: number, name: name, genre: deco["genre"] as? String ?? "",
+                           imageURL: key.map { imageURL(key: $0) } ?? "", isXtra: type == "channel-xtra")
+    }
+
+    private static func imageURL(key: String, size: Int = 128) -> String {
+        let spec: [String: Any] = ["key": key, "edits": [["resize": ["width": size, "height": size]]]]
+        guard let data = try? JSONSerialization.data(withJSONObject: spec, options: .withoutEscapingSlashes) else { return "" }
+        return imageService + data.base64EncodedString()
+    }
+
+    // MARK: Tune
+
+    /// Returns the next few tracks of an Xtra channel. Pass the returned token back to continue the queue.
+    public func tune(channelID: String, sequenceToken: String? = nil) async throws -> (tracks: [XtraTrack], token: String?) {
+        var body: [String: Any] = ["id": channelID, "type": "channel-xtra", "hlsVersion": "V3",
+                                   "manifestVariant": "FULL", "mtcVersion": "V2"]
+        if let sequenceToken { body["sequenceToken"] = sequenceToken }
+        let tune = try await json("POST", "/playback/play/v1/tuneSource", body: body, bearer: try await bearer())
+
+        let tracks: [XtraTrack] = (tune["streams"] as? [[String: Any]] ?? []).compactMap { stream in
+            let urls = stream["urls"] as? [[String: Any]] ?? []
+            guard let id = stream["id"] as? String,
+                  let url = (urls.first { $0["isPrimary"] as? Bool == true } ?? urls.first)?["url"] as? String
+            else { return nil }
+            let xtra = (stream["metadata"] as? [String: Any])?["xtra"] as? [String: Any] ?? [:]
+            let item = (xtra["items"] as? [[String: Any]])?.first ?? [:]
+            let tile = ((item["images"] as? [String: Any])?["tile"] as? [String: Any])?["aspect_1x1"] as? [String: Any]
+            let art = ((tile?["preferredImage"] ?? tile?["defaultImage"]) as? [String: Any])?["url"] as? String
+            return XtraTrack(id: id,
+                             artist: item["artistName"] as? String ?? "",
+                             title: item["name"] as? String ?? "",
+                             url: url,
+                             keyID: urls.compactMap { $0["encryptionKeyId"] as? String }.first ?? id,
+                             imageURL: art.map { Self.trackArt + $0 } ?? "",
+                             startOffset: (xtra["startOffset"] as? Double ?? 0) / 1000)
+        }
+        return (tracks, tune["sequenceToken"] as? String)
+    }
+
+    /// A live (channel-linear) channel, tuned the way the web player does.
+    /// Returns the signed master playlist (AES-128 HLS, ~5 h DVR).
+    public func liveStream(channelID: String) async throws -> URL {
+        let tune = try await json("POST", "/playback/play/v1/tuneSource",
+                                  body: ["id": channelID, "type": "channel-linear", "hlsVersion": "V3",
+                                         "manifestVariant": "WEB", "mtcVersion": "V2"],
+                                  bearer: try await bearer())
+        let urls = (tune["streams"] as? [[String: Any]])?.first?["urls"] as? [[String: Any]] ?? []
+        guard let s = (urls.first { $0["isPrimary"] as? Bool == true } ?? urls.first)?["url"] as? String,
+              let url = URL(string: s) else { throw XtraError.badResponse("live stream url") }
+        return url
+    }
+
+    /// The raw 16-byte AES key for a key id (the endpoint answers JSON with the key in base64).
+    public func key(id: String) async throws -> Data {
+        let keyJSON = try await json("GET", "/playback/key/v1/\(id)", body: nil, bearer: try await bearer())
+        guard let b64 = keyJSON["key"] as? String, let key = Data(base64Encoded: b64), key.count == 16
+        else { throw XtraError.badResponse("key") }
+        return key
+    }
+
+    public func fetchText(_ url: URL) async throws -> String { try await text(url) }
+
+    public func fetchData(_ url: URL) async throws -> Data {
+        let (data, resp) = try await session.data(from: url)
+        if let code = (resp as? HTTPURLResponse)?.statusCode, code >= 400 { throw XtraError.http(code, url.lastPathComponent) }
+        return data
+    }
+
+    /// The track an Xtra channel would start with if tuned now, without downloading anything.
+    public func peek(channelID: String) async throws -> XtraTrack? {
+        try await tune(channelID: channelID).tracks.first
+    }
+
+    // MARK: Live now playing
+
+    /// What every live (non-Xtra) channel is playing right now, keyed by channel entity id, in one
+    /// unauthenticated call: the "lookAround" feed the web player polls for its channel grid.
+    /// Talk and sports channels fall back to the current show's art when the cut has none.
+    /// Done the way the web player does it (its remote config: lookaround pollingMs 45000,
+    /// livePointIntervalMs 60000): the web player refetches the feed every 45 s; we do every 20 s. The music reaches the
+    /// speakers `behind` seconds after the feed's clock says it aired, so read the feed that far back.
+    /// Parsed validFrom dates. The same few thousand strings come back on every 5 s tick, and
+    /// parsing them all with ISO8601DateFormatter each time was a steady few % of CPU.
+    private var validFromCache = [String: Date]()
+
+    private func validFrom(_ s: String?) -> Date? {
+        guard let s else { return nil }
+        if let d = validFromCache[s] { return d }
+        guard let d = Self.date(s) else { return nil }
+        if validFromCache.count > 50_000 { validFromCache.removeAll() }
+        validFromCache[s] = d
+        return d
+    }
+
+    public func liveNowPlaying(behind: TimeInterval) async throws -> [String: NowPlaying] {
+        // 3 times a minute. Checked on the 5 s PDT tick and stamped after the download finishes, so the
+        // 4th tick sees ~19.7 s; "> 20" waited for the 5th tick (every 25 s). "> 18" lands on the 4th.
+        if Date().timeIntervalSince(lookAroundFetched) > 18 {
+            guard let url = URL(string: Self.lookAround) else { throw XtraError.badResponse("lookAround") }
+            let (data, resp) = try await session.data(from: url)
+            if let code = (resp as? HTTPURLResponse)?.statusCode, code >= 400 { throw XtraError.http(code, "lookAround") }
+            lookAroundChannels = ((try? JSONSerialization.jsonObject(with: data)) as? [String: Any])?["channels"] as? [String: [String: Any]] ?? [:]
+            lookAroundFetched = Date()
+        }
+        let now = Date().addingTimeInterval(-behind)
+        var result = [String: NowPlaying]()
+        for (id, ch) in lookAroundChannels {
+            func current(_ key: String) -> [String: Any]? {
+                (ch[key] as? [[String: Any]] ?? []).last { $0["isAd"] as? Bool != true && (validFrom($0["validFrom"] as? String) ?? now) <= now }
+            }
+            guard let cut = current("cuts") else { continue }
+            let show = current("shows")
+            // Song art only. Show art is mostly a text title card ("Aux Cord Hero with Diplo"); with no
+            // song art the empty image makes the app show the channel's logo instead.
+            let art = (cut["image"] as? [String: Any])?["url"] as? String
+            // Talk cuts have no artist; the web player shows the show's name in its place.
+            let artist = cut["artistName"] as? String ?? ""
+            result[id] = NowPlaying(artist: artist.isEmpty ? show?["name"] as? String ?? "" : artist,
+                                    song: cut["name"] as? String ?? "",
+                                    image: art.map { Self.imageURL(key: $0, size: 450) } ?? "",
+                                    showImage: ((show?["image"] as? [String: Any])?["url"] as? String).map { Self.imageURL(key: $0, size: 450) } ?? "",
+                                    startedAt: validFrom(cut["validFrom"] as? String))
+        }
+        return result
+    }
+
+    // MARK: Download
+
+    /// Downloads and decrypts one track into a playable ADTS AAC file.
+    public func download(_ track: XtraTrack, into folder: URL) async throws -> URL {
+        guard let masterURL = URL(string: track.url) else { throw XtraError.badResponse("track url") }
+        let master = try await text(masterURL)
+        let variants = master.split(whereSeparator: \.isNewline).map(String.init).filter { !$0.isEmpty && !$0.hasPrefix("#") }
+        guard let variant = variants.first(where: { $0.contains("_256k_") }) ?? variants.first,
+              let variantURL = URL(string: variant, relativeTo: masterURL)?.absoluteURL
+        else { throw XtraError.badResponse("no variant playlist") }
+
+        var sequence = 0
+        var iv: Data?
+        var segments = [URL]()
+        for line in try await text(variantURL).split(whereSeparator: \.isNewline).map(String.init) {
+            if line.hasPrefix("#EXT-X-MEDIA-SEQUENCE:") {
+                sequence = Int(line.dropFirst("#EXT-X-MEDIA-SEQUENCE:".count)) ?? 0
+            } else if line.hasPrefix("#EXT-X-KEY"), let r = line.range(of: "IV=0x") {
+                iv = Data(hex: String(line[r.upperBound...].prefix(32)))
+            } else if !line.isEmpty, !line.hasPrefix("#"), let u = URL(string: line, relativeTo: variantURL)?.absoluteURL {
+                segments.append(u)
+            }
+        }
+        guard !segments.isEmpty else { throw XtraError.badResponse("empty playlist") }
+
+        let keyJSON = try await json("GET", "/playback/key/v1/\(track.keyID)", body: nil, bearer: try await bearer())
+        guard let keyB64 = keyJSON["key"] as? String, let key = Data(base64Encoded: keyB64), key.count == 16
+        else { throw XtraError.badResponse("key") }
+
+        let parts = try await withThrowingTaskGroup(of: (Int, Data).self) { group in
+            for (i, url) in segments.enumerated() {
+                group.addTask {
+                    let (data, resp) = try await self.session.data(from: url)
+                    if let code = (resp as? HTTPURLResponse)?.statusCode, code >= 400 { throw XtraError.http(code, "segment") }
+                    // Without an explicit IV, HLS uses the segment's media sequence number.
+                    let segIV = iv ?? Data(sequenceIV: sequence + i)
+                    guard let plain = aes128Decrypt(data, key: key, iv: segIV) else { throw XtraError.badResponse("decrypt") }
+                    return (i, stripID3(plain))
+                }
+            }
+            var parts = [Int: Data]()
+            for try await (i, data) in group { parts[i] = data }
+            return parts
+        }
+
+        var audio = Data()
+        for i in segments.indices {
+            guard let part = parts[i] else { throw XtraError.badResponse("segment") }
+            audio.append(part)
+        }
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let file = folder.appendingPathComponent("\(track.id).aac")
+        try audio.write(to: file)
+        return file
+    }
+
+    // MARK: HTTP
+
+    private func text(_ url: URL) async throws -> String {
+        let (data, resp) = try await session.data(from: url)
+        if let code = (resp as? HTTPURLResponse)?.statusCode, code >= 400 { throw XtraError.http(code, url.lastPathComponent) }
+        return String(decoding: data, as: UTF8.self)
+    }
+
+    private func json(_ method: String, _ path: String, body: Any?, bearer: String?) async throws -> [String: Any] {
+        guard let url = URL(string: path.hasPrefix("https://") ? path : Self.api + path) else { throw XtraError.badResponse(path) }
+        var req = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalAndRemoteCacheData, timeoutInterval: 30)
+        req.httpMethod = method
+        for (k, v) in ["Accept": "application/json; charset=utf-8", "Content-Type": "application/json; charset=UTF-8",
+                       "Origin": "https://www.siriusxm.com", "Referer": "https://www.siriusxm.com/",
+                       "User-Agent": Self.userAgent, "X-Sxm-Platform": "browser", "X-Sxm-Tenant": "sxm",
+                       "X-Sxm-Clock": "[0,0]"] {
+            req.setValue(v, forHTTPHeaderField: k)
+        }
+        if let bearer { req.setValue("Bearer \(bearer)", forHTTPHeaderField: "Authorization") }
+        if let body { req.httpBody = try JSONSerialization.data(withJSONObject: body, options: .fragmentsAllowed) }
+
+        let (data, resp) = try await session.data(for: req)
+        let code = (resp as? HTTPURLResponse)?.statusCode ?? 0
+        if code >= 400 { throw XtraError.http(code, url.path) }
+        return (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] ?? [:]
+    }
+
+    // Made once: date(_:) runs for every cut and show of every channel on each 5 s tick.
+    private static let fractionalFormatter: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return f
+    }()
+    private static let plainFormatter = ISO8601DateFormatter()
+
+    private static func date(_ s: String?) -> Date? {
+        guard let s else { return nil }
+        return fractionalFormatter.date(from: s) ?? plainFormatter.date(from: s)
+    }
+}
+
+// MARK: Live playback
+
+/// Serves a live stream to AVPlayer. The playlists are fetched here (scheme `sxmlive`) so the key URI
+/// can be pointed at `sxmkey`, which answers with the raw AES key (the real endpoint needs a bearer and returns JSON).
+/// Segments stay plain https URLs that AVPlayer loads itself; the newest ones are also fetched here for the EQ.
+public final class LiveLoader: NSObject, AVAssetResourceLoaderDelegate {
+    public let client: XtraClient
+    public init(client: XtraClient) { self.client = client }
+
+    /// Cleared when another channel is tuned, so a late playlist refresh of this one can't reset the EQ.
+    public var isActive = true
+    private let lock = NSLock()
+    private var analyzed = Set<String>()   // segment names already handed to the EQ
+    private var undated = [String: (url: URL, name: String)]()   // fetched while no playlist had dated them yet
+    private var keys = [String: Data]()
+
+    public static func asset(for url: URL, client: XtraClient) -> (AVURLAsset, LiveLoader) {
+        var c = URLComponents(url: url, resolvingAgainstBaseURL: false)!
+        c.scheme = "sxmlive"
+        let asset = AVURLAsset(url: c.url!)
+        let loader = LiveLoader(client: client)
+        asset.resourceLoader.setDelegate(loader, queue: .global(qos: .userInitiated))
+        return (asset, loader)
+    }
+
+    private func key(id: String) async throws -> Data {
+        let cached = lock.withLock { keys[id] }
+        if let cached { return cached }
+        let key = try await client.key(id: id)
+        lock.withLock { keys[id] = key }
+        return key
+    }
+
+    /// Hands the media playlist and its newest segments (where the player starts and keeps playing) to the EQ.
+    /// Segment names differ per channel ("siriushits1_256k_1_…_00017301_v3.aac", "0917_332.aac"), so the EQ
+    /// gets them renamed "<tag>_<media sequence>_v.aac": unique to this tune, with the sequence the IV needs.
+    private lazy var tag = "L\(UInt32(truncatingIfNeeded: ObjectIdentifier(self).hashValue))"
+    /// Hands the media playlist and its newest segments (where the player starts and keeps playing) to the EQ.
+    private func feedSpectrum(_ body: String, base: URL) {
+        guard isActive else { return }
+        var keyID: String?
+        var iv: Data?
+        var sequence = 0
+        var lines = [String]()
+        var segments = [(url: URL, name: String)]()
+        for raw in body.split(whereSeparator: \.isNewline) {
+            let line = raw.trimmingCharacters(in: .whitespaces)
+            if line.hasPrefix("#EXT-X-MEDIA-SEQUENCE:") {
+                sequence = Int(line.dropFirst("#EXT-X-MEDIA-SEQUENCE:".count)) ?? 0
+            } else if line.hasPrefix("#EXT-X-KEY"), let r = line.range(of: "URI=\"") {
+                keyID = line[r.upperBound...].split(separator: "\"").first.flatMap { $0.split(separator: "/").last }.map(String.init)
+                iv = line.range(of: "IV=0x").flatMap { Data(hex: String(line[$0.upperBound...].prefix(32))) }
+            } else if line.hasPrefix("#EXTINF") || line.hasPrefix("#EXT-X-PROGRAM-DATE-TIME") {
+                lines.append(line)
+            } else if !line.isEmpty, !line.hasPrefix("#"), let u = URL(string: line, relativeTo: base)?.absoluteURL {
+                let name = "\(tag)_\(sequence + segments.count)_v.aac"
+                segments.append((u, name))
+                lines.append(name)
+            }
+        }
+        guard let keyID, !segments.isEmpty else { return }
+        SpectrumTimeline.shared.livePlaylist(lines.joined(separator: "\n"))
+        lock.lock()
+        let fresh = segments.suffix(4).filter { analyzed.insert($0.name).inserted }
+        lock.unlock()
+        // A segment the playlist hasn't dated yet (it arrived with a playlist that was replaced
+        // before it was processed, or the channel was just switched): the fetch is kept and handed
+        // over again once its playlist names it, instead of being dropped for good.
+        var pending = [String: (url: URL, name: String)]()
+        for seg in fresh {
+            if SpectrumTimeline.shared.hasDate(seg.name) {
+                Task { await fetch(seg, keyID: keyID, iv: iv) }
+            } else {
+                pending[seg.name] = seg
+            }
+        }
+        if !pending.isEmpty { lock.lock(); undated.merge(pending) { _, new in new }; lock.unlock() }
+        // Anything still undated from before: retry those whose playlist has since named them.
+        var retry = [(url: URL, name: String)]()
+        lock.lock()
+        for (name, seg) in undated where SpectrumTimeline.shared.hasDate(name) {
+            undated.removeValue(forKey: name)
+            retry.append(seg)
+        }
+        lock.unlock()
+        for seg in retry { Task { await fetch(seg, keyID: keyID, iv: iv) } }
+    }
+
+    private func fetch(_ seg: (url: URL, name: String), keyID: String, iv: Data?) async {
+        guard let data = try? await client.fetchData(seg.url), let key = try? await key(id: keyID), isActive else { return }
+        SpectrumTimeline.shared.liveSegment(seg.name, data, key, iv: iv)
+    }
+    public func resourceLoader(_ resourceLoader: AVAssetResourceLoader,
+                        shouldWaitForLoadingOfRequestedResource req: AVAssetResourceLoadingRequest) -> Bool {
+        guard let url = req.request.url, let scheme = url.scheme else { return false }
+        Task {
+            do {
+                if scheme == "sxmkey" {
+                    let key = try await key(id: url.lastPathComponent)
+                    req.contentInformationRequest?.contentType = "public.data"   // raw key bytes
+                    req.contentInformationRequest?.contentLength = Int64(key.count)
+                    req.contentInformationRequest?.isByteRangeAccessSupported = false
+                    req.dataRequest?.respond(with: key)
+                } else {
+                    var c = URLComponents(url: url, resolvingAgainstBaseURL: false)!
+                    c.scheme = "https"
+                    let real = c.url!
+                    let body = try await client.fetchText(real)
+                    // Split on any line break: some playlists use \r\n, which Swift sees as a single Character.
+                    let out = body.split(omittingEmptySubsequences: false, whereSeparator: \.isNewline).map { raw -> String in
+                        let line = String(raw).trimmingCharacters(in: .whitespacesAndNewlines)
+                        if line.hasPrefix("#EXT-X-KEY"), let r = line.range(of: "https://") {
+                            return line.replacingCharacters(in: r, with: "sxmkey://")
+                        }
+                        guard !line.isEmpty, !line.hasPrefix("#"), let abs = URL(string: line, relativeTo: real)?.absoluteURL
+                        else { return line }
+                        // Nested playlists come back through here; media segments go straight to the CDN.
+                        if abs.pathExtension == "m3u8", var n = URLComponents(url: abs, resolvingAgainstBaseURL: false) {
+                            n.scheme = "sxmlive"
+                            return n.url?.absoluteString ?? line
+                        }
+                        return abs.absoluteString
+                    }.joined(separator: "\n")
+                    if body.contains("#EXTINF") { feedSpectrum(body, base: real) }
+                    req.contentInformationRequest?.contentType = "public.m3u-playlist"
+                    req.contentInformationRequest?.contentLength = Int64(out.utf8.count)
+                    req.contentInformationRequest?.isByteRangeAccessSupported = false
+                    req.dataRequest?.respond(with: Data(out.utf8))
+                }
+                req.finishLoading()
+            } catch {
+                req.finishLoading(with: error)
+            }
+        }
+        return true
+    }
+}

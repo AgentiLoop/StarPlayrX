@@ -9,6 +9,7 @@
 
 import SwiftUI
 import AppKit
+import StarPlayrKit
 
 @main
 struct StarPlayrXMacApp: App {

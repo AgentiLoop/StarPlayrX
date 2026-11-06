@@ -8,6 +8,7 @@
 //
 
 import SwiftUI
+import StarPlayrKit
 
 extension Channel {
     /// The search field's matching: number, name, category, "Music Xtra", artist and song.
@@ -383,15 +384,8 @@ struct MenuView: View {
         }
     }
 
-    /// "v1.1.8" from the bundle; Debug builds add "-dev".
-    static let version: String = {
-        let v = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "?"
-        #if DEBUG
-        return "v\(v)-dev"
-        #else
-        return "v\(v)"
-        #endif
-    }()
+    /// "v1.1.8" from the bundle; Debug builds add "-dev" (StarPlayrKit's AppVersion).
+    static let version = AppVersion.string
 
     private var footer: some View {
         HStack {

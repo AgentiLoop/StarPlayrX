@@ -7,36 +7,27 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		0988AF330C20A6C998536D4A /* LyricAligner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5BB934AFCFFFEF8D1A6EC24D /* LyricAligner.swift */; };
-		2AD94A1CC7AA97E4E45EB81D /* ContrastColor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 231DFE768C1FC815F93C358A /* ContrastColor.swift */; };
+		37C5EF8724535B8840F96FA2 /* StarPlayrKit in Frameworks */ = {isa = PBXBuildFile; productRef = 0D6FDF691FE5495F2FA0E55B /* StarPlayrKit */; };
 		5310F78B88421F8D2981B92F /* LyricSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91A3CDA1815575A5BB00737F /* LyricSync.swift */; };
-		67113DB4036BE489BDC7FE53 /* Visualizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = B180FAFDD06BBA9CCCECBA5D /* Visualizer.swift */; };
 		6C400293FE0D8C7434417F04 /* ScriptedTour.applescript in Resources */ = {isa = PBXBuildFile; fileRef = F780CB7683BB43494DE45275 /* ScriptedTour.applescript */; };
 		70ED440C2742A2523849C564 /* MarqueeText.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFC2175A4B9226A8F1E4A18B /* MarqueeText.swift */; };
 		78D07A43295425FB93CF8574 /* Scripting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E4311F836AD4A7A0120E737 /* Scripting.swift */; };
 		823B69E4E49005C7947B6854 /* SpectrumView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF28422D48A23F0C3140CF55 /* SpectrumView.swift */; };
 		8489F0CE3E44B23D8B984C16 /* SearchField.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74DCB8300E5FAB44FC58A9F8 /* SearchField.swift */; };
-		898FB65622A94556CBD2974B /* SpectrumTimeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = 086EB200A51E929484F0F0B7 /* SpectrumTimeline.swift */; };
-		8B1D211BFBA7662F1F5269C4 /* Xtra.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40AD17AD1A89E96BF1D207E3 /* Xtra.swift */; };
 		8B8D4221E3B5D9DA693BACAA /* StarPlayrXMacTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5AACB58C22D23FF75DF15D1A /* StarPlayrXMacTests.swift */; };
-		932564D5EB79A0C417DA701F /* Lyrics.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3EDB3895A9883F3B28EAAD4 /* Lyrics.swift */; };
 		97E3C433757ED71D95CB2524 /* MenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9CF5EC7805BCA42169AF4ECE /* MenuView.swift */; };
 		A31CE963BD060610EDFBBD19 /* Spectrum.metal in Sources */ = {isa = PBXBuildFile; fileRef = DA977B1658B9908A1857CA86 /* Spectrum.metal */; };
 		AAF02C1F2D58A6F4F585EDF7 /* StarPlayrX.sdef in Resources */ = {isa = PBXBuildFile; fileRef = 9AE9931B956CB2DA3D48715B /* StarPlayrX.sdef */; };
-		AB296D5991D3CC95EF85A45A /* Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40C659F63F7EF9220EB71AB2 /* Extensions.swift */; };
-		B3FBAAFC677025C233D50C76 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4005321465BF3F5704ABBA35 /* Models.swift */; };
 		B6FECCF24C354B0733A16988 /* ArtCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7FAE59B5C9E7F2FA47E63AE0 /* ArtCache.swift */; };
-		B853C4F385324B3C694523D6 /* LyricsCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91CBBAE6F15F779406D921C6 /* LyricsCache.swift */; };
 		B92350C46BD992AC2AA8DDCA /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 6E8F68BA0D44926EF37BBB62 /* Assets.xcassets */; };
 		C1BBBCF52CBE121D9E31AE22 /* StarPlayrXMacApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47D0341DA36FCC82C2C684B6 /* StarPlayrXMacApp.swift */; };
 		C1DCC21623D246122B6DAB6F /* MenuController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95A1B6D05467A2297EAAE180 /* MenuController.swift */; };
 		C4EADC40C4C5D1B84D6005BA /* BubblePopup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 399F131CDB1FBB41334F85DF /* BubblePopup.swift */; };
 		C8A0A19F83AA9E90EFCAB52A /* SpectrumRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C9B3A2D12DB0EEA154457BF /* SpectrumRenderer.swift */; };
 		C8F6A2E065C7DF33930B6C11 /* Updater.swift in Sources */ = {isa = PBXBuildFile; fileRef = C61B9780B3DFA615D3ABFAD1 /* Updater.swift */; };
-		D70FE6A0684BA95A37B9141F /* Keychain.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4362792013A115602196217 /* Keychain.swift */; };
+		F74DACEF74A0B173A402FDD6 /* LyricsPane.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75DF1ADD881C81DE5663BC12 /* LyricsPane.swift */; };
 		F9A9498FC10093CAB657AD06 /* Radio.swift in Sources */ = {isa = PBXBuildFile; fileRef = A828F86C0FE74B3D990CC160 /* Radio.swift */; };
-		AC2707528BDBBD324D0EEE42 /* ShazamSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = A358392485F8373A3173D8CC /* ShazamSync.swift */; };
-		87515E06D581D6C06B3C960C /* DisplayAudio.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2FD313E65BA9ACD0DAD9703 /* DisplayAudio.swift */; };
+		FEECE6E47C08F86D1BF40921 /* DisplayAudio.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50D2FBEC353F1EC8718E81F7 /* DisplayAudio.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -50,46 +41,49 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		086EB200A51E929484F0F0B7 /* SpectrumTimeline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpectrumTimeline.swift; sourceTree = "<group>"; };
 		1DF942F978B6D6B616311D33 /* StarPlayrXMac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = StarPlayrXMac.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		2110CDF4A0912E48922BDC87 /* StarPlayrXMacTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = StarPlayrXMacTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		231DFE768C1FC815F93C358A /* ContrastColor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContrastColor.swift; sourceTree = "<group>"; };
 		24B9C2880FFCDCA06B056FF3 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		399F131CDB1FBB41334F85DF /* BubblePopup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BubblePopup.swift; sourceTree = "<group>"; };
-		4005321465BF3F5704ABBA35 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
-		40AD17AD1A89E96BF1D207E3 /* Xtra.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Xtra.swift; sourceTree = "<group>"; };
-		40C659F63F7EF9220EB71AB2 /* Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Extensions.swift; sourceTree = "<group>"; };
 		47D0341DA36FCC82C2C684B6 /* StarPlayrXMacApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StarPlayrXMacApp.swift; sourceTree = "<group>"; };
+		50D2FBEC353F1EC8718E81F7 /* DisplayAudio.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DisplayAudio.swift; sourceTree = "<group>"; };
 		5AACB58C22D23FF75DF15D1A /* StarPlayrXMacTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StarPlayrXMacTests.swift; sourceTree = "<group>"; };
-		5BB934AFCFFFEF8D1A6EC24D /* LyricAligner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LyricAligner.swift; sourceTree = "<group>"; };
 		5C9B3A2D12DB0EEA154457BF /* SpectrumRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpectrumRenderer.swift; sourceTree = "<group>"; };
 		6E4311F836AD4A7A0120E737 /* Scripting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Scripting.swift; sourceTree = "<group>"; };
 		6E8F68BA0D44926EF37BBB62 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		74DCB8300E5FAB44FC58A9F8 /* SearchField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchField.swift; sourceTree = "<group>"; };
+		75DF1ADD881C81DE5663BC12 /* LyricsPane.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LyricsPane.swift; sourceTree = "<group>"; };
 		7FAE59B5C9E7F2FA47E63AE0 /* ArtCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArtCache.swift; sourceTree = "<group>"; };
 		8597FCE01D54FAA77BEF60A4 /* StarPlayrX.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = StarPlayrX.entitlements; sourceTree = "<group>"; };
 		91A3CDA1815575A5BB00737F /* LyricSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LyricSync.swift; sourceTree = "<group>"; };
-		91CBBAE6F15F779406D921C6 /* LyricsCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LyricsCache.swift; sourceTree = "<group>"; };
 		95A1B6D05467A2297EAAE180 /* MenuController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuController.swift; sourceTree = "<group>"; };
 		9AE9931B956CB2DA3D48715B /* StarPlayrX.sdef */ = {isa = PBXFileReference; path = StarPlayrX.sdef; sourceTree = "<group>"; };
 		9CF5EC7805BCA42169AF4ECE /* MenuView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuView.swift; sourceTree = "<group>"; };
 		A828F86C0FE74B3D990CC160 /* Radio.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Radio.swift; sourceTree = "<group>"; };
 		AFC2175A4B9226A8F1E4A18B /* MarqueeText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarqueeText.swift; sourceTree = "<group>"; };
-		B180FAFDD06BBA9CCCECBA5D /* Visualizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Visualizer.swift; sourceTree = "<group>"; };
-		B4362792013A115602196217 /* Keychain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Keychain.swift; sourceTree = "<group>"; };
-		C3EDB3895A9883F3B28EAAD4 /* Lyrics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Lyrics.swift; sourceTree = "<group>"; };
 		C61B9780B3DFA615D3ABFAD1 /* Updater.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Updater.swift; sourceTree = "<group>"; };
 		DA977B1658B9908A1857CA86 /* Spectrum.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = Spectrum.metal; sourceTree = "<group>"; };
 		DF28422D48A23F0C3140CF55 /* SpectrumView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpectrumView.swift; sourceTree = "<group>"; };
+		F01AA8AFA99C2B4D451D3BAF /* StarPlayrKit */ = {isa = PBXFileReference; lastKnownFileType = folder; name = StarPlayrKit; path = ../StarPlayrKit; sourceTree = SOURCE_ROOT; };
 		F780CB7683BB43494DE45275 /* ScriptedTour.applescript */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.applescript; path = ScriptedTour.applescript; sourceTree = "<group>"; };
-		A358392485F8373A3173D8CC /* ShazamSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ShazamSync.swift"; sourceTree = "<group>"; };
-		A2FD313E65BA9ACD0DAD9703 /* DisplayAudio.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "DisplayAudio.swift"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		1ECA11F4457D53D6961F488D /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				37C5EF8724535B8840F96FA2 /* StarPlayrKit in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
 		233824657115644477750423 = {
 			isa = PBXGroup;
 			children = (
+				52D0A5D9C7BC6DCF2A346BDB /* Packages */,
 				3CCD99341C1648777CB8A56C /* Sources */,
 				62EC089FFE9B3C52C3F3580B /* Tests */,
 				88BAFE35EFC8150A92E4C1D3 /* Products */,
@@ -102,35 +96,33 @@
 				7FAE59B5C9E7F2FA47E63AE0 /* ArtCache.swift */,
 				6E8F68BA0D44926EF37BBB62 /* Assets.xcassets */,
 				399F131CDB1FBB41334F85DF /* BubblePopup.swift */,
-				231DFE768C1FC815F93C358A /* ContrastColor.swift */,
-				40C659F63F7EF9220EB71AB2 /* Extensions.swift */,
+				50D2FBEC353F1EC8718E81F7 /* DisplayAudio.swift */,
 				24B9C2880FFCDCA06B056FF3 /* Info.plist */,
-				B4362792013A115602196217 /* Keychain.swift */,
-				5BB934AFCFFFEF8D1A6EC24D /* LyricAligner.swift */,
-				C3EDB3895A9883F3B28EAAD4 /* Lyrics.swift */,
-				91CBBAE6F15F779406D921C6 /* LyricsCache.swift */,
+				75DF1ADD881C81DE5663BC12 /* LyricsPane.swift */,
 				91A3CDA1815575A5BB00737F /* LyricSync.swift */,
 				AFC2175A4B9226A8F1E4A18B /* MarqueeText.swift */,
 				95A1B6D05467A2297EAAE180 /* MenuController.swift */,
 				9CF5EC7805BCA42169AF4ECE /* MenuView.swift */,
-				4005321465BF3F5704ABBA35 /* Models.swift */,
 				A828F86C0FE74B3D990CC160 /* Radio.swift */,
 				6E4311F836AD4A7A0120E737 /* Scripting.swift */,
 				74DCB8300E5FAB44FC58A9F8 /* SearchField.swift */,
 				DA977B1658B9908A1857CA86 /* Spectrum.metal */,
 				5C9B3A2D12DB0EEA154457BF /* SpectrumRenderer.swift */,
-				086EB200A51E929484F0F0B7 /* SpectrumTimeline.swift */,
 				DF28422D48A23F0C3140CF55 /* SpectrumView.swift */,
 				8597FCE01D54FAA77BEF60A4 /* StarPlayrX.entitlements */,
 				9AE9931B956CB2DA3D48715B /* StarPlayrX.sdef */,
 				47D0341DA36FCC82C2C684B6 /* StarPlayrXMacApp.swift */,
 				C61B9780B3DFA615D3ABFAD1 /* Updater.swift */,
-				B180FAFDD06BBA9CCCECBA5D /* Visualizer.swift */,
-				40AD17AD1A89E96BF1D207E3 /* Xtra.swift */,
-							A358392485F8373A3173D8CC /* ShazamSync.swift */,
-				A2FD313E65BA9ACD0DAD9703 /* DisplayAudio.swift */,
-);
+			);
 			path = Sources;
+			sourceTree = "<group>";
+		};
+		52D0A5D9C7BC6DCF2A346BDB /* Packages */ = {
+			isa = PBXGroup;
+			children = (
+				F01AA8AFA99C2B4D451D3BAF /* StarPlayrKit */,
+			);
+			name = Packages;
 			sourceTree = "<group>";
 		};
 		62EC089FFE9B3C52C3F3580B /* Tests */ = {
@@ -160,6 +152,7 @@
 			buildPhases = (
 				1554A017317B5A7E1C821905 /* Sources */,
 				36A62E39DE53293B835F33B9 /* Resources */,
+				1ECA11F4457D53D6961F488D /* Frameworks */,
 			);
 			buildRules = (
 			);
@@ -167,6 +160,7 @@
 			);
 			name = StarPlayrXMac;
 			packageProductDependencies = (
+				0D6FDF691FE5495F2FA0E55B /* StarPlayrKit */,
 			);
 			productName = StarPlayrXMac;
 			productReference = 1DF942F978B6D6B616311D33 /* StarPlayrXMac.app */;
@@ -219,6 +213,9 @@
 			);
 			mainGroup = 233824657115644477750423;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				F01CBFBC7B342F315709D5C3 /* XCLocalSwiftPackageReference "../StarPlayrKit" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 88BAFE35EFC8150A92E4C1D3 /* Products */;
 			projectDirPath = "";
@@ -257,31 +254,21 @@
 			files = (
 				B6FECCF24C354B0733A16988 /* ArtCache.swift in Sources */,
 				C4EADC40C4C5D1B84D6005BA /* BubblePopup.swift in Sources */,
-				2AD94A1CC7AA97E4E45EB81D /* ContrastColor.swift in Sources */,
-				AB296D5991D3CC95EF85A45A /* Extensions.swift in Sources */,
-				D70FE6A0684BA95A37B9141F /* Keychain.swift in Sources */,
-				0988AF330C20A6C998536D4A /* LyricAligner.swift in Sources */,
+				FEECE6E47C08F86D1BF40921 /* DisplayAudio.swift in Sources */,
 				5310F78B88421F8D2981B92F /* LyricSync.swift in Sources */,
-				932564D5EB79A0C417DA701F /* Lyrics.swift in Sources */,
-				B853C4F385324B3C694523D6 /* LyricsCache.swift in Sources */,
+				F74DACEF74A0B173A402FDD6 /* LyricsPane.swift in Sources */,
 				70ED440C2742A2523849C564 /* MarqueeText.swift in Sources */,
 				C1DCC21623D246122B6DAB6F /* MenuController.swift in Sources */,
 				97E3C433757ED71D95CB2524 /* MenuView.swift in Sources */,
-				B3FBAAFC677025C233D50C76 /* Models.swift in Sources */,
 				F9A9498FC10093CAB657AD06 /* Radio.swift in Sources */,
 				78D07A43295425FB93CF8574 /* Scripting.swift in Sources */,
 				8489F0CE3E44B23D8B984C16 /* SearchField.swift in Sources */,
 				A31CE963BD060610EDFBBD19 /* Spectrum.metal in Sources */,
 				C8A0A19F83AA9E90EFCAB52A /* SpectrumRenderer.swift in Sources */,
-				898FB65622A94556CBD2974B /* SpectrumTimeline.swift in Sources */,
 				823B69E4E49005C7947B6854 /* SpectrumView.swift in Sources */,
 				C1BBBCF52CBE121D9E31AE22 /* StarPlayrXMacApp.swift in Sources */,
 				C8F6A2E065C7DF33930B6C11 /* Updater.swift in Sources */,
-				67113DB4036BE489BDC7FE53 /* Visualizer.swift in Sources */,
-				8B1D211BFBA7662F1F5269C4 /* Xtra.swift in Sources */,
-							AC2707528BDBBD324D0EEE42 /* ShazamSync.swift in Sources */,
-				87515E06D581D6C06B3C960C /* DisplayAudio.swift in Sources */,
-);
+			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		2D226AB8E2AE6464C3D191F7 /* Sources */ = {
@@ -541,6 +528,20 @@
 			defaultConfigurationName = Debug;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		F01CBFBC7B342F315709D5C3 /* XCLocalSwiftPackageReference "../StarPlayrKit" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../StarPlayrKit;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		0D6FDF691FE5495F2FA0E55B /* StarPlayrKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = StarPlayrKit;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = E5A2FDAEF2847B9EEF2473A6 /* Project object */;
 }

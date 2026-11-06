@@ -21,6 +21,7 @@
 import AppKit
 import CoreAudio
 import IOKit
+import StarPlayrKit
 
 enum DisplayAudio {
     /// The output device (Core Audio UID) for `screen`'s speakers, if the system output is a
@@ -219,5 +220,14 @@ enum DisplayAudio {
             }
         }
         return nil
+    }
+}
+
+extension PlaybackWorker {
+    /// Fades the radio over to the speakers with Core Audio UID `uid` (see Radio.routeAudio).
+    func route(to uid: String) async {
+        await route(isCurrent: { DisplayAudio.isSystemOutput(uid) },
+                    warmUp: { DisplayAudio.warmUp(uid) },
+                    switchOutput: { DisplayAudio.makeSystemOutput(uid) })
     }
 }

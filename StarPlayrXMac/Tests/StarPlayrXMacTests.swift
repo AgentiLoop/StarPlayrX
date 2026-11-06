@@ -9,6 +9,7 @@
 
 import XCTest
 @testable import StarPlayrX
+@testable import StarPlayrKit
 
 /// Pure logic: search matching, corner parking math, coordinate flips, four-char codes.
 final class LogicTests: XCTestCase {

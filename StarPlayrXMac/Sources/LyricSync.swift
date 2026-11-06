@@ -12,6 +12,7 @@
 
 import Foundation
 import AppKit
+import StarPlayrKit
 
 @MainActor
 final class LyricSync: ObservableObject {

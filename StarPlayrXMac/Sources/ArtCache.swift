@@ -9,6 +9,7 @@
 
 import SwiftUI
 import ImageIO
+import StarPlayrKit
 
 /// Channel art scaled to fit; when the art is square (it would fit the squircle but leave a margin
 /// and show its own baked-in corners) it's enlarged to fill the squircle instead — but only as far

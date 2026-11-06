@@ -8,6 +8,7 @@
 //
 
 import MetalKit
+import StarPlayrKit
 
 /// AppKit stays on main; frame preparation and drawable waits belong to the render worker.
 @MainActor

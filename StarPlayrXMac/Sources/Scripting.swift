@@ -8,6 +8,7 @@
 //
 
 import AppKit
+import StarPlayrKit
 
 /// AppleScript (Cocoa Scripting) support. Terminology is in StarPlayrX.sdef, enabled by
 /// NSAppleScriptEnabled + OSAScriptingDefinition in Info.plist. Application properties are
