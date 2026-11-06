@@ -191,12 +191,16 @@ struct PlayerView: View {
             VStack(spacing: 0) {
                 NowPlayingHeader(showsBars: !sideEQ)
                     .padding(.horizontal)
-                    .padding(.vertical, 10)
+                    // The Duo's empty top bar (its buttons are down the side) leaves a ~25 pt
+                    // inset; that and most of the padding go, so the art starts ~10 pt down.
+                    .padding(.top, sideEQ ? 10 : 16)
+                    .padding(.bottom, 10)
                 Divider()
                 // Big art lies over the list or lyrics, as on the Mac.
                 if app.bigArt, let url = radio.shownArtURL { BigArtView(url: url) }
                 else if app.lyrics { LyricsView() } else { ChannelList() }
             }
+            .ignoresSafeArea(.container, edges: sideEQ ? .top : [])
             .overlay(alignment: .bottomTrailing) {
                 if sideEQ, radio.current != nil {
                     // Turned clockwise: the first (heaviest) bars at the top, each bar growing
