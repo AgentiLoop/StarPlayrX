@@ -1,4 +1,0 @@
-module StarPlayrKit {
-header "StarPlayrKit-Swift.h"
-export *
-}

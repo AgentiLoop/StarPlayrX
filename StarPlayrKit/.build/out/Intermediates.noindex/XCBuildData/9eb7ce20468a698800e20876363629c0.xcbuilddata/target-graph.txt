@@ -1,7 +1,0 @@
-Target dependency graph (3 targets)
-Target 'AllExcludingTests' in project 'Aggregate'
-➜ Explicit dependency on target 'StarPlayrKit-product' in project 'StarPlayrKit'
-➜ Explicit dependency on target 'StarPlayrKit' in project 'StarPlayrKit'
-Target 'StarPlayrKit-product' in project 'StarPlayrKit'
-➜ Explicit dependency on target 'StarPlayrKit' in project 'StarPlayrKit'
-Target 'StarPlayrKit' in project 'StarPlayrKit' (no dependencies)
