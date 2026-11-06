@@ -6,7 +6,8 @@
 //
 //  The Mac's equalizer (StarPlayrXMac's SpectrumView) for iPhone, iPad and Apple TV: the same
 //  Metal bars from SpectrumRenderer, coloured against the screen's background. Tapping the bars
-//  steps the bubbles (the same "bubbleStage" setting as the Mac).
+//  steps the bubbles (BubbleStage, the same setting as the Mac) and names the new stage in a
+//  ChatBubble over the tap, like the Mac's click popup.
 //
 
 #if canImport(UIKit)
@@ -15,28 +16,62 @@ import MetalKit
 
 public struct SpectrumBars: View {
     @Environment(\.colorScheme) private var scheme
-    /// Full → half strength → off → full; Soft Bubbles until the user picks.
-    @AppStorage("bubbleStage") private var bubbleStage = 1
-    private static let stages = ["Bubbles", "Soft Bubbles", "No Bubbles"]
+    @AppStorage(BubbleStage.key) private var bubbleStage = BubbleStage.defaultStage
+    /// The stage label shown after a tap, and where its tail points (nil: top centre of the bars).
+    @State private var popup: (text: String, at: CGPoint?)?
+    @State private var shown = 0
 
     public init() {}
 
     public var body: some View {
         let bg = ContrastColor.background(scheme)
         // The Metal view overhangs the bars on every side so the glow and the blurred blob aren't clipped.
-        SpectrumMetalView(fixed: bg, bg: bg, light: bg >= 0.5, bubbles: [0.90, 0.5, 0][bubbleStage % 3])
+        SpectrumMetalView(fixed: bg, bg: bg, light: bg >= 0.5, bubbles: BubbleStage.strength(bubbleStage))
             .padding(-CGFloat(SpectrumRenderer.pad))
             .frame(height: CGFloat(SpectrumRenderer.barHeight))
             .contentShape(Rectangle())
-            .onTapGesture { bubbleStage = (bubbleStage + 1) % 3 }
+            .overlay {
+                if let popup {
+                    GeometryReader { g in
+                        // Bottom of the tail on the tap point, centred on it.
+                        ChatBubble(text: popup.text, fontSize: 13)
+                            .fixedSize()
+                            .alignmentGuide(.leading) { $0.width / 2 - (popup.at?.x ?? g.size.width / 2) }
+                            .alignmentGuide(.top) { $0.height - (popup.at?.y ?? 0) }
+                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                    }
+                    .transition(.opacity)
+                }
+            }
+            #if os(tvOS)
+            .onTapGesture { step(at: nil) }
+            #else
+            .onTapGesture(coordinateSpace: .local) { step(at: $0) }
+            #endif
             .accessibilityElement()
             .accessibilityAddTraits(.isButton)
-            .accessibilityLabel("Equalizer, \(Self.stages[bubbleStage % 3])")
+            .accessibilityLabel("Equalizer, \(BubbleStage.name(bubbleStage))")
             .accessibilityHint("Changes the bubbles in the bars")
             .onAppear { Visualizer.shared.start() }
             .onDisappear { Visualizer.shared.stop() }
     }
+
+    private func step(at point: CGPoint?) {
+        bubbleStage = BubbleStage.next(bubbleStage)
+        let text = BubbleStage.name(bubbleStage)
+        // The bubble is a passing label VoiceOver never lands on, so say the new stage out loud instead.
+        UIAccessibility.post(notification: .announcement, argument: text)
+        popup = (text, point)
+        shown += 1
+        let id = shown
+        Task {
+            try? await Task.sleep(for: .seconds(1.2))
+            guard shown == id else { return }   // a newer tap keeps its own label up
+            withAnimation(.easeOut(duration: 0.3)) { popup = nil }
+        }
+    }
 }
+
 
 private struct SpectrumMetalView: UIViewRepresentable {
     let fixed: Double, bg: Double, light: Bool, bubbles: Double

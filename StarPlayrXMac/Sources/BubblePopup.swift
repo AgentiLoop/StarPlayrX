@@ -9,6 +9,7 @@
 
 import SwiftUI
 import AppKit
+import StarPlayrKit
 
 /// Shows a `ChatBubble` for a moment in its own small floating window, so it is never cropped by the
 /// panel's edge. The bottom of the pointer sits exactly on the given screen point.
@@ -62,38 +63,6 @@ final class BubblePopup {
             guard shown == id else { return }   // a newer click keeps its own label up
             await NSAnimationContext.runAnimationGroup { $0.duration = 0.3; panel.animator().alphaValue = 0 }
             if shown == id { panel.orderOut(nil) }
-        }
-    }
-}
-
-/// A small speech bubble: a capsule with a tail pointing down.
-private struct ChatBubble: View {
-    let text: String
-
-
-    var body: some View {
-        VStack(spacing: 0) {
-            Text(text)
-                .font(.system(size: 11, weight: .semibold))
-                .lineLimit(1)
-                .fixedSize()   // never truncated to "…"
-                .padding(.horizontal, 8)
-                .padding(.vertical, 3)
-                .background(.regularMaterial, in: Capsule())
-            Tail().fill(.regularMaterial).frame(width: 8, height: 4)
-        }
-        .shadow(color: .black.opacity(0.25), radius: 2, y: 1)
-        .allowsHitTesting(false)
-    }
-
-    private struct Tail: Shape {
-        func path(in r: CGRect) -> Path {
-            Path { p in
-                p.move(to: CGPoint(x: r.minX, y: r.minY))
-                p.addLine(to: CGPoint(x: r.maxX, y: r.minY))
-                p.addLine(to: CGPoint(x: r.midX, y: r.maxY))
-                p.closeSubpath()
-            }
         }
     }
 }

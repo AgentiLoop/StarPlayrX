@@ -22,10 +22,8 @@ struct SpectrumView: View {
     @Environment(\.colorScheme) private var scheme
     /// Luminance of the wallpaper behind the panel (it shows through the translucent material).
     @State private var wallpaper: Double?
-    /// Clicking the bars steps the bubbles: full → half strength → off → full. Defaults to soft; each click
-    /// fades out one step at a time, so a click always does something visible; remembered.
-    @AppStorage("bubbleStage") private var bubbleStage = 1   // UserDefaults; Soft Bubbles until the user picks
-    private var bubbleStrength: Double { [0.90, 0.5, 0][bubbleStage % 3] }
+    /// Clicking the bars steps the bubbles (BubbleStage, shared with iOS/tvOS); remembered.
+    @AppStorage(BubbleStage.key) private var bubbleStage = BubbleStage.defaultStage
 
     var body: some View {
         let fixed = ContrastColor.background(scheme)
@@ -36,7 +34,7 @@ struct SpectrumView: View {
         // bright wallpaper makes it light in Dark Mode too: decide from the wallpaper, not just the scheme.
         let light = bg >= 0.5 || (wallpaper ?? 0) >= 0.35
         // The Metal view overhangs the bars on every side so the glow and the blurred blob aren't clipped.
-        SpectrumMetalView(fixed: fixed, bg: bg, light: light, bubbles: bubbleStrength)
+        SpectrumMetalView(fixed: fixed, bg: bg, light: light, bubbles: BubbleStage.strength(bubbleStage))
             .padding(-CGFloat(SpectrumRenderer.pad))
             .frame(height: CGFloat(SpectrumRenderer.barHeight))
             .background(WallpaperProbe(luminance: $wallpaper))
@@ -46,14 +44,14 @@ struct SpectrumView: View {
             // click below doesn't also switch the bubbles.
             .onTapGesture(count: 2) {}
             .onTapGesture {
-                bubbleStage = (bubbleStage + 1) % 3
+                bubbleStage = BubbleStage.next(bubbleStage)
                 // Names the new stage in a chat bubble whose pointer tip is on the mouse.
-                BubblePopup.shared.show(["Bubbles", "Soft Bubbles", "No Bubbles"][bubbleStage], at: NSEvent.mouseLocation)
+                BubblePopup.shared.show(BubbleStage.name(bubbleStage), at: NSEvent.mouseLocation)
             }
             // One element with a name: without it VoiceOver lands on an unlabeled Metal view.
             .accessibilityElement()
             .accessibilityAddTraits(.isButton)
-            .accessibilityLabel("Equalizer, \(["Bubbles", "Soft Bubbles", "No Bubbles"][bubbleStage % 3])")
+            .accessibilityLabel("Equalizer, \(BubbleStage.name(bubbleStage))")
             .accessibilityHint("Changes the bubbles in the bars")
             .onAppear { viz.start() }
             .onDisappear { viz.stop() }
