@@ -676,7 +676,8 @@ struct ChannelFilters: View {
                         .padding(.trailing, 8)
                     groups
                 }
-                .padding(.top, 8)
+                // With the chip bar's own 8: 10 above the chips, matching the 10 under the sub-chips.
+                .padding(.top, 2)
             } else {
                 // Under the header's EQ bars, over the chips.
                 SearchField(text: $app.search, prompt: "Search channels, artists, songs")
@@ -688,6 +689,8 @@ struct ChannelFilters: View {
             // Picking a group opens a second row with its detailed chips (Sports → NFL, NBA, …).
             if let group = app.category, case let subs = ChannelGroup.subs(of: group, in: radio.channels), subs.count > 1 {
                 CategoryBar(titles: subs, all: "All \(group)", selected: $app.subcategory, small: true)
+                    // With the bar's own 4: 10 under the sub-chips, the same as above the main ones.
+                    .padding(.bottom, inline ? 6 : 0)
             } else if keepSubRow {
                 // An empty, invisible row of the same height holds the place.
                 CategoryBar(titles: [], all: "All Channels", selected: .constant(nil), small: true).hidden()
