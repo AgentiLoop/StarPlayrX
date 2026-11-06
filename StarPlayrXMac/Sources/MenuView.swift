@@ -14,11 +14,7 @@ struct MenuView: View {
     @EnvironmentObject var radio: Radio
     @ObservedObject private var menu = MenuController.shared
 
-    private var filtered: [Channel] {
-        ChannelGroup.filter(Channel.filter(radio.channels, nowPlaying: radio.nowPlaying, search: menu.search,
-                                           stars: menu.starsOnly ? radio.presets : nil),
-                            group: menu.category, sub: menu.subcategory)
-    }
+    private var filtered: [Channel] { menu.visibleChannels }
 
     /// Double-click the tear-off area to roll the panel up to just that area (under the menu bar or torn off).
     private var shaded: Bool { menu.shaded }
@@ -218,12 +214,7 @@ struct MenuView: View {
             // wait out the double-click time (so a double-click on the header, roll up, doesn't
             // also fire this), then the single-tap handler runs.
             .onTapGesture(count: 2) {}
-            .onTapGesture {
-                if !menu.bigArt, shownArtURL != nil { menu.bigArt = true; return }
-                if let id = radio.current?.id, radio.cycleArt(id) { return }
-                if menu.bigArt { menu.bigArt = false; return }
-                revealCurrent()
-            }
+            .onTapGesture { if !PlayerState.shared.tapArt() { revealCurrent() } }
 
             VStack(alignment: .leading, spacing: 2) {
                 if let ch = radio.current {
@@ -247,10 +238,7 @@ struct MenuView: View {
             // wait out the double-click time (so a double-click on the header, roll up, doesn't
             // also toggle the lyrics).
             .onTapGesture(count: 2) {}
-            .onTapGesture {
-                if menu.bigArt { menu.bigArt = false; return }
-                menu.lyrics.toggle()
-            }
+            .onTapGesture { PlayerState.shared.tapTitles() }
             Button {
                 radio.togglePlayPause()
             } label: {

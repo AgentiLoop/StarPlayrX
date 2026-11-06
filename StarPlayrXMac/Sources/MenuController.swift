@@ -396,24 +396,30 @@ final class MenuController: NSObject, ObservableObject {
 
     // MARK: Channel list (search and scrolling)
 
-    @Published var search = ""
+    // The search, stars filter, chips, lyrics and big art are StarPlayrKit's PlayerState, shared with
+    // iOS; these pass through to it, and its changes are re-sent as this object's (see `init`).
+    private var state: PlayerState { PlayerState.shared }
+    private var stateChanges: AnyCancellable?
+
+    override init() {
+        super.init()
+        stateChanges = PlayerState.shared.objectWillChange.sink { [weak self] in self?.objectWillChange.send() }
+    }
+
+    var search: String { get { state.search } set { state.search = newValue } }
     /// The star beside the search field: only the starred channels are listed.
-    @Published var starsOnly = false
+    var starsOnly: Bool { get { state.starsOnly } set { state.starsOnly = newValue } }
     /// The category chip over the list (Music, Sports, …; StarPlayrKit's ChannelGroup); nil is "All Channels".
-    @Published var category: String? { didSet { if category != oldValue { subcategory = nil } } }
+    var category: String? { get { state.category } set { state.category = newValue } }
     /// The second-row chip inside `category` (NFL, Rock, …); nil is all of them.
-    @Published var subcategory: String?
+    var subcategory: String? { get { state.subcategory } set { state.subcategory = newValue } }
     /// Clicking the song/artist in Now Playing puts the lyrics where the channel list was.
-    @Published var lyrics = false
+    var lyrics: Bool { get { state.lyrics } set { state.lyrics = newValue } }
     /// Clicking the album art shows it full size over the channel list or lyrics; clicking either art puts them back.
-    @Published var bigArt = false
+    var bigArt: Bool { get { state.bigArt } set { state.bigArt = newValue } }
 
     /// The channels the list shows right now (after the search field, the stars filter and the category chips).
-    var visibleChannels: [Channel] {
-        ChannelGroup.filter(Channel.filter(Radio.shared.channels, nowPlaying: Radio.shared.nowPlaying, search: search,
-                                           stars: starsOnly ? Radio.shared.presets : nil),
-                            group: category, sub: subcategory)
-    }
+    var visibleChannels: [Channel] { state.visibleChannels }
 
     /// The channel list's NSScrollView (the SwiftUI ScrollView's backing view): the one with the tallest
     /// content. Nil while the lyrics pane (or the big art) has replaced the list — there is no channel

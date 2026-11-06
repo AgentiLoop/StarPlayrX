@@ -38,9 +38,7 @@ struct LyricsPane: View {
     }
 
     /// The song the pane is about: what's coming out of the speakers, else what the row shows.
-    private var showing: NowPlaying? {
-        radio.playingNow ?? radio.current.flatMap { radio.nowPlaying[$0.id] }
-    }
+    private var showing: NowPlaying? { radio.lyricsSong }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -97,11 +95,7 @@ struct LyricsPane: View {
         return ScrollViewReader { proxy in
             ScrollView {
                 LyricLines(id: id, lyrics: lyrics, current: current) { line in
-                    if !lyrics.synced {
-                        showBubble("Text only lyrics, not timed")
-                    } else if pin(line, in: lyrics, at: position) {
-                        showBubble("Lyrics position set")
-                    }
+                    if let message = LyricsLayout.tap(line, in: lyrics) { showBubble(message) }
                     // Light the clicked line straight away, even when the song's position isn't
                     // known yet (or never turns up): until it is, the click is the best guess.
                     if lyrics.synced {
@@ -152,11 +146,6 @@ struct LyricsPane: View {
     private var position: TimeInterval? { LyricsLayout.position }
 
     static var displayLead: TimeInterval { LyricsLayout.displayLead }
-
-    /// Clicking a line pins the song's position there (see `LyricsLayout.pin`).
-    private func pin(_ line: LyricLine, in lyrics: Lyrics, at position: TimeInterval?) -> Bool {
-        LyricsLayout.pin(line, in: lyrics, at: position, showing: showing)
-    }
 
     static func sections(of lyrics: Lyrics) -> [[LyricLine]] { LyricsLayout.sections(of: lyrics) }
 
