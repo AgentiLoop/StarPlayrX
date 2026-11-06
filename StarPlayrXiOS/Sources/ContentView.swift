@@ -169,6 +169,14 @@ struct NowPlayingHeader: View {
             .accessibilityAddTraits(.isButton)
             .accessibilityHint(app.lyrics ? "Shows the channel list" : "Shows the song's lyrics")
 
+            // Previous / next: the same playAdjacent the lock screen's ⏮ ⏭ send (RadioSession.swift).
+            Button { radio.playAdjacent(-1) } label: {
+                Image(systemName: "backward.fill").font(.system(size: 20))
+            }
+            .buttonStyle(.plain)
+            .disabled(radio.current == nil)
+            .accessibilityLabel("Previous")
+
             Button { radio.togglePlayPause() } label: {
                 Image(systemName: radio.isPlaying ? "pause.circle.fill" : "play.circle.fill")
                     .font(.system(size: 40))
@@ -176,6 +184,13 @@ struct NowPlayingHeader: View {
             .buttonStyle(.plain)
             .disabled(radio.current == nil)
             .accessibilityLabel(radio.isPlaying ? "Pause" : "Play")
+
+            Button { radio.playAdjacent(1) } label: {
+                Image(systemName: "forward.fill").font(.system(size: 20))
+            }
+            .buttonStyle(.plain)
+            .disabled(radio.current == nil)
+            .accessibilityLabel("Next")
 
             if let ch = radio.current {
                 StarButton(isStarred: radio.presets.contains(ch.id), channel: ch.name) { radio.togglePreset(ch.id) }
