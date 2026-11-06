@@ -94,7 +94,9 @@ struct PlayerView: View {
             Group {
                 if shaded { shade } else if hSize == .regular { wide } else { narrow }
             }
-            .navigationTitle(shaded ? "" : hSize == .regular ? "StarPlayrX" : app.lyrics ? "Lyrics" : "Channels")
+            // No title in the wide layouts: with the toolbar items down the side (iPhone Duo) the
+            // top bar is then empty, and the panes get its height.
+            .navigationTitle(shaded || hSize == .regular ? "" : app.lyrics ? "Lyrics" : "Channels")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
@@ -107,7 +109,7 @@ struct PlayerView: View {
                     .accessibilityLabel("Account")
                 }
                 ToolbarItemGroup(placement: .topBarTrailing) {
-                    AirPlayButton().frame(width: 28, height: 28)
+                    AirPlayButton()
                     if !shaded {
                         if !app.lyrics {
                             Button { app.starsOnly.toggle() } label: {
@@ -126,12 +128,27 @@ struct PlayerView: View {
     }
 
     /// The window shade: the art filling the height on the left, the titles, controls and EQ
-    /// laid out beside it, and nothing else.
+    /// laid out beside it, and nothing else. The Duo's laptop pose shows no status bar in this
+    /// half, so the clock and date sit up in the bar's place.
     private var shade: some View {
         NowPlayingHeader(spread: true)
             .padding(.horizontal, 24)
             .padding(.vertical, 12)
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    TimelineView(.everyMinute) { context in
+                        HStack(alignment: .firstTextBaseline, spacing: 10) {
+                            Text(context.date, format: .dateTime.hour().minute())
+                                .font(.title3.weight(.semibold)).monospacedDigit()
+                            Text(context.date, format: .dateTime.weekday(.abbreviated).month(.abbreviated).day())
+                                .font(.title3).foregroundStyle(.secondary)
+                        }
+                    }
+                    .accessibilityElement(children: .combine)
+                }
+            }
     }
+
 
 
     /// Phones (and the Duo closed): now playing on top, then the channel list or the lyrics.
@@ -179,8 +196,13 @@ struct PlayerView: View {
                     else if app.lyrics { LyricsView() } else { ChannelList(filters: false) }
                 }
             } else {
+                // Side by side, split down the middle: the fold is halfway across the whole window,
+                // and this view is inset by the status bar and toolbar along the right edge, so the
+                // left pane is that much less than half — the divider then lies on the fold.
+                let fold = (geo.size.width + geo.safeAreaInsets.leading + geo.safeAreaInsets.trailing) / 2
+                    - geo.safeAreaInsets.leading
                 HStack(spacing: 0) {
-                    nowPlayingPane.frame(width: min(max(geo.size.width * 0.45, 320), 440))
+                    nowPlayingPane.frame(width: fold)
                     Divider()
                     ChannelList()
                 }
@@ -231,10 +253,12 @@ struct NowPlayingHeader: View {
         GeometryReader { geo in
             // The art fills the height (the Duo's laptop layout hands in the height it wants,
             // PlayerView.wide); in a wide window it's capped so the titles keep enough room.
-            let size = min(geo.size.height, geo.size.width * 0.45)
-            HStack(alignment: .top, spacing: 28) {
+            let size = min(geo.size.height, geo.size.width * 0.5)
+            HStack(alignment: .top, spacing: 32) {
                 art(size: size, cornerRadius: size / 5)
                     .shadow(color: .black.opacity(0.18), radius: 14, y: 8)
+                // The column takes all the width left and the art's height, so the titles,
+                // controls and bars spread over the whole space beside it.
                 VStack(alignment: .leading, spacing: 0) {
                     HStack(alignment: .top, spacing: 12) {
                         titles(large: true)
@@ -243,12 +267,13 @@ struct NowPlayingHeader: View {
                     Spacer(minLength: 8)
                     controls(large: true)
                     Spacer(minLength: 8)
-                    bars
+                    bars.frame(maxWidth: .infinity)
                 }
-                .frame(height: size)
                 .frame(maxWidth: .infinity)
+                .frame(height: size)
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            // Up against the top of the space, not floating in its middle.
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         }
     }
 
@@ -294,11 +319,11 @@ struct NowPlayingHeader: View {
         let np = radio.current.flatMap { radio.displayed($0.id) }
         return VStack(alignment: .leading, spacing: large ? 4 : 2) {
             if let ch = radio.current {
-                MarqueeText(text: "\(ch.id) · \(ch.name)", font: large ? .subheadline : .caption, secondary: true).id("\(ch.id) · \(ch.name)")
-                MarqueeText(text: np?.song ?? "", font: large ? .title2.bold() : .headline).id(np?.song ?? "")
-                MarqueeText(text: np?.artist ?? "", font: large ? .title3 : .subheadline).id(np?.artist ?? "")
+                MarqueeText(text: "\(ch.id) · \(ch.name)", font: large ? .headline : .caption, secondary: true).id("\(ch.id) · \(ch.name)")
+                MarqueeText(text: np?.song ?? "", font: large ? .title.bold() : .headline).id(np?.song ?? "")
+                MarqueeText(text: np?.artist ?? "", font: large ? .title2 : .subheadline).id(np?.artist ?? "")
             } else {
-                Text("Pick a channel").font(large ? .title2.bold() : .headline)
+                Text("Pick a channel").font(large ? .title.bold() : .headline)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -375,11 +400,30 @@ struct BigArtView: View {
 }
 
 /// AirPlay / Bluetooth / speaker picker.
-struct AirPlayButton: UIViewRepresentable {
+/// AirPlay / Bluetooth / speaker picker as a plain toolbar button, so the system lays it out with
+/// the other items (under the status bar on iPhone Duo's side bar) rather than keeping a raw
+/// AVRoutePickerView in the top bar. The picker view sits in the hierarchy, out of sight, and
+/// its own button is pressed for it.
+struct AirPlayButton: View {
+    @State private var picker = AVRoutePickerView()
+
+    var body: some View {
+        Button {
+            (picker.subviews.first { $0 is UIButton } as? UIControl)?.sendActions(for: .touchUpInside)
+        } label: {
+            Image(systemName: "airplay.audio")
+        }
+        .accessibilityLabel("AirPlay")
+        .background(RoutePickerHost(picker: picker).frame(width: 1, height: 1).opacity(0.01).allowsHitTesting(false))
+    }
+}
+
+struct RoutePickerHost: UIViewRepresentable {
+    let picker: AVRoutePickerView
+
     func makeUIView(context: Context) -> AVRoutePickerView {
-        let view = AVRoutePickerView()
-        view.prioritizesVideoDevices = false
-        return view
+        picker.prioritizesVideoDevices = false
+        return picker
     }
 
     func updateUIView(_ view: AVRoutePickerView, context: Context) {}
