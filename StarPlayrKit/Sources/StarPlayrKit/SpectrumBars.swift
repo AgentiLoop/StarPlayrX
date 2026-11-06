@@ -18,7 +18,7 @@ public struct SpectrumBars: View {
     @Environment(\.colorScheme) private var scheme
     /// Inactive with Control Center or Notification Center pulled down: nothing new to see.
     @Environment(\.scenePhase) private var phase
-    /// False (paused, or the lyrics / big art are up; PlayerState.barsRunning): the bars stay frozen.
+    /// False (paused; PlayerState.barsRunning): the bars stay frozen.
     private let running: Bool
     @AppStorage(BubbleStage.key) private var bubbleStage = BubbleStage.defaultStage
     /// The stage label shown after a tap, and where its tail points (nil: top centre of the bars).
