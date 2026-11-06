@@ -1,0 +1,47 @@
+name: StarPlayrXiOS
+options:
+  bundleIdPrefix: com.starplayrx
+  deploymentTarget:
+    iOS: "17.0"
+packages:
+  StarPlayrKit:
+    path: ../StarPlayrKit
+targets:
+  StarPlayrX:
+    type: application
+    platform: iOS
+    sources:
+      - Sources
+    dependencies:
+      - package: StarPlayrKit
+    info:
+      path: Sources/Info.plist
+      properties:
+        CFBundleDisplayName: StarPlayrX
+        CFBundleShortVersionString: "1.0"
+        CFBundleVersion: "1"
+        LSApplicationCategoryType: public.app-category.music
+        UIBackgroundModes: [audio]
+        UILaunchScreen: {}
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: true
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        NSAppTransportSecurity:
+          NSAllowsArbitraryLoads: true
+    settings:
+      base:
+        PRODUCT_NAME: StarPlayrX
+        PRODUCT_BUNDLE_IDENTIFIER: com.starplayrx.ios
+        TARGETED_DEVICE_FAMILY: "1,2"
+        SWIFT_VERSION: "5.0"
+        CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: 469UCUB275
+        GENERATE_INFOPLIST_FILE: NO

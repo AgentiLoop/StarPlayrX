@@ -1,0 +1,341 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		0B8819CE2E7E93BD7AD18126 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 930224C9BDFD3BD60DA3720F /* ContentView.swift */; };
+		BF63C3051FA7A9E6DA84DC82 /* StarPlayrXApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 895D2CE6A27D992F30C488F2 /* StarPlayrXApp.swift */; };
+		F0EE46195DDC84398E82B5BB /* StarPlayrKit in Frameworks */ = {isa = PBXBuildFile; productRef = 2A620742C2F4E87712E0AFD6 /* StarPlayrKit */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		2C02BA5F2D6CEE2CB60DD800 /* StarPlayrX.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = StarPlayrX.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		31F50F6E629602F3D0E4A609 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		895D2CE6A27D992F30C488F2 /* StarPlayrXApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StarPlayrXApp.swift; sourceTree = "<group>"; };
+		930224C9BDFD3BD60DA3720F /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		B24D39FBDF6B488418780136 /* StarPlayrKit */ = {isa = PBXFileReference; lastKnownFileType = folder; name = StarPlayrKit; path = ../StarPlayrKit; sourceTree = SOURCE_ROOT; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		7A25AD76AB04C50F467DB143 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F0EE46195DDC84398E82B5BB /* StarPlayrKit in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		0640E8FB00ADDC0BBD983970 = {
+			isa = PBXGroup;
+			children = (
+				61099F1B055EAE18348A7D2B /* Packages */,
+				1811178BD50AF9CF760A4584 /* Sources */,
+				4BEDA9A04DB5EA2CB74BA976 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		1811178BD50AF9CF760A4584 /* Sources */ = {
+			isa = PBXGroup;
+			children = (
+				930224C9BDFD3BD60DA3720F /* ContentView.swift */,
+				31F50F6E629602F3D0E4A609 /* Info.plist */,
+				895D2CE6A27D992F30C488F2 /* StarPlayrXApp.swift */,
+			);
+			path = Sources;
+			sourceTree = "<group>";
+		};
+		4BEDA9A04DB5EA2CB74BA976 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				2C02BA5F2D6CEE2CB60DD800 /* StarPlayrX.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		61099F1B055EAE18348A7D2B /* Packages */ = {
+			isa = PBXGroup;
+			children = (
+				B24D39FBDF6B488418780136 /* StarPlayrKit */,
+			);
+			name = Packages;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		3655C7D5E9CFFCC85251F2A2 /* StarPlayrX */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 2DCC3DEE4FC23CC5B0214118 /* Build configuration list for PBXNativeTarget "StarPlayrX" */;
+			buildPhases = (
+				701FCBFB0B444DAA4788DFD1 /* Sources */,
+				7A25AD76AB04C50F467DB143 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = StarPlayrX;
+			packageProductDependencies = (
+				2A620742C2F4E87712E0AFD6 /* StarPlayrKit */,
+			);
+			productName = StarPlayrX;
+			productReference = 2C02BA5F2D6CEE2CB60DD800 /* StarPlayrX.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		AD0C5F04935661B84BE96C99 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					3655C7D5E9CFFCC85251F2A2 = {
+						DevelopmentTeam = 469UCUB275;
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = 076D0AA84FE08A4D896504A2 /* Build configuration list for PBXProject "StarPlayrXiOS" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 0640E8FB00ADDC0BBD983970;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				79A9E56DE3B1E3BAFBED00D5 /* XCLocalSwiftPackageReference "../StarPlayrKit" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 4BEDA9A04DB5EA2CB74BA976 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				3655C7D5E9CFFCC85251F2A2 /* StarPlayrX */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		701FCBFB0B444DAA4788DFD1 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				0B8819CE2E7E93BD7AD18126 /* ContentView.swift in Sources */,
+				BF63C3051FA7A9E6DA84DC82 /* StarPlayrXApp.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		27A1F52A36972ECC5AA3003C /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		56358EC14A93991FCEE71385 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		877A36947EA130DE770E2953 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 469UCUB275;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Sources/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.starplayrx.ios;
+				PRODUCT_NAME = StarPlayrX;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		891BF0234A893E0DC06A0A01 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 469UCUB275;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Sources/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.starplayrx.ios;
+				PRODUCT_NAME = StarPlayrX;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		076D0AA84FE08A4D896504A2 /* Build configuration list for PBXProject "StarPlayrXiOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				27A1F52A36972ECC5AA3003C /* Debug */,
+				56358EC14A93991FCEE71385 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		2DCC3DEE4FC23CC5B0214118 /* Build configuration list for PBXNativeTarget "StarPlayrX" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				891BF0234A893E0DC06A0A01 /* Debug */,
+				877A36947EA130DE770E2953 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		79A9E56DE3B1E3BAFBED00D5 /* XCLocalSwiftPackageReference "../StarPlayrKit" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../StarPlayrKit;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		2A620742C2F4E87712E0AFD6 /* StarPlayrKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = StarPlayrKit;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = AD0C5F04935661B84BE96C99 /* Project object */;
+}
