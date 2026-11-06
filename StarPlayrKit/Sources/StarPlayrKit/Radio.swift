@@ -406,6 +406,8 @@ public final class Radio: ObservableObject {
     // MARK: Xtra playback
 
     private func printXtra(_ line: String) {
+        // OS_ACTIVITY_MODE=disable in the schemes hides Logger output in Xcode's console; print still shows.
+        print(line)
         Logger(subsystem: "com.starplayrx.mac", category: "xtra").notice("\(line, privacy: .public)")
     }
 
