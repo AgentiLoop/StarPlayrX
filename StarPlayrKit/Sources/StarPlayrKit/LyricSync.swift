@@ -50,6 +50,9 @@ public final class LyricSync: ObservableObject {
     /// nil = nothing yet (or only a shift remembered from last time), so any lock replaces it.
     private enum Source: Equatable { case shazam, aligner(Double) }
     private var heldBy: Source?
+    /// A Shazam match placing the song somewhere else than the Shazam lock held, waiting for a
+    /// later match to agree with it before the lock moves.
+    private var doubtedShift: (shift: Double, found: Date)?
     /// An aligner lock within this many seconds of the one held is the same lock, refined.
     /// 0.5 s rather than a second: a lock that moves by more than half a second is a different
     /// place in the song, and keeping the old one is what parked the highlight a line or two out.
@@ -396,6 +399,7 @@ public final class LyricSync: ObservableObject {
             report = remembered.map { "remembered \(String(format: "%+.1f", $0))s" } ?? "no measurement yet"
             isPinned = false
             heldBy = nil
+            doubtedShift = nil
             lockedAt = nil
             lastSegment = -1
         }
@@ -430,6 +434,21 @@ public final class LyricSync: ObservableObject {
             // (it used to be thrown away past a minute, leaving the lyrics way off until a re-tune).
             let found = match.offset - match.real.timeIntervalSince(songStart)
             if abs(found) <= 600 {
+                // Shazam has already placed this song and this match says somewhere else (a chorus
+                // or riff that repeats, matched at the wrong one of them): one stray match threw
+                // the lyrics 27 s out mid-song. It takes two matches in a row agreeing with each
+                // other to move a Shazam lock; a match that agrees with the lock refines it.
+                if heldBy == .shazam, let held = shift, abs(found - held) > Self.agree {
+                    if let doubt = doubtedShift, abs(found - doubt.shift) <= Self.agree, match.found > doubt.found {
+                        doubtedShift = nil
+                    } else {
+                        if doubtedShift.map({ abs(found - $0.shift) > Self.agree }) ?? true { doubtedShift = (found, match.found) }
+                        report = String(format: "kept %+.1fs; Shazam now says %+.1fs (at %.1fs), waiting for a second match to agree",
+                                        held, found, match.offset)
+                        return
+                    }
+                }
+                doubtedShift = nil
                 heldBy = .shazam
                 shift = found
                 lockedAt = songStart

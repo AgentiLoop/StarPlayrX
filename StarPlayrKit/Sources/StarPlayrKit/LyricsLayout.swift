@@ -43,16 +43,28 @@ public enum LyricsLayout {
     public static func line(of lyrics: Lyrics, at position: TimeInterval) -> Int? {
         guard lyrics.synced else { return nil }
         guard let last = lyrics.lines.last?.at, position < last + 30 else { return nil }
-        var found: Int?
+        var found: (id: Int, at: TimeInterval)?
+        var next: TimeInterval?
         for line in lyrics.lines {
-            guard let at = line.at, at <= position else { break }
+            guard let at = line.at else { continue }
+            guard at <= position else { next = at; break }
             // Only a line the pane actually draws. LRC files time the gaps between verses as empty
             // lines, and `sections(of:)` drops those: asking the scroll view for an id it hasn't
             // got sends it to the bottom of the lyrics instead of to the line being sung.
-            if !line.text.isEmpty { found = line.id }
+            if !line.text.isEmpty { found = (line.id, at) }
         }
-        return found
+        guard let found else { return nil }
+        // An instrumental (a solo, a long intro or break): nobody is singing, so nothing is lit.
+        // A line stays lit for its first seconds; past that, with the next line still well away,
+        // the highlight goes out until the singing comes back.
+        if let next, next - found.at > instrumentalGap, position - found.at > lineHold { return nil }
+        return found.id
     }
+
+    /// A stretch between two timed lines longer than this is an instrumental, not a long line.
+    public static let instrumentalGap: TimeInterval = 12
+    /// How long a line stays lit into such a stretch.
+    public static let lineHold: TimeInterval = 7
 
     /// `defaults write com.starplayrx.mac lyricsDisplayLead -float 1.0` moves it without a rebuild.
     public static var displayLead: TimeInterval {
