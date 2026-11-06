@@ -20,9 +20,11 @@ public final class SpectrumTimeline: @unchecked Sendable {
     public static let shared = SpectrumTimeline()
 
     /// `voice`: per frame, how sure Apple's on-device sound classifier is that someone is singing
-    /// or rapping (0...1); nil when it couldn't say.
-    private struct Chunk { let channel: String; let start: Date; let real: Date?; let sequence: Int; let hop: Double; let duration: Double; let frames: [[Float]]; let voice: [Float]? }
-    private struct Track { let hop: Double; let first: Int; var frames: [[Float]] }
+    /// or rapping (0...1); nil when it couldn't say. `singing`: the same answers placed at the middle
+    /// of each classifier window and drawn straight between them, so the rise sits where the singing
+    /// comes in rather than up to a window early — the curve `LyricSync` lines the lyrics up with first.
+    private struct Chunk { let channel: String; let start: Date; let real: Date?; let sequence: Int; let hop: Double; let duration: Double; let frames: [[Float]]; let voice: [Float]?; let singing: [Float]? }
+    private struct Track { let hop: Double; let first: Int; var frames: [[Float]]; var singing: [Float]? = nil }
 
     private let lock = NSLock()
     private let queue = DispatchQueue(label: "StarPlayrX.spectrum", qos: .utility)
@@ -128,7 +130,7 @@ public final class SpectrumTimeline: @unchecked Sendable {
         lock.lock()
         live.removeAll { $0.start == start }
         live.append(Chunk(channel: Self.channel(name), start: start, real: realDates[name], sequence: sequence,
-                          hop: hop, duration: duration, frames: frames, voice: voice))
+                          hop: hop, duration: duration, frames: frames, voice: voice?.voice, singing: voice?.singing))
         if live.count > 30 { live.removeFirst(live.count - 30) }
         // What segments really hold, from the decoded audio: the player's date runs on the tagged
         // EXTINF per segment, so every untagged segment it stamps ran ~0.25 s further ahead than the
@@ -194,16 +196,7 @@ public final class SpectrumTimeline: @unchecked Sendable {
     public func onsets() -> (start: Date, step: Double, values: [Float])? {
         lock.lock()
         defer { lock.unlock() }
-        let sorted = live.filter { $0.channel == liveChannel && $0.real != nil }.sorted { $0.sequence < $1.sequence }
-        // A gap in the segments breaks the timeline. Keep the unbroken run that ENDS at the newest
-        // segment: keeping the one that starts at the oldest threw the whole song's audio away
-        // whenever an older segment turned up late or one was skipped (58 s of audio fell to 39).
-        var run = sorted.suffix(1)
-        while let head = run.first, let i = sorted.firstIndex(where: { $0.sequence == head.sequence }), i > 0,
-              sorted[i - 1].sequence == head.sequence - 1 {
-            run = sorted[(i - 1)...]
-        }
-        let chunks = Array(run)
+        let chunks = liveRun()
         guard let first = chunks.first, let start = first.real, first.hop > 0 else { return nil }
         var values = [Float]()
         var previous: [Float]?
@@ -236,6 +229,37 @@ public final class SpectrumTimeline: @unchecked Sendable {
         return values.isEmpty ? nil : (start, first.hop, values)
     }
 
+    /// How sure the classifier is that someone is singing, frame by frame, over the same decoded
+    /// live audio and on the same real broadcast time as `onsets()`. A lyric line starts where the
+    /// singing comes in, so `LyricSync` lines the lyrics up with this before the onsets.
+    public func singing() -> (start: Date, step: Double, values: [Float])? {
+        lock.lock()
+        defer { lock.unlock() }
+        let chunks = liveRun()
+        guard let first = chunks.first, let start = first.real, first.hop > 0 else { return nil }
+        var values = [Float]()
+        for chunk in chunks {
+            // A segment the classifier couldn't hear would leave a hole that moves every line after it.
+            guard let singing = chunk.singing, singing.count == chunk.frames.count else { return nil }
+            values += singing
+        }
+        return values.isEmpty ? nil : (start, first.hop, values)
+    }
+
+    /// The decoded live segments of this channel, oldest first. A gap in the segments breaks the
+    /// timeline. Keep the unbroken run that ENDS at the newest segment: keeping the one that starts
+    /// at the oldest threw the whole song's audio away whenever an older segment turned up late or
+    /// one was skipped (58 s of audio fell to 39). Call with `lock` held.
+    private func liveRun() -> [Chunk] {
+        let sorted = live.filter { $0.channel == liveChannel && $0.real != nil }.sorted { $0.sequence < $1.sequence }
+        var run = sorted.suffix(1)
+        while let head = run.first, let i = sorted.firstIndex(where: { $0.sequence == head.sequence }), i > 0,
+              sorted[i - 1].sequence == head.sequence - 1 {
+            run = sorted[(i - 1)...]
+        }
+        return Array(run)
+    }
+
     /// The same onset curve for a downloaded Xtra track, on the file's own clock: the start is
     /// "seconds into the file" counted from the reference date, so `LyricAligner` run with a song
     /// start of `Date(timeIntervalSinceReferenceDate: 0)` measures against the file position.
@@ -262,6 +286,16 @@ public final class SpectrumTimeline: @unchecked Sendable {
             previous = frame
         }
         return (Date(timeIntervalSinceReferenceDate: Double(t.first) * t.hop), t.hop, values)
+    }
+
+    /// `singing()` for a downloaded Xtra track, on the file's own clock like `onsets(track:)`. Nil
+    /// until the classifier has been through the whole file.
+    public func singing(track file: URL) -> (start: Date, step: Double, values: [Float])? {
+        lock.lock()
+        let t = tracks[file]
+        lock.unlock()
+        guard let t, t.hop > 0, let singing = t.singing, !singing.isEmpty else { return nil }
+        return (Date(timeIntervalSinceReferenceDate: Double(t.first) * t.hop), t.hop, singing)
     }
 
     /// The real on-air time (stream PDT) of the player's current date, which runs ahead of it.
@@ -304,7 +338,9 @@ public final class SpectrumTimeline: @unchecked Sendable {
     /// Apple's built-in sound classifier (SoundAnalysis, on device) over one decoded segment, in
     /// one-second windows half overlapped: per equalizer frame, how sure it is a voice is singing
     /// or rapping. Speech is left out on purpose: that is the DJ. Nil if it couldn't run.
-    private static func voice(in file: URL, frames: Int, hop: Double) -> [Float]? {
+    /// `voice` takes the surest window covering each frame (the onset weighting); `singing` runs
+    /// straight from one window's middle to the next (see `Chunk`).
+    private static func voice(in file: URL, frames: Int, hop: Double) -> (voice: [Float], singing: [Float])? {
         guard hop > 0, let request = try? SNClassifySoundRequest(classifierIdentifier: .version1),
               let analyzer = try? SNAudioFileAnalyzer(url: file) else { return nil }
         request.windowDuration = CMTime(seconds: 1, preferredTimescale: 16_000)
@@ -314,10 +350,22 @@ public final class SpectrumTimeline: @unchecked Sendable {
         analyzer.analyze()
         let windows = observer.windows
         guard !windows.isEmpty else { return nil }
-        return (0..<frames).map { k in
+        let voice = (0..<frames).map { k in
             let t = Double(k) * hop
             return windows.filter { t >= $0.start && t < $0.end }.map(\.voice).max() ?? 0
         }
+        let middles = windows.map { (at: ($0.start + $0.end) / 2, voice: $0.voice) }.sorted { $0.at < $1.at }
+        var next = 0
+        let singing = (0..<frames).map { k -> Float in
+            let t = Double(k) * hop
+            while next < middles.count, middles[next].at <= t { next += 1 }
+            guard next > 0 else { return middles[0].voice }
+            guard next < middles.count else { return middles[next - 1].voice }
+            let (a, b) = (middles[next - 1], middles[next])
+            let f = b.at > a.at ? Float((t - a.at) / (b.at - a.at)) : 0
+            return a.voice + (b.voice - a.voice) * f
+        }
+        return (voice, singing)
     }
 
     private final class VoiceObserver: NSObject, SNResultsObserving {
@@ -347,6 +395,14 @@ public final class SpectrumTimeline: @unchecked Sendable {
                 tracks[file]?.frames += frames
                 return true
             }
+            // The whole file through the classifier once the bars are out, for `singing(track:)`.
+            lock.lock()
+            let t = tracks[file]
+            lock.unlock()
+            guard let t, let voice = Self.voice(in: file, frames: t.first + t.frames.count, hop: t.hop) else { return }
+            lock.lock()
+            tracks[file]?.singing = Array(voice.singing.dropFirst(t.first))
+            lock.unlock()
         }
     }
 

@@ -277,31 +277,39 @@ public final class LyricSync: ObservableObject {
         let times = Self.lineTimes(lyrics)
         guard times.count >= LyricAligner.minimumLines else { return }
         let origin = Date(timeIntervalSinceReferenceDate: 0)
-        guard let found = LyricAligner.align(lineTimes: times, songStart: origin, onsets: onsets) else {
+        // #2 the classifier's singing curve (once it has been through the file), #3 the onsets.
+        let singing = SpectrumTimeline.shared.singing(track: file)
+        let bySinging = singing.flatMap { LyricAligner.align(lineTimes: times, songStart: origin, onsets: $0) }
+        if bySinging == nil, let singing,
+           let guess = LyricAligner.bestGuess(lineTimes: times, songStart: origin, onsets: singing, over: LyricAligner.search) {
+            logCompare(aligner: -guess.shift, committed: false, guess, by: "singing")
+        }
+        let by = bySinging != nil ? "singing" : "onsets"
+        guard let found = bySinging ?? LyricAligner.align(lineTimes: times, songStart: origin, onsets: onsets) else {
             Self.logUnsure(lineTimes: times, songStart: origin, onsets: onsets, key: "Xtra \(file.lastPathComponent)")
             if let guess = LyricAligner.bestGuess(lineTimes: times, songStart: origin, onsets: onsets, over: LyricAligner.search) {
-                logCompare(aligner: -guess.shift, committed: false, guess)
+                logCompare(aligner: -guess.shift, committed: false, guess, by: by)
             }
             return
         }
         // The aligner says line t is sung at t + shift seconds into the file; the lyrics are drawn
         // at file position + Xtra shift, so the Xtra shift is the opposite of it.
         let shift = -found.shift
-        logCompare(aligner: shift, committed: abs(shift) <= Self.xtraMaxShift, found)
+        logCompare(aligner: shift, committed: abs(shift) <= Self.xtraMaxShift, found, by: by)
         guard abs(shift) <= Self.xtraMaxShift, abs(shift) >= Self.xtraAlignerMinimum else { xtraAligned = nil; return }
         xtraAligned = shift
         if xtraFound == nil {
-            report = String(format: "Xtra %+.1fs (aligner: confidence %.1f, margin %.2f, %d lines)",
-                            shift, found.confidence, found.margin, found.lines)
+            report = String(format: "Xtra %+.1fs (aligner, %@: confidence %.1f, margin %.2f, %d lines)",
+                            shift, by, found.confidence, found.margin, found.lines)
         }
     }
 
     /// One line per measurement once Shazam has placed the track:
     /// `log show --predicate 'eventMessage BEGINSWITH "COMPARE"'` collects them.
-    private func logCompare(aligner: Double, committed: Bool, _ a: LyricAligner.Alignment) {
+    private func logCompare(aligner: Double, committed: Bool, _ a: LyricAligner.Alignment, by: String) {
         guard let shazam = xtraFound else { return }
         Self.log.notice("""
-            COMPARE xtra key=\(Radio.shared.playingNow.map { LyricsStore.key($0.artist, $0.song) } ?? "?") \
+            COMPARE xtra key=\(Radio.shared.playingNow.map { LyricsStore.key($0.artist, $0.song) } ?? "?") by=\(by) \
             shazam=\(String(format: "%+.2f", shazam)) aligner=\(String(format: "%+.2f", aligner)) \
             err=\(String(format: "%+.2f", aligner - shazam)) committed=\(committed ? "yes" : "no") \
             conf=\(String(format: "%.2f", a.confidence)) margin=\(String(format: "%.2f", a.margin)) lines=\(a.lines)
@@ -425,12 +433,22 @@ public final class LyricSync: ObservableObject {
             report = "only \(times.count) timed lines" + shazam
             return
         }
-        guard let onsets = SpectrumTimeline.shared.onsets() else {
+        // #2, Apple's sound classifier: how sure it is someone is singing, frame by frame. A line
+        // starts where the singing comes in, so that is lined up first. #3, when it can't be sure
+        // (singing straight through a verse leaves few rises, or no classifier): the voice-band
+        // onsets. Both pass the same confidence and margin gates.
+        let singing = SpectrumTimeline.shared.singing()
+        let bySinging = singing.flatMap { LyricAligner.align(lineTimes: times, songStart: songStart, onsets: $0) }
+        if bySinging == nil, let singing {
+            Self.logUnsure(lineTimes: times, songStart: songStart, onsets: singing, key: key + " (singing)")
+        }
+        guard let onsets = bySinging != nil ? singing : SpectrumTimeline.shared.onsets() else {
             report = "no decoded audio yet" + shazam
             return
         }
+        let by = bySinging != nil ? "singing" : "onsets"
         let audio = Double(onsets.values.count) * onsets.step
-        guard let found = LyricAligner.align(lineTimes: times, songStart: songStart, onsets: onsets) else {
+        guard let found = bySinging ?? LyricAligner.align(lineTimes: times, songStart: songStart, onsets: onsets) else {
             report = String(format: "no confident match (%.0fs of audio, %d lines)", audio, times.count) + shazam
             Self.logUnsure(lineTimes: times, songStart: songStart, onsets: onsets, key: key)
             return
@@ -446,8 +464,8 @@ public final class LyricSync: ObservableObject {
                                              heldShift: shift, candidate: found,
                                              lineTimes: times, songStart: songStart, onsets: onsets, agree: Self.agree)
             if winner.shift == shift {
-                report = String(format: "kept %+.1fs; ignored %+.1fs (scores %.3f vs %.3f on this audio)",
-                                shift, found.shift,
+                report = String(format: "kept %+.1fs; ignored %+.1fs (%@: scores %.3f vs %.3f on this audio)",
+                                shift, found.shift, by,
                                 LyricAligner.score(of: shift, lineTimes: times, songStart: songStart, onsets: onsets) ?? 0,
                                 LyricAligner.score(of: found.shift, lineTimes: times, songStart: songStart, onsets: onsets) ?? 0) + shazam
                 return
@@ -455,8 +473,8 @@ public final class LyricSync: ObservableObject {
             heldBy = .aligner(winner.confidence)
             self.shift = winner.shift
             lockedAt = songStart
-            report = String(format: "%+.1fs (moved from %+.1fs, scores %.3f vs %.3f, confidence %.1f)",
-                            winner.shift, shift,
+            report = String(format: "%+.1fs (%@: moved from %+.1fs, scores %.3f vs %.3f, confidence %.1f)",
+                            winner.shift, by, shift,
                             LyricAligner.score(of: winner.shift, lineTimes: times, songStart: songStart, onsets: onsets) ?? 0,
                             LyricAligner.score(of: shift, lineTimes: times, songStart: songStart, onsets: onsets) ?? 0,
                             winner.confidence) + shazam
@@ -466,8 +484,8 @@ public final class LyricSync: ObservableObject {
         heldBy = .aligner(found.confidence)
         shift = found.shift
         lockedAt = songStart
-        report = String(format: "%+.1fs (confidence %.1f, margin %.2f, %d lines, %.0fs of audio)",
-                        found.shift, found.confidence, found.margin, found.lines, audio) + shazam
+        report = String(format: "%+.1fs (%@: confidence %.1f, margin %.2f, %d lines, %.0fs of audio)",
+                        found.shift, by, found.confidence, found.margin, found.lines, audio) + shazam
         LyricsCache.shared.saveShift(found.shift, for: key)
     }
 
