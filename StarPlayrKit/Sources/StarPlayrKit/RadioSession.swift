@@ -31,7 +31,8 @@ extension Radio {
     public func startAudioSession() {
         let session = AVAudioSession.sharedInstance()
         try? session.setCategory(.playback, mode: .default, policy: .longFormAudio)
-        try? session.setActive(true)
+        // Activating can block for a while (it waits on the audio server): never on the main thread.
+        Self.sessionQueue.async { try? AVAudioSession.sharedInstance().setActive(true) }
         NotificationCenter.default.addObserver(forName: AVAudioSession.interruptionNotification,
                                                object: session, queue: .main) { note in
             let info = note.userInfo
@@ -62,10 +63,19 @@ extension Radio {
         }
         guard Self.resumeAfterInterruption, shouldResume, let current else { return }
         Self.resumeAfterInterruption = false
-        try? AVAudioSession.sharedInstance().setActive(true)
-        play(current)
+        // Off the main thread (it can block), then tune back in once the session is ours again.
+        let id = current.id
+        Self.sessionQueue.async {
+            try? AVAudioSession.sharedInstance().setActive(true)
+            Task { @MainActor in
+                let radio = Radio.shared
+                if let ch = radio.channels.first(where: { $0.id == id }) { radio.play(ch) }
+            }
+        }
     }
 
     private static var resumeAfterInterruption = false
+    /// Where the audio session is activated, so the main thread never waits on the audio server.
+    private static let sessionQueue = DispatchQueue(label: "com.starplayrx.audiosession")
 }
 #endif
