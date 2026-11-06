@@ -189,6 +189,16 @@ public enum LyricAligner {
     public static func align(lineTimes: [Double], songStart: Date,
                       onsets: (start: Date, step: Double, values: [Float]),
                       over range: ClosedRange<Double>) -> Alignment? {
+        guard let best = bestGuess(lineTimes: lineTimes, songStart: songStart, onsets: onsets, over: range),
+              best.confidence >= minimumConfidence, best.margin >= minimumMargin else { return nil }
+        return best
+    }
+
+    /// The top-scoring shift over `range` without the confidence and margin gates: what `align`
+    /// would have answered, for logging why it didn't. Nil when nothing could be scored at all.
+    public static func bestGuess(lineTimes: [Double], songStart: Date,
+                                 onsets: (start: Date, step: Double, values: [Float]),
+                                 over range: ClosedRange<Double>) -> Alignment? {
         guard let p = prepared(lineTimes: lineTimes, songStart: songStart, onsets: onsets) else { return nil }
         let (frames, curve, sums, step0) = p
 
@@ -213,7 +223,6 @@ public enum LyricAligner {
         // The best alignment that isn't just a neighbour of the winner.
         let rival = scores.filter { abs($0.shift - best.shift) >= peakSpacing }.map(\.score).max() ?? 0
         let margin = rival > 0 ? best.score / rival : .infinity
-        guard confidence >= minimumConfidence, margin >= minimumMargin else { return nil }
         return Alignment(shift: refined(at: top, in: scores), confidence: confidence,
                          margin: margin, lines: best.lines)
     }

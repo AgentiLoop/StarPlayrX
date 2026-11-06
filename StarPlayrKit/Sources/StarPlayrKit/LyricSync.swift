@@ -11,6 +11,7 @@
 //
 
 import Foundation
+import os
 #if os(macOS)
 import AppKit
 #else
@@ -29,7 +30,12 @@ public final class LyricSync: ObservableObject {
     /// the song changes.
     @Published public private(set) var isPinned = false
     /// The last measurement, for the `lyric sync` scripting property.
-    public private(set) var report = "no measurement yet"
+    public private(set) var report = "no measurement yet" {
+        // Every change of what the timing rests on goes to the log, on the Mac and on iOS:
+        // `log stream --predicate 'subsystem BEGINSWITH "com.starplayrx" AND category == "lyrics"'`.
+        didSet { if report != oldValue { Self.log.notice("lyrics \(self.key, privacy: .public): \(self.report, privacy: .public)") } }
+    }
+    static let log = Logger(subsystem: Bundle.main.bundleIdentifier ?? "com.starplayrx", category: "lyrics")
     /// Another measurement is taken each time a new segment of audio has been decoded (~9.75 s on
     /// live channels), so it stays in step with the segments whatever their length, and a DJ break,
     /// ad or dead air between songs never leaves it waiting on a timer. Each one looks at everything
@@ -207,9 +213,12 @@ public final class LyricSync: ObservableObject {
               let onsets = SpectrumTimeline.shared.onsets(track: file) else { return }
         xtraAlignedAt = Date()
         let times = Self.lineTimes(lyrics)
-        guard times.count >= LyricAligner.minimumLines,
-              let found = LyricAligner.align(lineTimes: times, songStart: Date(timeIntervalSinceReferenceDate: 0),
-                                             onsets: onsets) else { return }
+        guard times.count >= LyricAligner.minimumLines else { return }
+        let origin = Date(timeIntervalSinceReferenceDate: 0)
+        guard let found = LyricAligner.align(lineTimes: times, songStart: origin, onsets: onsets) else {
+            Self.logUnsure(lineTimes: times, songStart: origin, onsets: onsets, key: "Xtra \(file.lastPathComponent)")
+            return
+        }
         // The aligner says line t is sung at t + shift seconds into the file; the lyrics are drawn
         // at file position + Xtra shift, so the Xtra shift is the opposite of it.
         let shift = -found.shift
@@ -229,6 +238,25 @@ public final class LyricSync: ObservableObject {
         var times = [Double]()
         for at in stamps.sorted() where at - (times.last ?? -.infinity) >= 0.1 { times.append(at) }
         return times
+    }
+
+    /// The aligner wouldn't commit: log its best guess and how far short of sure it was, as a
+    /// percentage of each gate, so "the lyrics are off" can be read back from the log.
+    private static func logUnsure(lineTimes: [Double], songStart: Date,
+                                  onsets: (start: Date, step: Double, values: [Float]), key: String) {
+        guard let guess = LyricAligner.bestGuess(lineTimes: lineTimes, songStart: songStart, onsets: onsets,
+                                                 over: LyricAligner.search) else {
+            log.error("lyrics \(key, privacy: .public): aligner could not score any shift (\(lineTimes.count) lines)")
+            return
+        }
+        let confidence = Int((guess.confidence / LyricAligner.minimumConfidence * 100).rounded())
+        let margin = guess.margin.isFinite ? Int((guess.margin / LyricAligner.minimumMargin * 100).rounded()) : 999
+        log.error("""
+            lyrics \(key, privacy: .public): not confident — best guess \(String(format: "%+.1f", guess.shift), privacy: .public)s, \
+            confidence \(String(format: "%.2f", guess.confidence), privacy: .public) (\(confidence)% of \(LyricAligner.minimumConfidence)), \
+            margin \(String(format: "%.2f", guess.margin), privacy: .public) (\(margin)% of \(LyricAligner.minimumMargin)), \
+            \(guess.lines) lines
+            """)
     }
 
     /// Takes the user's word for where the song is: the shift that puts the line they clicked
@@ -326,6 +354,7 @@ public final class LyricSync: ObservableObject {
         let audio = Double(onsets.values.count) * onsets.step
         guard let found = LyricAligner.align(lineTimes: times, songStart: songStart, onsets: onsets) else {
             report = String(format: "no confident match (%.0fs of audio, %d lines)", audio, times.count) + shazam
+            Self.logUnsure(lineTimes: times, songStart: songStart, onsets: onsets, key: key)
             return
         }
         // A lock this song already has: a new measurement replaces it when it is a refinement of
