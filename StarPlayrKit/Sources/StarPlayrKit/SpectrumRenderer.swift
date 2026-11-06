@@ -37,8 +37,8 @@ public final class SpectrumRenderer: NSObject, MTKViewDelegate {
         }
     }
 
-    /// Starts or stops the view's 60 fps loop (both apps). Stopping draws one last frame, so the
-    /// bars stay on screen frozen where they were instead of redrawing the same picture 60 times a second.
+    /// Starts or stops the view's 30 fps loop (both apps). Stopping draws one last frame, so the
+    /// bars stay on screen frozen where they were instead of redrawing the same picture 30 times a second.
     public func setRunning(_ run: Bool, on view: MTKView) {
         guard view.isPaused == run else { return }
         view.isPaused = !run

@@ -71,7 +71,7 @@ private struct SpectrumMetalView: NSViewRepresentable {
         view.colorspace = CGColorSpace(name: CGColorSpace.sRGB)
         view.layer?.isOpaque = false
         view.clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 0)
-        view.preferredFramesPerSecond = 60
+        view.preferredFramesPerSecond = 30
         view.delegate = context.coordinator
         return view
     }
