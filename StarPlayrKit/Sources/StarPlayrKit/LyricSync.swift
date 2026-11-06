@@ -217,9 +217,10 @@ public final class LyricSync: ObservableObject {
             xtraAligned = nil; xtraAlignedAt = .distantPast
         }
         xtraAlign(file)
-        // Wait out the first seconds (a fade-in or silence matches nothing), then a few tries,
-        // one segment apart, so a request that failed has had its answer.
-        guard xtraFound == nil, xtraTries < 6, at >= 3, Date().timeIntervalSince(xtraAsked) >= Self.xtraSegment else { return }
+        // Wait out the first seconds (a fade-in or silence matches nothing), then ask once a segment
+        // (so a request that failed has had its answer) until Shazam places the track. Until then the
+        // fallback (aligner, else the player's position) times the lyrics.
+        guard xtraFound == nil, at >= 3, Date().timeIntervalSince(xtraAsked) >= Self.xtraSegment else { return }
         xtraTries += 1
         xtraAsked = Date()
         let key = LyricsStore.key(np.artist, np.song)
@@ -228,22 +229,22 @@ public final class LyricSync: ObservableObject {
                 let sync = LyricSync.shared
                 guard sync.xtraFile == file else { return }
                 let store = LyricsStore.shared
-                // Blank names, or Shazam heard another song than the track says: its names stand in,
-                // and the lyrics are looked up under them (the next tick shows them).
-                if let match, !match.title.isEmpty, Self.isBlank(np) || !Self.same(match, as: key) {
-                    Radio.shared.hear(artist: match.artist, song: match.title, startedAt: nil)
-                    sync.xtraTries = 0
-                    return
-                }
-                if let match, store.missed {
-                    store.tryHeard(artist: match.artist, song: match.title, duration: Radio.shared.trackDuration)
-                }
-                guard let match, store.missed || Self.heard(match, key: key) else {
+                guard let match, !match.title.isEmpty else {
                     sync.report = "Xtra: no Shazam match yet (try \(sync.xtraTries))" + sync.xtraFallback
                     return
                 }
-                // No usable timing from Shazam: the fallback (aligner, else the player's position) stands.
-                guard Self.hasTiming(match, lyrics: store.lyrics) else {
+                // Blank names, or Shazam heard another song than the track says: its names stand in,
+                // and the lyrics are looked up under them. Its timing is of this file's audio either way,
+                // so it is kept below rather than thrown away.
+                let renamed = Self.isBlank(np) || !Self.same(match, as: key)
+                if renamed {
+                    Radio.shared.hear(artist: match.artist, song: match.title, startedAt: nil)
+                } else if store.missed {
+                    store.tryHeard(artist: match.artist, song: match.title, duration: Radio.shared.trackDuration)
+                }
+                // No usable timing from Shazam: the fallback stands. (After a rename the lyrics on hand
+                // are the old song's, so only the offset itself is checked.)
+                guard Self.hasTiming(match, lyrics: renamed ? nil : store.lyrics) else {
                     sync.report = "Xtra: Shazam gave no timing (try \(sync.xtraTries))" + sync.xtraFallback
                     return
                 }
