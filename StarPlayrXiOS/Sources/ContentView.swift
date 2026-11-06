@@ -162,6 +162,18 @@ struct PlayerView: View {
                     .accessibilityElement(children: .combine)
                     .padding(.top, 14)
                 }
+                // "All Stars" in the top-right corner itself: the camera's corner is bottom-right or
+                // top-left, so no inset here. With it on, ⏮ ⏭ skip through the starred channels only.
+                .overlay(alignment: .topTrailing) {
+                    Button { app.starsOnly.toggle() } label: {
+                        Image(systemName: app.starsOnly ? "star.fill" : "star")
+                    }
+                    .accessibilityLabel(app.starsOnly ? "All Stars On" : "All Stars Off")
+                    .font(.title2)
+                    .glassButtons()
+                    .padding(.trailing, 18)
+                    .padding(.top, 18)
+                }
                 // Drawn in the content, not the toolbar (the bar would stack them down the camera's
                 // side), so they need the toolbar's Liquid Glass look given by hand; in the bottom
                 // corners, their centres as far in from the edges as the camera dot's (about 46 pt),
@@ -170,12 +182,6 @@ struct PlayerView: View {
                 .overlay(alignment: .bottom) {
                     HStack {
                         accountMenu
-                        Spacer()
-                        // "All Stars": with it on, ⏮ ⏭ skip through the starred channels only.
-                        Button { app.starsOnly.toggle() } label: {
-                            Image(systemName: app.starsOnly ? "star.fill" : "star")
-                        }
-                        .accessibilityLabel(app.starsOnly ? "All Stars On" : "All Stars Off")
                         Spacer()
                         AirPlayButton()
                     }
@@ -256,8 +262,7 @@ struct PlayerView: View {
                             .padding(.horizontal)
                             .padding(.vertical, 10)
                             .frame(height: art + 20)
-                        // Centred in the room left between now playing and the fold.
-                        Spacer(minLength: 0)
+                        // Right under now playing; the slack is left above the fold.
                         if !app.lyrics && !app.bigArt { ChannelFilters(keepSubRow: true, inline: true) }
                         Spacer(minLength: 0)
                     }
@@ -648,9 +653,12 @@ struct ChannelFilters: View {
             // Picking a group opens a second row with its detailed chips (Sports → NFL, NBA, …).
             if let group = app.category, case let subs = ChannelGroup.subs(of: group, in: radio.channels), subs.count > 1 {
                 CategoryBar(titles: subs, all: "All \(group)", selected: $app.subcategory, small: true)
+                    // The Duo's top half has slack under it; drop the row into it.
+                    .padding(.top, keepSubRow ? 12 : 0)
             } else if keepSubRow {
                 // An empty, invisible row of the same height holds the place.
                 CategoryBar(titles: [], all: "All Channels", selected: .constant(nil), small: true).hidden()
+                    .padding(.top, 12)
             }
         }
     }
