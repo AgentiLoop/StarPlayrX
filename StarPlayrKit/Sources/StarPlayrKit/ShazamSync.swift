@@ -65,6 +65,14 @@ public final class ShazamSync: @unchecked Sendable {
         lock.lock(); wantedUntil = Date().addingTimeInterval(30); self.eager = eager; lock.unlock()
     }
 
+    /// A new channel: forget the last channel's match and drop any answer still on its way, so the
+    /// song heard there isn't taken for the one on here.
+    public func reset() {
+        lock.lock()
+        latest = nil; lastError = nil; askedAt = nil; pending = nil; asks += 1
+        lock.unlock()
+    }
+
     /// Takes the one request slot when it is free (or its request has gone unanswered too long).
     private func claim(_ now: Date) -> Int? {
         if let askedAt {

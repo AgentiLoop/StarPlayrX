@@ -9,6 +9,7 @@
 //
 
 import SwiftUI
+import os
 import StarPlayrKit
 
 @main
@@ -25,6 +26,19 @@ struct StarPlayrXApp: App {
             ContentView()
                 .environmentObject(Radio.shared)
                 .task { await AppState.shared.signInWithSaved() }
+                // starplayrx://play/1001 tunes channel 1001, starplayrx://lyrics shows the lyrics
+                // (`xcrun simctl openurl booted starplayrx://play/1001` drives the simulator).
+                .onOpenURL { url in
+                    let radio = Radio.shared
+                    Logger(subsystem: "com.starplayrx.ios", category: "url").notice("open \(url.absoluteString, privacy: .public): \(radio.channels.count) channels")
+                    switch url.host {
+                    case "play":
+                        if let ch = radio.channels.first(where: { $0.id == url.lastPathComponent }) { radio.play(ch) }
+                    case "lyrics":
+                        AppState.shared.lyrics = true
+                    default: break
+                    }
+                }
         }
     }
 }

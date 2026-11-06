@@ -315,8 +315,9 @@ struct ChannelRow: View, Equatable {
 
     var body: some View {
         HStack(spacing: 10) {
-            Text(channel.id).monospacedDigit().foregroundStyle(.secondary)
-                .frame(width: 38, alignment: .trailing)
+            Text(channel.id).font(.subheadline).monospacedDigit().foregroundStyle(.secondary)
+                .lineLimit(1).minimumScaleFactor(0.7)
+                .frame(width: 40, alignment: .trailing)
             let albumArt = nowPlaying?.image.isEmpty == false
             ArtTile(url: (albumArt ? nowPlaying?.image : channel.imageURL) ?? "", size: 44, isAlbumArt: albumArt)
                 .accessibilityHidden(true)

@@ -21,6 +21,9 @@ targets:
         CFBundleShortVersionString: "1.0"
         CFBundleVersion: "1"
         LSApplicationCategoryType: public.app-category.music
+        CFBundleURLTypes:
+          - CFBundleURLName: com.starplayrx.ios
+            CFBundleURLSchemes: [starplayrx]
         UIBackgroundModes: [audio]
         UILaunchScreen: {}
         UIApplicationSceneManifest:
