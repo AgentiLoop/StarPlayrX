@@ -391,24 +391,22 @@ public final class Radio: ObservableObject {
         guard Date().timeIntervalSince(since) >= Self.stallSeconds else { return }
         silentSince = nil
         guard recoveryAttempts < Self.maxRecoveryAttempts else {
-            Self.playLog.error("playback gave up ch=\(channel.id, privacy: .public) after \(self.recoveryAttempts, privacy: .public) tries")
+            Self.playLog.error("playback gave up ch=\(channel.id) after \(self.recoveryAttempts) tries")
             stop()
             status = "Playback stopped. Press play to try again."
             return
         }
         recoveryAttempts += 1
-        Self.playLog.notice("playback stalled ch=\(channel.id, privacy: .public) re-tuning, try \(self.recoveryAttempts, privacy: .public)")
+        Self.playLog.notice("playback stalled ch=\(channel.id) re-tuning, try \(self.recoveryAttempts)")
         retuning = true
         play(channel)
     }
-    private static let playLog = Logger(subsystem: "com.starplayrx.mac", category: "playback")
+    private static let playLog = Log(subsystem: "com.starplayrx.mac", category: "playback")
 
     // MARK: Xtra playback
 
     private func printXtra(_ line: String) {
-        // OS_ACTIVITY_MODE=disable in the schemes hides Logger output in Xcode's console; print still shows.
-        print(line)
-        Logger(subsystem: "com.starplayrx.mac", category: "xtra").notice("\(line, privacy: .public)")
+        Log(subsystem: "com.starplayrx.mac", category: "xtra").notice("\(line)")
     }
 
     private func playXtra(_ channel: Channel, id: String) {
@@ -622,7 +620,7 @@ public final class Radio: ObservableObject {
         guard let current, let station = stationNowPlaying else { return }
         heard = Heard(channel: current.id, station: LyricsStore.key(station.artist, station.song),
                       artist: artist, song: song, startedAt: startedAt)
-        LyricSync.log.notice("now playing ch=\(current.id, privacy: .public): station \"\(station.artist, privacy: .public) – \(station.song, privacy: .public)\" -> Shazam \"\(artist, privacy: .public) – \(song, privacy: .public)\"")
+        LyricSync.log.notice("now playing ch=\(current.id): station \"\(station.artist) – \(station.song)\" -> Shazam \"\(artist) – \(song)\"")
         applyHeard()
     }
 
@@ -733,11 +731,11 @@ public final class Radio: ObservableObject {
         // (once per dropout, once per recovery) with the timeline's state: `log show --predicate 'subsystem == "com.starplayrx.mac"'`.
         if (levels == nil) != eqDark {
             eqDark = levels == nil
-            Self.log.notice("live EQ \(self.eqDark ? "dark" : "back", privacy: .public) ch=\(current.id, privacy: .public) t=\(time, privacy: .public) \(SpectrumTimeline.shared.state, privacy: .public)")
+            Self.log.notice("live EQ \(self.eqDark ? "dark" : "back") ch=\(current.id) t=\(time) \(SpectrumTimeline.shared.state)")
         }
         return levels
     }
-    private static let log = Logger(subsystem: "com.starplayrx.mac", category: "eq")
+    private static let log = Log(subsystem: "com.starplayrx.mac", category: "eq")
     private var eqDark = false
 
     private func isPlayingXtra(_ id: String) -> Bool {

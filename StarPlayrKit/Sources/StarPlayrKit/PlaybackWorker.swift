@@ -53,7 +53,7 @@ public final class PlaybackWorker: @unchecked Sendable {
     private var lastItem: AVPlayerItem?
     private var trackChanged: (@Sendable (UUID) -> Void)?
     private var timer: DispatchSourceTimer?
-    private static let log = Logger(subsystem: "com.starplayrx.mac", category: "playback")
+    private static let log = Log(subsystem: "com.starplayrx.mac", category: "playback")
 
     private init() {
         queue.async {

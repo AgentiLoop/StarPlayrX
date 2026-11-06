@@ -33,9 +33,9 @@ public final class LyricSync: ObservableObject {
     public private(set) var report = "no measurement yet" {
         // Every change of what the timing rests on goes to the log, on the Mac and on iOS:
         // `log stream --predicate 'subsystem BEGINSWITH "com.starplayrx" AND category == "lyrics"'`.
-        didSet { if report != oldValue { Self.log.notice("lyrics \(self.key, privacy: .public): \(self.report, privacy: .public)") } }
+        didSet { if report != oldValue { Self.log.notice("lyrics \(self.key): \(self.report)") } }
     }
-    static let log = Logger(subsystem: Bundle.main.bundleIdentifier ?? "com.starplayrx", category: "lyrics")
+    static let log = Log(subsystem: Bundle.main.bundleIdentifier ?? "com.starplayrx", category: "lyrics")
     /// Another measurement is taken each time a new segment of audio has been decoded (~9.75 s on
     /// live channels), so it stays in step with the segments whatever their length, and a DJ break,
     /// ad or dead air between songs never leaves it waiting on a timer. Each one looks at everything
@@ -301,10 +301,10 @@ public final class LyricSync: ObservableObject {
     private func logCompare(aligner: Double, committed: Bool, _ a: LyricAligner.Alignment) {
         guard let shazam = xtraFound else { return }
         Self.log.notice("""
-            COMPARE xtra key=\(Radio.shared.playingNow.map { LyricsStore.key($0.artist, $0.song) } ?? "?", privacy: .public) \
-            shazam=\(String(format: "%+.2f", shazam), privacy: .public) aligner=\(String(format: "%+.2f", aligner), privacy: .public) \
-            err=\(String(format: "%+.2f", aligner - shazam), privacy: .public) committed=\(committed ? "yes" : "no", privacy: .public) \
-            conf=\(String(format: "%.2f", a.confidence), privacy: .public) margin=\(String(format: "%.2f", a.margin), privacy: .public) lines=\(a.lines)
+            COMPARE xtra key=\(Radio.shared.playingNow.map { LyricsStore.key($0.artist, $0.song) } ?? "?") \
+            shazam=\(String(format: "%+.2f", shazam)) aligner=\(String(format: "%+.2f", aligner)) \
+            err=\(String(format: "%+.2f", aligner - shazam)) committed=\(committed ? "yes" : "no") \
+            conf=\(String(format: "%.2f", a.confidence)) margin=\(String(format: "%.2f", a.margin)) lines=\(a.lines)
             """)
     }
 
@@ -324,15 +324,15 @@ public final class LyricSync: ObservableObject {
                                   onsets: (start: Date, step: Double, values: [Float]), key: String) {
         guard let guess = LyricAligner.bestGuess(lineTimes: lineTimes, songStart: songStart, onsets: onsets,
                                                  over: LyricAligner.search) else {
-            log.error("lyrics \(key, privacy: .public): aligner could not score any shift (\(lineTimes.count) lines)")
+            log.error("lyrics \(key): aligner could not score any shift (\(lineTimes.count) lines)")
             return
         }
         let confidence = Int((guess.confidence / LyricAligner.minimumConfidence * 100).rounded())
         let margin = guess.margin.isFinite ? Int((guess.margin / LyricAligner.minimumMargin * 100).rounded()) : 999
         log.error("""
-            lyrics \(key, privacy: .public): not confident — best guess \(String(format: "%+.1f", guess.shift), privacy: .public)s, \
-            confidence \(String(format: "%.2f", guess.confidence), privacy: .public) (\(confidence)% of \(LyricAligner.minimumConfidence)), \
-            margin \(String(format: "%.2f", guess.margin), privacy: .public) (\(margin)% of \(LyricAligner.minimumMargin)), \
+            lyrics \(key): not confident — best guess \(String(format: "%+.1f", guess.shift))s, \
+            confidence \(String(format: "%.2f", guess.confidence)) (\(confidence)% of \(LyricAligner.minimumConfidence)), \
+            margin \(String(format: "%.2f", guess.margin)) (\(margin)% of \(LyricAligner.minimumMargin)), \
             \(guess.lines) lines
             """)
     }

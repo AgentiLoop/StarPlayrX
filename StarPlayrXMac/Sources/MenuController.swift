@@ -12,7 +12,7 @@ import Combine
 import os
 import StarPlayrKit
 
-let menuLog = Logger(subsystem: "com.starplayrx.mac", category: "menu")
+let menuLog = Log(subsystem: "com.starplayrx.mac", category: "menu")
 
 /// Owns the menu bar item and the one panel used both under the menu bar and torn off.
 @MainActor

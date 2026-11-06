@@ -23,7 +23,7 @@ struct StarPlayrXApp: App {
                 // (`xcrun simctl openurl booted starplayrx://play/1001` drives the simulator).
                 .onOpenURL { url in
                     let radio = Radio.shared
-                    Logger(subsystem: "com.starplayrx.ios", category: "url").notice("open \(url.absoluteString, privacy: .public): \(radio.channels.count) channels")
+                    Log(subsystem: "com.starplayrx.ios", category: "url").notice("open \(url.absoluteString): \(radio.channels.count) channels")
                     switch url.host {
                     case "play":
                         if let ch = radio.channels.first(where: { $0.id == url.lastPathComponent }) { radio.play(ch) }

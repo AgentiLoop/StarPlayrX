@@ -48,7 +48,7 @@ public final class ShazamSync: @unchecked Sendable {
     public static let timeout: TimeInterval = 20
     /// Every failure goes to the log, on the Mac and on iOS:
     /// `log stream --predicate 'subsystem BEGINSWITH "com.starplayrx" AND category == "shazam"'`.
-    static let log = Logger(subsystem: Bundle.main.bundleIdentifier ?? "com.starplayrx", category: "shazam")
+    static let log = Log(subsystem: Bundle.main.bundleIdentifier ?? "com.starplayrx", category: "shazam")
     /// Shazam off, to try the fallbacks (aligner, remembered shift, the cut's stamp) on their own:
     /// `defaults write com.starplayrx.mac disableShazam -bool YES` (the iOS app: its own domain).
     static var disabled: Bool { UserDefaults.standard.bool(forKey: "disableShazam") }
@@ -96,7 +96,7 @@ public final class ShazamSync: @unchecked Sendable {
         lock.unlock()
         guard let ask else { return }
         guard let signature = Self.signature(file) else {
-            Self.log.error("Shazam: no signature from live segment \(file.lastPathComponent, privacy: .public)")
+            Self.log.error("Shazam: no signature from live segment \(file.lastPathComponent)")
             finish(ask) { $0.lastError = "no signature" }
             return
         }
@@ -122,7 +122,7 @@ public final class ShazamSync: @unchecked Sendable {
         guard let ask else { done(nil); return }
         queue.async { [self] in
             guard let signature = Self.signature(file, from: seconds, length: 9.75) else {
-                Self.log.error("Shazam: no signature from Xtra \(file.lastPathComponent, privacy: .public) at \(seconds)s")
+                Self.log.error("Shazam: no signature from Xtra \(file.lastPathComponent) at \(seconds)s")
                 finish(ask) { _ in }; done(nil); return
             }
             match(signature, ask) { [self] media, _ in
@@ -179,14 +179,14 @@ public final class ShazamSync: @unchecked Sendable {
         init(_ done: @escaping (SHMatchedMediaItem?, String?) -> Void) { self.done = done }
         func session(_ session: SHSession, didFind match: SHMatch) {
             let item = match.mediaItems.first
-            ShazamSync.log.notice("Shazam match: \(item?.artist ?? "?", privacy: .public) – \(item?.title ?? "?", privacy: .public) at \(item?.matchOffset ?? 0)s")
+            ShazamSync.log.notice("Shazam match: \(item?.artist ?? "?") – \(item?.title ?? "?") at \(item?.matchOffset ?? 0)s")
             done(item, nil)
         }
         func session(_ session: SHSession, didNotFindMatchFor signature: SHSignature, error: Error?) {
             if let error {
                 // An app ID without ShazamKit (App Services), no network, or a throttled account all land here.
                 let ns = error as NSError
-                ShazamSync.log.error("Shazam error \(ns.domain, privacy: .public) \(ns.code): \(ns.localizedDescription, privacy: .public)")
+                ShazamSync.log.error("Shazam error \(ns.domain) \(ns.code): \(ns.localizedDescription)")
             } else {
                 ShazamSync.log.info("Shazam: no match")
             }
