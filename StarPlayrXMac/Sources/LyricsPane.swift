@@ -29,6 +29,9 @@ struct LyricsPane: View {
 
     private func showBubble(_ text: String) {
         bubbleTask?.cancel()
+        // The bubble is a passing label VoiceOver never lands on, so say it out loud instead (as BubblePopup does).
+        NSAccessibility.post(element: NSApp as Any, notification: .announcementRequested,
+                             userInfo: [.announcement: text, .priority: NSAccessibilityPriorityLevel.medium.rawValue])
         withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) { bubble = text }
         bubbleTask = Task {
             try? await Task.sleep(nanoseconds: 1_600_000_000)
@@ -182,6 +185,9 @@ private struct LyricLines: View, Equatable {
                             // from it. Only means anything on timed lyrics.
                             .contentShape(Rectangle())
                             .onTapGesture { tap(line) }
+                            // VoiceOver says which line is being sung, and that pressing it sets it.
+                            .accessibilityAddTraits(line.id == current ? .isSelected : [])
+                            .accessibilityHint(lyrics.synced ? "Sets this as the line being sung" : "")
                             .id(line.id)
                     }
                 }
