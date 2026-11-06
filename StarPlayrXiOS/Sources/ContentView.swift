@@ -237,14 +237,15 @@ struct PlayerView: View {
                     // Turned clockwise: the first (heaviest) bars at the top, each bar growing
                     // from the strip's left edge to the right. Half the height less two points per
                     // bar (the bars share the length, 2 pt apart), so each bar is 2 pt narrower;
-                    // dropped through the bottom safe-area inset, so it ends at the screen's edge.
+                    // dropped halfway through the bottom safe-area inset, so it ends just short of
+                    // the screen's rounded corner.
                     let length = geo.size.height * 0.5 - 2 * CGFloat(Visualizer.bandCount)
                     SpectrumBars(running: app.barsRunning)
                         .frame(width: length)
                         .rotationEffect(.degrees(90))
                         .frame(width: CGFloat(SpectrumRenderer.barHeight), height: length)
                         .frame(width: side)
-                        .offset(x: side, y: geo.safeAreaInsets.bottom)
+                        .offset(x: side, y: geo.safeAreaInsets.bottom / 2)
                 }
             }
         }
