@@ -94,9 +94,10 @@ struct PlayerView: View {
             Group {
                 if shaded { shade } else if hSize == .regular { wide } else { narrow }
             }
-            // No title in the wide layouts: with the toolbar items down the side (iPhone Duo) the
-            // top bar is then empty, and the panes get its height.
-            .navigationTitle(shaded || hSize == .regular ? "" : app.lyrics ? "Lyrics" : "Channels")
+            // No title anywhere: with the toolbar items down the side (iPhone Duo) the top bar is
+            // then empty and collapses, so the content gets its height. Other iPhones keep the bar
+            // for its buttons.
+            .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 // In the shade the bar items would be stacked down the camera's side (whichever
@@ -135,6 +136,9 @@ struct PlayerView: View {
     /// laid out beside it, and the account and AirPlay buttons along the bottom edge. The Duo's
     /// laptop pose shows no status bar in this half, so the clock and date sit up in the bar's place.
     private var shade: some View {
+        // The camera's side carries a safe-area inset along its whole edge, though the camera is
+        // in one corner. The now-playing block spans the full width regardless; only the button
+        // row keeps the inset, so a button never lands on the camera.
         GeometryReader { geo in
             VStack(spacing: 16) {
                 // The header's art fills whatever height it gets, so it's handed a share of the
@@ -150,11 +154,14 @@ struct PlayerView: View {
                 }
                 .font(.title2)
                 .glassButtons()
+                .padding(.leading, geo.safeAreaInsets.leading)
+                .padding(.trailing, geo.safeAreaInsets.trailing)
             }
+            .padding(.horizontal, 24)
+            .padding(.vertical, 12)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .ignoresSafeArea(.container, edges: .horizontal)
         }
-        .padding(.horizontal, 24)
-        .padding(.vertical, 12)
         .toolbar {
             ToolbarItem(placement: .principal) {
                 TimelineView(.everyMinute) { context in
@@ -175,14 +182,34 @@ struct PlayerView: View {
 
     /// Phones (and the Duo closed): now playing on top, then the channel list or the lyrics.
     private var narrow: some View {
-        VStack(spacing: 0) {
-            NowPlayingHeader()
-                .padding(.horizontal)
-                .padding(.vertical, 10)
-            Divider()
-            // Big art lies over the list or lyrics, as on the Mac.
-            if app.bigArt, let url = radio.shownArtURL { BigArtView(url: url) }
-            else if app.lyrics { LyricsView() } else { ChannelList() }
+        GeometryReader { geo in
+            // iPhone Duo's outer display has the status bar and toolbar down the right edge (a wide
+            // trailing inset) with dead space under them: the EQ goes there, on its side, centred.
+            // Other iPhones (no inset) keep it under the controls as before.
+            let side = geo.safeAreaInsets.trailing
+            let sideEQ = side >= 44
+            VStack(spacing: 0) {
+                NowPlayingHeader(showsBars: !sideEQ)
+                    .padding(.horizontal)
+                    .padding(.vertical, 10)
+                Divider()
+                // Big art lies over the list or lyrics, as on the Mac.
+                if app.bigArt, let url = radio.shownArtURL { BigArtView(url: url) }
+                else if app.lyrics { LyricsView() } else { ChannelList() }
+            }
+            .overlay(alignment: .bottomTrailing) {
+                if sideEQ, radio.current != nil {
+                    // The bars' length runs down the strip; turned so its bottom is the low end.
+                    let length = geo.size.height * 0.36
+                    SpectrumBars(running: app.barsRunning, centred: true)
+                        .frame(width: length)
+                        .rotationEffect(.degrees(-90))
+                        .frame(width: CGFloat(SpectrumRenderer.barHeight), height: length)
+                        .frame(width: side)
+                        .padding(.bottom, 12)
+                        .offset(x: side)
+                }
+            }
         }
     }
 
@@ -256,6 +283,8 @@ struct NowPlayingHeader: View {
     /// The Duo's top half (wide and short): the art fills the height on the left, and the titles,
     /// controls and EQ stack beside it. Off, everything sits in three rows, as on a phone.
     var spread = false
+    /// Off, the EQ bars are left out (the Duo's outer display draws them down its side strip).
+    var showsBars = true
 
     var body: some View {
         if spread { wide } else { stacked }
@@ -265,7 +294,7 @@ struct NowPlayingHeader: View {
         VStack(spacing: 6) {
             row
             controls()
-            bars
+            if showsBars { bars }
         }
     }
 

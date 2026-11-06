@@ -21,7 +21,7 @@ struct Globals {
     float4 bubble;     // bubble colour, alpha
     float4 blob;       // blob colour, opacity
     float4 blobShape;  // x offset (pt), x scale, y scale, y offset (pt, down)
-    float4 glowStyle;  // glow opacity, glow radius (pt), tween 0...1 from the previous step
+    float4 glowStyle;  // glow opacity, glow radius (pt), tween 0...1 from the previous step, centred bars (1)
 };
 
 vertex float4 spectrumVertex(uint id [[vertex_id]]) {
@@ -114,7 +114,10 @@ fragment float4 spectrumFragment(float4 pos [[position]], constant Globals &g [[
         b.misc.y = fract(mix(b.misc.w, r1, t));
         float hb = max(2.0, b.misc.x * H);
         float2 hs = float2(bw, hb) / 2;
-        float2 centre = float2(i * (bw + 2) + hs.x, H - hs.y);
+        // Centred (iPhone Duo's side strip): the bars grow out from the middle line both ways
+        // instead of up from the bottom.
+        bool centred = g.glowStyle.w > 0.5;
+        float2 centre = float2(i * (bw + 2) + hs.x, centred ? H / 2 : H - hs.y);
         float sd = roundedRect(p, centre, hs, 1.5);
         if (sd > 3 * sigma + 1) continue;
         // float d = max(sd, 0.0);
@@ -122,7 +125,9 @@ fragment float4 spectrumFragment(float4 pos [[position]], constant Globals &g [[
         float c = cover(sd, px);
         if (c <= 0) continue;
         float2 lp = p - (centre - hs);
-        float4 bar = float4(mix(b.base.rgb, b.top.rgb, saturate(1 - lp.y / hb)), 1);
+        // The top colour at the bar's top; centred, at its middle, fading to the base at both ends.
+        float toward = centred ? 1 - abs(lp.y / hb - 0.5) * 2 : 1 - lp.y / hb;
+        float4 bar = float4(mix(b.base.rgb, b.top.rgb, saturate(toward)), 1);
         // On a light panel a thin dark edge keeps pale bars from melting into it.
         if (g.state.y > 0.5 && sd > -0.5) bar = over(bar, float3(0), 0.25);
         if (g.state.z > 0 && hb > 8) bar = bubbles(bar, lp, float2(bw, hb), i, b, g, px);
