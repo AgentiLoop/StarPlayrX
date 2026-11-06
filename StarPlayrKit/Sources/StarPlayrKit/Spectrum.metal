@@ -91,7 +91,10 @@ fragment float4 spectrumFragment(float4 pos [[position]], constant Globals &g [[
     // Blurred blob behind the bars.
     float2 br = max(float2(W / 2 * g.blobShape.y, H / 2 * g.blobShape.z), 0.5);
     float bsd = ellipse(p - float2(W / 2 + g.blobShape.x, H / 2 + g.blobShape.w), br);
-    out = over(out, g.blob.rgb, g.blob.a * (1 - smoothstep(-14.0, 14.0, bsd)));
+    // Fade to nothing before the view's edges on every side, so the glow is never cut off hard.
+    float pad = g.view.w;
+    float edge = min(min(p.x + pad, W + pad - p.x), min(p.y + pad, H + pad - p.y));
+    out = over(out, g.blob.rgb, g.blob.a * smoothstep(0.0, pad, edge) * (1 - smoothstep(-14.0, 14.0, bsd)));
 
     float bw = (W - 2 * (BANDS - 1)) / BANDS;
     float sigma = max(g.glowStyle.y * 0.5, 0.5);

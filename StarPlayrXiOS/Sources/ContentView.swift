@@ -228,7 +228,7 @@ struct PlayerView: View {
                 if sideEQ, radio.current != nil {
                     // Turned clockwise: the first (heaviest) bars at the top, each bar growing
                     // from the strip's left edge to the right.
-                    let length = geo.size.height * 0.36
+                    let length = geo.size.height * 0.5
                     SpectrumBars(running: app.barsRunning)
                         .frame(width: length)
                         .rotationEffect(.degrees(90))
