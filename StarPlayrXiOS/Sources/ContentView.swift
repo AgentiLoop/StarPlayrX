@@ -138,18 +138,19 @@ struct PlayerView: View {
         GeometryReader { geo in
             if geo.size.height > geo.size.width {
                 VStack(spacing: 0) {
-                    // Top half: now playing (and the lyrics under it). The art is never up here;
-                    // tapping it puts it full size in the bottom half, in the list's place.
+                    // Top half: now playing spread over it, with the search field and chips along
+                    // its bottom edge. The list, lyrics or art fill the bottom half, so nothing
+                    // straddles the fold.
                     VStack(spacing: 0) {
-                        NowPlayingHeader()
+                        NowPlayingHeader(spread: true)
                             .padding(.horizontal)
                             .padding(.vertical, 10)
-                        Divider()
-                        if app.lyrics { LyricsView() } else { Spacer() }
+                        if !app.lyrics && !app.bigArt { ChannelFilters().padding(.bottom, 4) }
                     }
                     .frame(height: geo.size.height / 2)
                     Divider()
-                    if app.bigArt, let url = radio.shownArtURL { BigArtView(url: url) } else { ChannelList() }
+                    if app.bigArt, let url = radio.shownArtURL { BigArtView(url: url) }
+                    else if app.lyrics { LyricsView() } else { ChannelList(filters: false) }
                 }
             } else {
                 HStack(spacing: 0) {
@@ -182,62 +183,106 @@ struct PlayerView: View {
 struct NowPlayingHeader: View {
     @EnvironmentObject var radio: Radio
     @ObservedObject private var app = PlayerState.shared
+    /// The Duo's top half (wide and short): the art fills the height on the left, and the titles,
+    /// controls and EQ stack beside it. Off, everything sits in three rows, as on a phone.
+    var spread = false
 
     var body: some View {
+        if spread { wide } else { stacked }
+    }
+
+    private var stacked: some View {
         VStack(spacing: 6) {
             row
             controls
-            // Same bars as the Mac; before anything has played, keep their space so nothing jumps.
-            if radio.current != nil { SpectrumBars(running: app.barsRunning) }
-            else { Color.clear.frame(height: CGFloat(SpectrumRenderer.barHeight)) }
+            bars
         }
+    }
+
+    /// Big art on the left; on the right the titles up top, the controls in the middle and the
+    /// EQ along the bottom edge — a landscape now-playing screen.
+    private var wide: some View {
+        GeometryReader { geo in
+            HStack(alignment: .top, spacing: 24) {
+                art(size: min(geo.size.height, geo.size.width * 0.42), cornerRadius: 22)
+                VStack(alignment: .leading, spacing: 0) {
+                    HStack(alignment: .top, spacing: 12) {
+                        titles(large: true)
+                        star
+                    }
+                    Spacer(minLength: 8)
+                    controls
+                    Spacer(minLength: 8)
+                    bars
+                }
+                .frame(maxHeight: .infinity)
+            }
+        }
+    }
+
+    /// Same bars as the Mac; before anything has played, keep their space so nothing jumps.
+    @ViewBuilder private var bars: some View {
+        if radio.current != nil { SpectrumBars(running: app.barsRunning) }
+        else { Color.clear.frame(height: CGFloat(SpectrumRenderer.barHeight)) }
     }
 
     /// Art, channel, song and artist, and the star — the titles get the whole width beside the art.
     private var row: some View {
         HStack(spacing: 12) {
-            let np = radio.current.flatMap { radio.displayed($0.id) }
-            let isAlbumArt = np?.image.isEmpty == false
-            ArtTile(url: (isAlbumArt ? np?.image : radio.current?.imageURL) ?? "", size: 72,
-                    isAlbumArt: isAlbumArt, cornerRadius: 16)
-                // Tap the art: full size first; while it's big, album art → channel logo → show art,
-                // and with nothing to switch to it closes again (as on the Mac).
-                .onTapGesture { app.tapArt() }
-                .task(id: radio.artCandidates.map(\.url)) {
-                    for art in radio.artCandidates {
-                        ArtCache.shared.prefetch(art.url, pixels: ArtCache.pixels(BigArtView.size), trimBorder: !art.isLogo)
-                    }
-                }
-                .accessibilityElement()
-                .accessibilityAddTraits(.isButton)
-                .accessibilityLabel(radio.current.map { isAlbumArt ? "Album art, \($0.name)" : "Channel art, \($0.name)" } ?? "StarPlayrX")
-                .accessibilityHint(app.bigArt ? "Switches between the album art, channel logo and show art"
-                                              : "Shows the art full size")
-                .accessibilityAction { app.tapArt() }
+            art(size: 72, cornerRadius: 16)
+            titles(large: false)
+            star
+        }
+    }
 
-            VStack(alignment: .leading, spacing: 2) {
-                if let ch = radio.current {
-                    MarqueeText(text: "\(ch.id) · \(ch.name)", font: .caption, secondary: true).id("\(ch.id) · \(ch.name)")
-                    MarqueeText(text: np?.song ?? "", font: .headline).id(np?.song ?? "")
-                    MarqueeText(text: np?.artist ?? "", font: .subheadline).id(np?.artist ?? "")
-                } else {
-                    Text("Pick a channel").font(.headline)
+    private func art(size: CGFloat, cornerRadius: CGFloat) -> some View {
+        let np = radio.current.flatMap { radio.displayed($0.id) }
+        let isAlbumArt = np?.image.isEmpty == false
+        return ArtTile(url: (isAlbumArt ? np?.image : radio.current?.imageURL) ?? "", size: size,
+                       isAlbumArt: isAlbumArt, cornerRadius: cornerRadius)
+            // Tap the art: full size first; while it's big, album art → channel logo → show art,
+            // and with nothing to switch to it closes again (as on the Mac).
+            .onTapGesture { app.tapArt() }
+            .task(id: radio.artCandidates.map(\.url)) {
+                for art in radio.artCandidates {
+                    ArtCache.shared.prefetch(art.url, pixels: ArtCache.pixels(BigArtView.size), trimBorder: !art.isLogo)
                 }
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .contentShape(Rectangle())
-            // Tap the song/artist: the lyrics take the channel list's place, and back again.
-            // Over big art it first just closes the art.
-            .onTapGesture { app.tapTitles() }
-            .accessibilityElement(children: .combine)
+            .accessibilityElement()
             .accessibilityAddTraits(.isButton)
-            .accessibilityHint(app.bigArt ? "Shows the \(app.lyrics ? "lyrics" : "channel list") again"
-                               : app.lyrics ? "Shows the channel list" : "Shows the song's lyrics")
-            .accessibilityAction { app.tapTitles() }
+            .accessibilityLabel(radio.current.map { isAlbumArt ? "Album art, \($0.name)" : "Channel art, \($0.name)" } ?? "StarPlayrX")
+            .accessibilityHint(app.bigArt ? "Switches between the album art, channel logo and show art"
+                                          : "Shows the art full size")
+            .accessibilityAction { app.tapArt() }
+    }
 
+    /// Channel, song and artist; `large` is the Duo's top half, where there's room for bigger type.
+    private func titles(large: Bool) -> some View {
+        let np = radio.current.flatMap { radio.displayed($0.id) }
+        return VStack(alignment: .leading, spacing: large ? 4 : 2) {
             if let ch = radio.current {
-                StarButton(isStarred: radio.presets.contains(ch.id), channel: ch.name) { radio.togglePreset(ch.id) }
+                MarqueeText(text: "\(ch.id) · \(ch.name)", font: large ? .subheadline : .caption, secondary: true).id("\(ch.id) · \(ch.name)")
+                MarqueeText(text: np?.song ?? "", font: large ? .title2.bold() : .headline).id(np?.song ?? "")
+                MarqueeText(text: np?.artist ?? "", font: large ? .title3 : .subheadline).id(np?.artist ?? "")
+            } else {
+                Text("Pick a channel").font(large ? .title2.bold() : .headline)
             }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(Rectangle())
+        // Tap the song/artist: the lyrics take the channel list's place, and back again.
+        // Over big art it first just closes the art.
+        .onTapGesture { app.tapTitles() }
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isButton)
+        .accessibilityHint(app.bigArt ? "Shows the \(app.lyrics ? "lyrics" : "channel list") again"
+                           : app.lyrics ? "Shows the channel list" : "Shows the song's lyrics")
+        .accessibilityAction { app.tapTitles() }
+    }
+
+    @ViewBuilder private var star: some View {
+        if let ch = radio.current {
+            StarButton(isStarred: radio.presets.contains(ch.id), channel: ch.name) { radio.togglePreset(ch.id) }
         }
     }
 
@@ -358,21 +403,15 @@ struct ChannelList: View {
     @EnvironmentObject var radio: Radio
     @ObservedObject private var app = PlayerState.shared
     @Environment(\.colorScheme) private var scheme
+    /// The search field and chips over the list; off when the layout puts them elsewhere
+    /// (the Duo's top half).
+    var filters = true
 
     var body: some View {
         let list = app.visibleChannels
         ScrollViewReader { proxy in
             VStack(spacing: 0) {
-                // Under the header's EQ bars, over the chips; stays put while the list scrolls.
-                SearchField(text: $app.search, prompt: "Search channels, artists, songs")
-                    .padding(.horizontal)
-                    .padding(.top, 8)
-                // The category chips (StarPlayrKit's ChannelGroup) stay put over the list while it scrolls.
-                CategoryBar(titles: ChannelGroup.groups(radio.channels), all: "All Channels", selected: $app.category)
-                // Picking a group opens a second row with its detailed chips (Sports → NFL, NBA, …).
-                if let group = app.category, case let subs = ChannelGroup.subs(of: group, in: radio.channels), subs.count > 1 {
-                    CategoryBar(titles: subs, all: "All \(group)", selected: $app.subcategory, small: true)
-                }
+                if filters { ChannelFilters() }
                 List(list) { ch in
                     let isPlaying = ch == radio.current && radio.isPlaying
                     Button { radio.play(ch) } label: {
@@ -403,6 +442,27 @@ struct ChannelList: View {
                 }
             }
             .onAppear { if let id = radio.current?.id { proxy.scrollTo(id, anchor: .center) } }
+        }
+    }
+}
+
+/// The search field and the category chips, normally over the list; they stay put while it scrolls.
+struct ChannelFilters: View {
+    @EnvironmentObject var radio: Radio
+    @ObservedObject private var app = PlayerState.shared
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // Under the header's EQ bars, over the chips.
+            SearchField(text: $app.search, prompt: "Search channels, artists, songs")
+                .padding(.horizontal)
+                .padding(.top, 8)
+            // The category chips (StarPlayrKit's ChannelGroup).
+            CategoryBar(titles: ChannelGroup.groups(radio.channels), all: "All Channels", selected: $app.category)
+            // Picking a group opens a second row with its detailed chips (Sports → NFL, NBA, …).
+            if let group = app.category, case let subs = ChannelGroup.subs(of: group, in: radio.channels), subs.count > 1 {
+                CategoryBar(titles: subs, all: "All \(group)", selected: $app.subcategory, small: true)
+            }
         }
     }
 }
