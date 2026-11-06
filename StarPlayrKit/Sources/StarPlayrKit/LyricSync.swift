@@ -151,6 +151,12 @@ public final class LyricSync: ObservableObject {
     /// A file position more than one segment away from the record is way off, not a lead-in:
     /// anything larger is thrown away rather than moving the lyrics.
     private static let xtraMaxShift: TimeInterval = 9.75
+    /// The aligner moves an Xtra track only by more than this. Measured on the Mac (16 Xtra tracks,
+    /// Nov 2026, aligner vs Shazam on the same file): the file's own position was within 0.5 s of
+    /// Shazam on 15 of them (mean 0.34 s), while the aligner's confident answers were 0.11–0.52 s
+    /// out — worse than not moving at all. Only a lead-in or another edit (seconds, not tenths) is
+    /// worth taking from it.
+    private static let xtraAlignerMinimum: TimeInterval = 1.0
 
     /// The shift for this Xtra file: Shazam's once there is one, else the aligner's.
     public func xtraShift(for file: URL) -> Double? { file == xtraFile ? (xtraFound ?? xtraAligned) : nil }
@@ -228,7 +234,7 @@ public final class LyricSync: ObservableObject {
         // at file position + Xtra shift, so the Xtra shift is the opposite of it.
         let shift = -found.shift
         logCompare(aligner: shift, committed: abs(shift) <= Self.xtraMaxShift, found)
-        guard abs(shift) <= Self.xtraMaxShift else { return }
+        guard abs(shift) <= Self.xtraMaxShift, abs(shift) >= Self.xtraAlignerMinimum else { xtraAligned = nil; return }
         xtraAligned = shift
         if xtraFound == nil {
             report = String(format: "Xtra %+.1fs (aligner: confidence %.1f, margin %.2f, %d lines)",
