@@ -265,6 +265,8 @@ struct PlayerView: View {
                         // Right under now playing; the slack is left above the fold.
                         if !app.lyrics && !app.bigArt { ChannelFilters(keepSubRow: true, inline: true) }
                         Spacer(minLength: 0)
+                        // The slack over the fold names what the list below shows.
+                        if !app.lyrics && !app.bigArt { channelsHeader }
                     }
                     .frame(height: app.lyrics && !app.bigArt ? art + 20 : fold)
                     Divider()
@@ -284,6 +286,21 @@ struct PlayerView: View {
                 }
             }
         }
+    }
+
+    /// "Rock" / "Starred" / "All Channels" and how many channels the list holds, over the list.
+    private var channelsHeader: some View {
+        let title = app.subcategory ?? app.category ?? (app.starsOnly ? "Starred" : "All Channels")
+        let count = app.visibleChannels.count
+        return HStack(alignment: .firstTextBaseline) {
+            Text(title).font(.largeTitle.bold())
+            Spacer()
+            Text("\(count) channel\(count == 1 ? "" : "s")").font(.title3).foregroundStyle(.secondary)
+        }
+        .padding(.horizontal, 20)
+        .padding(.bottom, 10)
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isHeader)
     }
 
     private var nowPlayingPane: some View {
