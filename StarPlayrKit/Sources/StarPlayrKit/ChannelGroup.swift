@@ -56,10 +56,27 @@ public enum ChannelGroup {
         "168": ("Music", "Christian"), "362": ("Music", "Hip-Hop & R&B"), "1999": ("Sports", "Live Games"),
     ]
 
+    /// Music channels the API files under the wrong genre for our chips (audited Nov 2026). "Alternative & Indie"
+    /// held U2, Dave Matthews, Octane, Kenny Chesney's No Shoes, SiriusXO love songs (Taylor Swift) and 90s on 9
+    /// pop, while Alt Nation's sisters (Lithium, 1st Wave, SiriusXMU, Alt2K, …) sat in Rock or Pop.
+    private static let musicSub: [String: String] = [
+        // Real alternative / indie / emo / punk.
+        "27": "Alt", "33": "Alt", "34": "Alt", "35": "Alt", "154": "Alt", "314": "Alt",
+        "1050": "Alt", "1052": "Alt", "1125": "Alt", "1157": "Alt", "1308": "Alt", "1043": "Alt",
+        "1058": "Alt", "1059": "Alt", "1131": "Alt", "1143": "Alt", "1144": "Alt", "1160": "Alt",
+        "1048": "Alt", "1299": "Alt", "1232": "Alt", "1318": "Alt",
+        // Rock acts and rock mixes.
+        "30": "Rock", "32": "Rock", "37": "Rock", "1255": "Rock", "1208": "Rock", "1039": "Rock", "1259": "Rock",
+        // Pop: love songs, viral hits, 90s on 9 and the decade mixes.
+        "709": "Pop", "1305": "Pop", "1116": "Pop", "1011": "Pop", "1017": "Pop", "1018": "Pop", "1019": "Pop",
+        "59": "Country", "1327": "Holiday",
+    ]
+
     public static func place(_ ch: Channel) -> (group: String, sub: String) {
         if ch.category == "Sports & Recreation" { return ("Sports", sport(ch.id)) }
         // College Sports Radio and SEC / Big Ten / ACC Radio come as "Sports Talk".
         if ["84", "256", "257", "258"].contains(ch.id) { return ("Sports", "College") }
+        if let sub = musicSub[ch.id] { return ("Music", sub) }
         if let p = genres[ch.category] { return p }
         if let p = blankLive[ch.id] { return p }
         // Anything else: Xtra (always music; the blank ones are moods like Rainfall Radio, Lo-Fi Café)
