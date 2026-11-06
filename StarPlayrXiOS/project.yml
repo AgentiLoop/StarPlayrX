@@ -15,6 +15,8 @@ targets:
     dependencies:
       - package: StarPlayrKit
     scheme:
+      testTargets:
+        - StarPlayrXUITests
       environmentVariables:
         OS_ACTIVITY_MODE: disable
         OS_ACTIVITY_DT_MODE: "NO"
@@ -56,3 +58,18 @@ targets:
         DEVELOPMENT_TEAM: 469UCUB275
         GENERATE_INFOPLIST_FILE: NO
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+  StarPlayrXUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - UITests
+    dependencies:
+      - target: StarPlayrX
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.starplayrx.ios.uitests
+        GENERATE_INFOPLIST_FILE: YES
+        SWIFT_VERSION: "5.0"
+        CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: 469UCUB275
+        TEST_TARGET_NAME: StarPlayrX

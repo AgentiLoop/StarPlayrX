@@ -10,9 +10,20 @@
 		0B8819CE2E7E93BD7AD18126 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 930224C9BDFD3BD60DA3720F /* ContentView.swift */; };
 		167716ABEEEC355841ADCA35 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 4282E323B938E03C8E49A7EE /* Assets.xcassets */; };
 		5FDA390C937511C469A979D5 /* LyricsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 770C07E6C0265EBCA92F34FA /* LyricsView.swift */; };
+		8FEF334891E3428272C56C7F /* AccessibilityAuditTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C25FA71A90BD756BFE5E6A17 /* AccessibilityAuditTests.swift */; };
 		BF63C3051FA7A9E6DA84DC82 /* StarPlayrXApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 895D2CE6A27D992F30C488F2 /* StarPlayrXApp.swift */; };
 		F0EE46195DDC84398E82B5BB /* StarPlayrKit in Frameworks */ = {isa = PBXBuildFile; productRef = 2A620742C2F4E87712E0AFD6 /* StarPlayrKit */; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		A3858F3238388D4C7A222D1B /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = AD0C5F04935661B84BE96C99 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 3655C7D5E9CFFCC85251F2A2;
+			remoteInfo = StarPlayrX;
+		};
+/* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
 		2C02BA5F2D6CEE2CB60DD800 /* StarPlayrX.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = StarPlayrX.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -22,6 +33,8 @@
 		895D2CE6A27D992F30C488F2 /* StarPlayrXApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StarPlayrXApp.swift; sourceTree = "<group>"; };
 		930224C9BDFD3BD60DA3720F /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		B24D39FBDF6B488418780136 /* StarPlayrKit */ = {isa = PBXFileReference; lastKnownFileType = folder; name = StarPlayrKit; path = ../StarPlayrKit; sourceTree = SOURCE_ROOT; };
+		BC941223E6769FC51E381245 /* StarPlayrXUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = StarPlayrXUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		C25FA71A90BD756BFE5E6A17 /* AccessibilityAuditTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessibilityAuditTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -41,6 +54,7 @@
 			children = (
 				61099F1B055EAE18348A7D2B /* Packages */,
 				1811178BD50AF9CF760A4584 /* Sources */,
+				8B98FAC68A144D60F5AC63D9 /* UITests */,
 				4BEDA9A04DB5EA2CB74BA976 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -61,6 +75,7 @@
 			isa = PBXGroup;
 			children = (
 				2C02BA5F2D6CEE2CB60DD800 /* StarPlayrX.app */,
+				BC941223E6769FC51E381245 /* StarPlayrXUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -73,9 +88,35 @@
 			name = Packages;
 			sourceTree = "<group>";
 		};
+		8B98FAC68A144D60F5AC63D9 /* UITests */ = {
+			isa = PBXGroup;
+			children = (
+				C25FA71A90BD756BFE5E6A17 /* AccessibilityAuditTests.swift */,
+			);
+			path = UITests;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		23A0AF18E780018AA55FA480 /* StarPlayrXUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 4902081D46BF30B131B4E570 /* Build configuration list for PBXNativeTarget "StarPlayrXUITests" */;
+			buildPhases = (
+				74A83B39D22F83CD5627C057 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				2432DDF9FD51C9E03CAB5861 /* PBXTargetDependency */,
+			);
+			name = StarPlayrXUITests;
+			packageProductDependencies = (
+			);
+			productName = StarPlayrXUITests;
+			productReference = BC941223E6769FC51E381245 /* StarPlayrXUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
 		3655C7D5E9CFFCC85251F2A2 /* StarPlayrX */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 2DCC3DEE4FC23CC5B0214118 /* Build configuration list for PBXNativeTarget "StarPlayrX" */;
@@ -105,6 +146,11 @@
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
+					23A0AF18E780018AA55FA480 = {
+						DevelopmentTeam = 469UCUB275;
+						ProvisioningStyle = Automatic;
+						TestTargetID = 3655C7D5E9CFFCC85251F2A2;
+					};
 					3655C7D5E9CFFCC85251F2A2 = {
 						DevelopmentTeam = 469UCUB275;
 						ProvisioningStyle = Automatic;
@@ -129,6 +175,7 @@
 			projectRoot = "";
 			targets = (
 				3655C7D5E9CFFCC85251F2A2 /* StarPlayrX */,
+				23A0AF18E780018AA55FA480 /* StarPlayrXUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -155,7 +202,23 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		74A83B39D22F83CD5627C057 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8FEF334891E3428272C56C7F /* AccessibilityAuditTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		2432DDF9FD51C9E03CAB5861 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 3655C7D5E9CFFCC85251F2A2 /* StarPlayrX */;
+			targetProxy = A3858F3238388D4C7A222D1B /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		27A1F52A36972ECC5AA3003C /* Debug */ = {
@@ -319,6 +382,46 @@
 			};
 			name = Debug;
 		};
+		9DF7CB4FF8EA2759C44F64E2 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 469UCUB275;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.starplayrx.ios.uitests;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = StarPlayrX;
+			};
+			name = Debug;
+		};
+		CDB58A961EE86C9AE5D8C662 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 469UCUB275;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.starplayrx.ios.uitests;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = StarPlayrX;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -336,6 +439,15 @@
 			buildConfigurations = (
 				891BF0234A893E0DC06A0A01 /* Debug */,
 				877A36947EA130DE770E2953 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		4902081D46BF30B131B4E570 /* Build configuration list for PBXNativeTarget "StarPlayrXUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				9DF7CB4FF8EA2759C44F64E2 /* Debug */,
+				CDB58A961EE86C9AE5D8C662 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;

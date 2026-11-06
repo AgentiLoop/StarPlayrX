@@ -39,6 +39,17 @@
          </BuildableReference>
       </MacroExpansion>
       <Testables>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "23A0AF18E780018AA55FA480"
+               BuildableName = "StarPlayrXUITests.xctest"
+               BlueprintName = "StarPlayrXUITests"
+               ReferencedContainer = "container:StarPlayrXiOS.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
       </Testables>
       <CommandLineArguments>
       </CommandLineArguments>
