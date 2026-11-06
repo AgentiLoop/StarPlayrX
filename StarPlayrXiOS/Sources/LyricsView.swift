@@ -99,7 +99,7 @@ struct LyricsView: View {
         .task(id: id) {
             tapped = nil
             while !Task.isCancelled {
-                let now = LyricsLayout.position.flatMap { LyricsLayout.line(of: lyrics, at: $0) } ?? tapped
+                let now = LyricsLayout.line(of: lyrics) ?? tapped
                 if now != current { current = now }
                 try? await Task.sleep(nanoseconds: 100_000_000)
             }

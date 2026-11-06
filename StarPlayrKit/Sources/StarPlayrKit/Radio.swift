@@ -693,6 +693,20 @@ public final class Radio: ObservableObject {
         return SpectrumTimeline.shared.realDate(at: at) ?? at.addingTimeInterval(-streamLag)
     }
 
+    /// Whether someone is singing in the audio coming out of the speakers right now, by the sound
+    /// classifier (live channels and Xtra tracks); nil when it can't say.
+    public var singingNow: Bool? {
+        guard isPlaying else { return nil }
+        let value: Float?
+        if current?.xtraID == nil {
+            value = heardDate.flatMap { SpectrumTimeline.shared.singing(at: $0) }
+        } else {
+            let state = playbackState
+            value = state.file.flatMap { state.xtraTime.isFinite ? SpectrumTimeline.shared.singing(track: $0, at: state.xtraTime) : nil }
+        }
+        return value.map { $0 >= 0.5 }
+    }
+
     /// Seconds added to where the cut's timestamp says we are. A live cut is stamped a little
     /// before the recording's own zero (the station fades in over the end of the last song, and the
     /// stamp is published early), so a small negative trim often lands closer than zero — but the

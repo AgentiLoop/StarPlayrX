@@ -298,6 +298,30 @@ public final class SpectrumTimeline: @unchecked Sendable {
         return (Date(timeIntervalSinceReferenceDate: Double(t.first) * t.hop), t.hop, singing)
     }
 
+    /// How sure the classifier is that someone is singing at real broadcast time `real` on the live
+    /// channel (0...1); nil when that audio isn't decoded yet or the classifier couldn't say.
+    public func singing(at real: Date) -> Float? {
+        lock.lock()
+        defer { lock.unlock() }
+        for chunk in live where chunk.channel == liveChannel {
+            guard let start = chunk.real, chunk.hop > 0, let singing = chunk.singing else { continue }
+            let t = real.timeIntervalSince(start)
+            guard t >= 0, t < chunk.duration else { continue }
+            let k = Int(t / chunk.hop)
+            return k < singing.count ? singing[k] : nil
+        }
+        return nil
+    }
+
+    /// The same at `seconds` into an Xtra file.
+    public func singing(track file: URL, at seconds: Double) -> Float? {
+        lock.lock()
+        defer { lock.unlock() }
+        guard let t = tracks[file], t.hop > 0, let singing = t.singing, seconds >= 0 else { return nil }
+        let k = Int(seconds / t.hop) - t.first
+        return k >= 0 && k < singing.count ? singing[k] : nil
+    }
+
     /// The real on-air time (stream PDT) of the player's current date, which runs ahead of it.
     public func realDate(at date: Date) -> Date? {
         lock.lock()

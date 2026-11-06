@@ -40,7 +40,8 @@ public enum LyricsLayout {
     /// The last line whose timestamp has passed. Nothing is highlighted before the first line or
     /// once the song has run well past the last one (a radio edit, or the wrong record): parking
     /// on the final line for minutes looks broken and is worse than no highlight at all.
-    public static func line(of lyrics: Lyrics, at position: TimeInterval) -> Int? {
+    /// `singing`: whether the classifier hears someone singing right now (nil: unknown).
+    public static func line(of lyrics: Lyrics, at position: TimeInterval, singing: Bool? = nil) -> Int? {
         guard lyrics.synced else { return nil }
         guard let last = lyrics.lines.last?.at, position < last + 30 else { return nil }
         var found: (id: Int, at: TimeInterval)?
@@ -56,9 +57,16 @@ public enum LyricsLayout {
         guard let found else { return nil }
         // An instrumental (a solo, a long intro or break): nobody is singing, so nothing is lit.
         // A line stays lit for its first seconds; past that, with the next line still well away,
-        // the highlight goes out until the singing comes back.
-        if let next, next - found.at > instrumentalGap, position - found.at > lineHold { return nil }
+        // the highlight goes out until the singing comes back — unless the classifier hears
+        // singing, in which case the stamps are just sparse and the last line is the best there is.
+        if let next, next - found.at > instrumentalGap, position - found.at > lineHold, singing != true { return nil }
         return found.id
+    }
+
+    /// The line being sung right now, for the views: the song's position against the stamps,
+    /// with the classifier's word on whether anyone is singing.
+    @MainActor public static func line(of lyrics: Lyrics) -> Int? {
+        position.flatMap { line(of: lyrics, at: $0, singing: Radio.shared.singingNow) }
     }
 
     /// A stretch between two timed lines longer than this is an instrumental, not a long line.
