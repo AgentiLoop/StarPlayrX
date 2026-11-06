@@ -273,6 +273,7 @@ struct StarButton: View {
 struct ChannelList: View {
     @EnvironmentObject var radio: Radio
     @ObservedObject private var app = PlayerState.shared
+    @Environment(\.colorScheme) private var scheme
 
     var body: some View {
         let list = app.visibleChannels
@@ -304,7 +305,8 @@ struct ChannelList: View {
                     .overlay(alignment: .trailing) {
                         StarButton(isStarred: radio.presets.contains(ch.id), channel: ch.name) { radio.togglePreset(ch.id) }
                     }
-                    .listRowBackground(isPlaying ? Color.accentColor.opacity(0.15) : nil)
+                    // A 15% tint all but vanishes on the black list in dark mode; there it's much stronger.
+                    .listRowBackground(isPlaying ? Color.accentColor.opacity(scheme == .dark ? 0.4 : 0.15) : nil)
                     .id(ch.id)
                 }
                 .listStyle(.plain)
