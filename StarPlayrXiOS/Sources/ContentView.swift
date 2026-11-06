@@ -258,7 +258,7 @@ struct PlayerView: View {
                 HStack(spacing: 0) {
                     nowPlayingPane.frame(width: fold)
                     Divider()
-                    ChannelList()
+                    ChannelList(inlineFilters: true)
                 }
             }
         }
@@ -552,12 +552,14 @@ struct ChannelList: View {
     /// The search field and chips over the list; off when the layout puts them elsewhere
     /// (the Duo's top half).
     var filters = true
+    /// The search field and main chips on one row (ChannelFilters.inline).
+    var inlineFilters = false
 
     var body: some View {
         let list = app.visibleChannels
         ScrollViewReader { proxy in
             VStack(spacing: 0) {
-                if filters { ChannelFilters() }
+                if filters { ChannelFilters(inline: inlineFilters) }
                 List(list) { ch in
                     let isPlaying = ch == radio.current && radio.isPlaying
                     Button { radio.play(ch) } label: {
@@ -601,15 +603,31 @@ struct ChannelFilters: View {
     /// Keep the second row's space when there are no sub-chips (All Channels), so the layout
     /// above and below it never moves — the Duo's top half.
     var keepSubRow = false
+    /// The search field and the main chips share one row (the Duo open, side by side: the list
+    /// pane has the width, and every row it saves is another channel on screen).
+    var inline = false
 
     var body: some View {
         VStack(spacing: 0) {
-            // Under the header's EQ bars, over the chips.
-            SearchField(text: $app.search, prompt: "Search channels, artists, songs")
-                .padding(.horizontal)
+            let groups = CategoryBar(titles: ChannelGroup.groups(radio.channels), all: "All Channels", selected: $app.category,
+                                     inset: inline ? 0 : 16)
+            if inline {
+                HStack(spacing: 0) {
+                    SearchField(text: $app.search, prompt: "Search")
+                        .frame(width: 200)
+                        .padding(.leading)
+                        .padding(.trailing, 8)
+                    groups
+                }
                 .padding(.top, 8)
-            // The category chips (StarPlayrKit's ChannelGroup).
-            CategoryBar(titles: ChannelGroup.groups(radio.channels), all: "All Channels", selected: $app.category)
+            } else {
+                // Under the header's EQ bars, over the chips.
+                SearchField(text: $app.search, prompt: "Search channels, artists, songs")
+                    .padding(.horizontal)
+                    .padding(.top, 8)
+                // The category chips (StarPlayrKit's ChannelGroup).
+                groups
+            }
             // Picking a group opens a second row with its detailed chips (Sports → NFL, NBA, …).
             if let group = app.category, case let subs = ChannelGroup.subs(of: group, in: radio.channels), subs.count > 1 {
                 CategoryBar(titles: subs, all: "All \(group)", selected: $app.subcategory, small: true)
