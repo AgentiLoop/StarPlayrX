@@ -88,6 +88,8 @@ struct PlayerView: View {
     @Environment(\.verticalSizeClass) private var vSize
 
     private var shaded: Bool { vSize == .compact }
+    /// The wide layout with now playing and the list side by side (set from its geometry).
+    @State private var sideBySide = false
 
     var body: some View {
         NavigationStack {
@@ -115,9 +117,16 @@ struct PlayerView: View {
                                       systemImage: app.starsOnly ? "star.fill" : "star")
                             }
                         }
+                        // Side by side the list is always showing, so the pane beside it
+                        // switches between the art and the lyrics instead.
                         Button { app.bigArt = false; app.lyrics.toggle() } label: {
-                            Label(app.lyrics ? "Channels" : "Lyrics",
-                                  systemImage: app.lyrics ? "list.bullet" : "quote.bubble")
+                            if sideBySide && hSize == .regular {
+                                Label(app.lyrics ? "Art" : "Lyrics",
+                                      systemImage: app.lyrics ? "photo" : "quote.bubble")
+                            } else {
+                                Label(app.lyrics ? "Channels" : "Lyrics",
+                                      systemImage: app.lyrics ? "list.bullet" : "quote.bubble")
+                            }
                         }
                     }
                 }
@@ -289,6 +298,9 @@ struct PlayerView: View {
                 }
             }
         }
+        .background(GeometryReader { geo in
+            Color.clear.onChange(of: geo.size.width >= geo.size.height, initial: true) { sideBySide = $1 }
+        })
     }
 
     /// "Rock" / "Starred" / "All Channels" and how many channels the list holds, over the list.
