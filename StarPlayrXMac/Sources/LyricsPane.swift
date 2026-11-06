@@ -188,6 +188,8 @@ private struct LyricLines: View, Equatable {
                             // VoiceOver says which line is being sung, and that pressing it sets it.
                             .accessibilityAddTraits(line.id == current ? .isSelected : [])
                             .accessibilityHint(lyrics.synced ? "Sets this as the line being sung" : "")
+                            // VO-Space doesn't reliably reach a tap gesture: press does the same.
+                            .accessibilityAction { tap(line) }
                             .id(line.id)
                     }
                 }

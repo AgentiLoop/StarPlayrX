@@ -71,6 +71,8 @@ struct LyricsView: View {
                                     // VoiceOver says which line is being sung, and that a double-tap sets it.
                                     .accessibilityAddTraits(line.id == current ? .isSelected : [])
                                     .accessibilityHint(lyrics.synced ? "Sets this as the line being sung" : "")
+                                    // The double-tap runs the same tap, as on the Mac.
+                                    .accessibilityAction { tap(line, in: lyrics) }
                                     .id(line.id)
                             }
                         }
