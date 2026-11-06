@@ -210,8 +210,11 @@ public final class Radio: ObservableObject {
     }
 
     private static func channelCache(locale: String) -> URL? {
-        FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first?
-            .appendingPathComponent("channels-\(locale).json")
+        // In the app's own folder: the Mac app isn't sandboxed, so Caches is the user's shared one.
+        guard let dir = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first?
+            .appendingPathComponent(Bundle.main.bundleIdentifier ?? "StarPlayrX") else { return nil }
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        return dir.appendingPathComponent("channels-\(locale).json")
     }
 
     private static func cachedChannels(locale: String) -> [XtraChannel] {
