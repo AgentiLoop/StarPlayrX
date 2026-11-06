@@ -84,4 +84,10 @@ public enum LyricsLayout {
                            ?? radio.xtraNow.flatMap { LyricSync.shared.xtraShift(for: $0.file) } ?? 0)
         return LyricSync.shared.pin(shift: base + (target - position), forKey: key, remember: live)
     }
+
+    /// A tap on a lyric line, in either app: pins timed lyrics there; returns the bubble to show, if any.
+    @MainActor public static func tap(_ line: LyricLine, in lyrics: Lyrics) -> String? {
+        guard lyrics.synced else { return "Text only lyrics, not timed" }
+        return pin(line, in: lyrics, at: position, showing: Radio.shared.lyricsSong) ? "Lyrics position set" : nil
+    }
 }

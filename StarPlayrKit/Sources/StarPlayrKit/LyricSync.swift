@@ -107,7 +107,7 @@ public final class LyricSync: ObservableObject {
         guard lyricsShown() else { return }
         // Load the lyrics for whatever is on now, even while the pane can't redraw (repeat calls
         // for the same song do nothing).
-        let showing = radio.playingNow ?? radio.current.flatMap { radio.nowPlaying[$0.id] }
+        let showing = radio.lyricsSong
         LyricsStore.shared.show(artist: showing?.artist ?? "", song: showing?.song ?? "", duration: radio.trackDuration)
         if radio.isPlaying, radio.current?.xtraID != nil { xtra(); return }
         // No lyrics under the station's names: ask Shazam what is on air and look again under its

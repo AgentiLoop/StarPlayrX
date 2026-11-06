@@ -28,7 +28,7 @@ struct StarPlayrXApp: App {
                     case "play":
                         if let ch = radio.channels.first(where: { $0.id == url.lastPathComponent }) { radio.play(ch) }
                     case "lyrics":
-                        AppState.shared.lyrics = true
+                        PlayerState.shared.lyrics = true
                     default: break
                     }
                 }
@@ -36,22 +36,11 @@ struct StarPlayrXApp: App {
     }
 }
 
-/// What the Mac keeps in MenuController: which view is up, the search, the stars filter.
+/// The launch steps. What the views show (lyrics, search, stars, chips, big art) is StarPlayrKit's
+/// PlayerState, shared with the Mac.
 @MainActor
-final class AppState: ObservableObject {
+final class AppState {
     static let shared = AppState()
-
-    /// The lyrics take the channel list's place.
-    @Published var lyrics = false
-    @Published var search = ""
-    /// "All Stars": the list shows only the starred channels.
-    @Published var starsOnly = false
-    /// The top-level chip picked over the list (Music, Sports, …); nil is "All Channels".
-    @Published var category: String? { didSet { if category != oldValue { genre = nil } } }
-    /// The second-row chip inside `category` (NFL, Rock, …); nil is all of them.
-    @Published var genre: String?
-    /// The current art full size, over the list or lyrics.
-    @Published var bigArt = false
 
     private var launched = false
 
@@ -64,7 +53,7 @@ final class AppState: ObservableObject {
         launched = true
         let radio = Radio.shared
         radio.startAudioSession()
-        LyricSync.shared.start { AppState.shared.lyrics }
+        LyricSync.shared.start { PlayerState.shared.lyrics }
         guard !radio.isBusy, let saved = Keychain.load() else { return }
         radio.showCachedChannels()
         _ = await radio.login(user: saved.user, pass: saved.pass)

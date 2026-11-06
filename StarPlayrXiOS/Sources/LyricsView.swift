@@ -22,9 +22,7 @@ struct LyricsView: View {
     @State private var bubbleTask: Task<Void, Never>?
 
     /// The song the lyrics are for: what's coming out of the speakers, else what the row shows.
-    private var showing: NowPlaying? {
-        radio.playingNow ?? radio.current.flatMap { radio.nowPlaying[$0.id] }
-    }
+    private var showing: NowPlaying? { radio.lyricsSong }
 
     var body: some View {
         Group {
@@ -104,13 +102,8 @@ struct LyricsView: View {
     }
 
     private func tap(_ line: LyricLine, in lyrics: Lyrics) {
-        if !lyrics.synced {
-            showBubble("Text only lyrics, not timed")
-            return
-        }
-        if LyricsLayout.pin(line, in: lyrics, at: LyricsLayout.position, showing: showing) {
-            showBubble("Lyrics position set")
-        }
+        if let message = LyricsLayout.tap(line, in: lyrics) { showBubble(message) }
+        guard lyrics.synced else { return }
         tapped = line.id
         current = line.id
     }

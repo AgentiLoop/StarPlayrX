@@ -73,7 +73,7 @@ struct SignInView: View {
 
 struct PlayerView: View {
     @EnvironmentObject var radio: Radio
-    @ObservedObject private var app = AppState.shared
+    @ObservedObject private var app = PlayerState.shared
 
     var body: some View {
         NavigationStack {
@@ -120,7 +120,7 @@ struct PlayerView: View {
 /// the Mac panel's header.
 struct NowPlayingHeader: View {
     @EnvironmentObject var radio: Radio
-    @ObservedObject private var app = AppState.shared
+    @ObservedObject private var app = PlayerState.shared
 
     var body: some View {
         VStack(spacing: 6) {
@@ -139,11 +139,7 @@ struct NowPlayingHeader: View {
                     isAlbumArt: isAlbumArt, cornerRadius: 16)
                 // Tap the art: full size first; while it's big, album art → channel logo → show art,
                 // and with nothing to switch to it closes again (as on the Mac).
-                .onTapGesture {
-                    if !app.bigArt, radio.shownArtURL != nil { app.bigArt = true; return }
-                    if let id = radio.current?.id, radio.cycleArt(id) { return }
-                    app.bigArt = false
-                }
+                .onTapGesture { app.tapArt() }
                 .task(id: radio.artCandidates.map(\.url)) {
                     for art in radio.artCandidates {
                         ArtCache.shared.prefetch(art.url, pixels: ArtCache.pixels(BigArtView.size), trimBorder: !art.isLogo)
@@ -167,10 +163,7 @@ struct NowPlayingHeader: View {
             .contentShape(Rectangle())
             // Tap the song/artist: the lyrics take the channel list's place, and back again.
             // Over big art it first just closes the art.
-            .onTapGesture {
-                if app.bigArt { app.bigArt = false; return }
-                app.lyrics.toggle()
-            }
+            .onTapGesture { app.tapTitles() }
             .accessibilityElement(children: .combine)
             .accessibilityAddTraits(.isButton)
             .accessibilityHint(app.lyrics ? "Shows the channel list" : "Shows the song's lyrics")
@@ -209,11 +202,11 @@ struct BigArtView: View {
         .padding()
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .contentShape(Rectangle())
-        .onTapGesture { AppState.shared.bigArt = false }
+        .onTapGesture { PlayerState.shared.bigArt = false }
         .accessibilityElement()
         .accessibilityAddTraits(.isButton)
         .accessibilityLabel(isLogo ? "Channel art" : "Album art")
-        .accessibilityHint(AppState.shared.lyrics ? "Shows the lyrics" : "Shows the channel list")
+        .accessibilityHint(PlayerState.shared.lyrics ? "Shows the lyrics" : "Shows the channel list")
     }
 }
 
@@ -276,12 +269,10 @@ struct StarButton: View {
 
 struct ChannelList: View {
     @EnvironmentObject var radio: Radio
-    @ObservedObject private var app = AppState.shared
+    @ObservedObject private var app = PlayerState.shared
 
     var body: some View {
-        let filtered = Channel.filter(radio.channels, nowPlaying: radio.nowPlaying, search: app.search,
-                                      stars: app.starsOnly ? radio.presets : nil)
-        let list = ChannelGroup.filter(filtered, group: app.category, sub: app.genre)
+        let list = app.visibleChannels
         ScrollViewReader { proxy in
             VStack(spacing: 0) {
                 // Under the header's EQ bars, over the chips; stays put while the list scrolls.
@@ -292,7 +283,7 @@ struct ChannelList: View {
                 CategoryBar(titles: ChannelGroup.groups(radio.channels), all: "All Channels", selected: $app.category)
                 // Picking a group opens a second row with its detailed chips (Sports → NFL, NBA, …).
                 if let group = app.category, case let subs = ChannelGroup.subs(of: group, in: radio.channels), subs.count > 1 {
-                    CategoryBar(titles: subs, all: "All \(group)", selected: $app.genre, small: true)
+                    CategoryBar(titles: subs, all: "All \(group)", selected: $app.subcategory, small: true)
                 }
                 List(list) { ch in
                     let isPlaying = ch == radio.current && radio.isPlaying
