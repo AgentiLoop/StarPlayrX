@@ -164,7 +164,7 @@ public final class LyricSync: ObservableObject {
             xtraFile = file; xtraFound = nil; xtraTries = 0; xtraAsked = .distantPast
             xtraAligned = nil; xtraAlignedAt = .distantPast
         }
-        if xtraFound == nil { xtraAlign(file) }
+        xtraAlign(file)
         // Wait out the first seconds (a fade-in or silence matches nothing), then a few tries,
         // one segment apart, so a request that failed has had its answer.
         guard xtraFound == nil, xtraTries < 6, at >= 3, Date().timeIntervalSince(xtraAsked) >= Self.xtraSegment else { return }
@@ -206,7 +206,9 @@ public final class LyricSync: ObservableObject {
     }
 
     /// The live channels' fallback, on the Xtra file: the aligner lines the lyrics up with the
-    /// file's own audio, once a segment, until Shazam places it.
+    /// file's own audio, once a segment. It keeps measuring after Shazam has placed the track (its
+    /// answer is then unused) so every track logs the aligner against Shazam: that is how good the
+    /// fallback is, measured on the same audio, without Shazam's help.
     private func xtraAlign(_ file: URL) {
         guard let lyrics = LyricsStore.shared.lyrics, lyrics.synced,
               Date().timeIntervalSince(xtraAlignedAt) >= Self.xtraSegment,
@@ -217,17 +219,33 @@ public final class LyricSync: ObservableObject {
         let origin = Date(timeIntervalSinceReferenceDate: 0)
         guard let found = LyricAligner.align(lineTimes: times, songStart: origin, onsets: onsets) else {
             Self.logUnsure(lineTimes: times, songStart: origin, onsets: onsets, key: "Xtra \(file.lastPathComponent)")
+            if let guess = LyricAligner.bestGuess(lineTimes: times, songStart: origin, onsets: onsets, over: LyricAligner.search) {
+                logCompare(aligner: -guess.shift, committed: false, guess)
+            }
             return
         }
         // The aligner says line t is sung at t + shift seconds into the file; the lyrics are drawn
         // at file position + Xtra shift, so the Xtra shift is the opposite of it.
         let shift = -found.shift
+        logCompare(aligner: shift, committed: abs(shift) <= Self.xtraMaxShift, found)
         guard abs(shift) <= Self.xtraMaxShift else { return }
         xtraAligned = shift
         if xtraFound == nil {
             report = String(format: "Xtra %+.1fs (aligner: confidence %.1f, margin %.2f, %d lines)",
                             shift, found.confidence, found.margin, found.lines)
         }
+    }
+
+    /// One line per measurement once Shazam has placed the track:
+    /// `log show --predicate 'eventMessage BEGINSWITH "COMPARE"'` collects them.
+    private func logCompare(aligner: Double, committed: Bool, _ a: LyricAligner.Alignment) {
+        guard let shazam = xtraFound else { return }
+        Self.log.notice("""
+            COMPARE xtra key=\(Radio.shared.playingNow.map { LyricsStore.key($0.artist, $0.song) } ?? "?", privacy: .public) \
+            shazam=\(String(format: "%+.2f", shazam), privacy: .public) aligner=\(String(format: "%+.2f", aligner), privacy: .public) \
+            err=\(String(format: "%+.2f", aligner - shazam), privacy: .public) committed=\(committed ? "yes" : "no", privacy: .public) \
+            conf=\(String(format: "%.2f", a.confidence), privacy: .public) margin=\(String(format: "%.2f", a.margin), privacy: .public) lines=\(a.lines)
+            """)
     }
 
     /// The moments the aligner lines up with the audio: only lines the pane draws (an LRC times
