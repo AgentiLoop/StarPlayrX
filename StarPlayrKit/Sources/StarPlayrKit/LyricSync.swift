@@ -75,8 +75,9 @@ public final class LyricSync: ObservableObject {
         timer?.tolerance = 0.1
         // Back on screen: measure now rather than waiting for the next segment.
         #if os(macOS)
-        let names = [NSApplication.didUnhideNotification, NSApplication.didBecomeActiveNotification,
-                     NSWindow.didChangeOcclusionStateNotification]
+        // Not NSWindow.didChangeOcclusionStateNotification: with object nil it fired for every
+        // window (panel, bubble popups, menus), re-running the aligner on main each time. iOS has no such trigger.
+        let names = [NSApplication.didUnhideNotification, NSApplication.didBecomeActiveNotification]
         #else
         let names = [UIApplication.didBecomeActiveNotification]
         #endif
