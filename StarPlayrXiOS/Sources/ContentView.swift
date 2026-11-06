@@ -99,18 +99,12 @@ struct PlayerView: View {
             .navigationTitle(shaded || hSize == .regular ? "" : app.lyrics ? "Lyrics" : "Channels")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Menu {
-                        Text("StarPlayrX \(AppVersion.string)")
-                        Button("Sign Out", role: .destructive) { radio.signOut() }
-                    } label: {
-                        Image(systemName: "person.crop.circle")
-                    }
-                    .accessibilityLabel("Account")
-                }
-                ToolbarItemGroup(placement: .topBarTrailing) {
-                    AirPlayButton()
-                    if !shaded {
+                // In the shade the bar items would be stacked down the camera's side (whichever
+                // side that is), so there they're drawn along the bottom of the content instead.
+                if !shaded {
+                    ToolbarItem(placement: .topBarLeading) { accountMenu }
+                    ToolbarItemGroup(placement: .topBarTrailing) {
+                        AirPlayButton()
                         if !app.lyrics {
                             Button { app.starsOnly.toggle() } label: {
                                 Image(systemName: app.starsOnly ? "star.fill" : "star")
@@ -127,27 +121,55 @@ struct PlayerView: View {
         }
     }
 
-    /// The window shade: the art filling the height on the left, the titles, controls and EQ
-    /// laid out beside it, and nothing else. The Duo's laptop pose shows no status bar in this
-    /// half, so the clock and date sit up in the bar's place.
-    private var shade: some View {
-        NowPlayingHeader(spread: true)
-            .padding(.horizontal, 24)
-            .padding(.vertical, 12)
-            .toolbar {
-                ToolbarItem(placement: .principal) {
-                    TimelineView(.everyMinute) { context in
-                        HStack(alignment: .firstTextBaseline, spacing: 10) {
-                            Text(context.date, format: .dateTime.hour().minute())
-                                .font(.title3.weight(.semibold)).monospacedDigit()
-                            Text(context.date, format: .dateTime.weekday(.abbreviated).month(.abbreviated).day())
-                                .font(.title3).foregroundStyle(.secondary)
-                        }
-                    }
-                    .accessibilityElement(children: .combine)
-                }
-            }
+    private var accountMenu: some View {
+        Menu {
+            Text("StarPlayrX \(AppVersion.string)")
+            Button("Sign Out", role: .destructive) { radio.signOut() }
+        } label: {
+            Image(systemName: "person.crop.circle")
+        }
+        .accessibilityLabel("Account")
     }
+
+    /// The window shade: the art filling the height on the left, the titles, controls and EQ
+    /// laid out beside it, and the account and AirPlay buttons along the bottom edge. The Duo's
+    /// laptop pose shows no status bar in this half, so the clock and date sit up in the bar's place.
+    private var shade: some View {
+        GeometryReader { geo in
+            VStack(spacing: 16) {
+                // The header's art fills whatever height it gets, so it's handed a share of the
+                // shade and the slack goes above and below the whole block — centred.
+                NowPlayingHeader(spread: true)
+                    .frame(height: geo.size.height * 0.72)
+                // Drawn in the content, not the toolbar (the bar would stack them down the camera's
+                // side), so they need the toolbar's Liquid Glass look given by hand.
+                HStack {
+                    accountMenu
+                    Spacer()
+                    AirPlayButton()
+                }
+                .font(.title2)
+                .glassButtons()
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .padding(.horizontal, 24)
+        .padding(.vertical, 12)
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                TimelineView(.everyMinute) { context in
+                    HStack(alignment: .firstTextBaseline, spacing: 10) {
+                        Text(context.date, format: .dateTime.hour().minute())
+                            .font(.title3.weight(.semibold)).monospacedDigit()
+                        Text(context.date, format: .dateTime.weekday(.abbreviated).month(.abbreviated).day())
+                            .font(.title3).foregroundStyle(.secondary)
+                    }
+                }
+                .accessibilityElement(children: .combine)
+            }
+        }
+    }
+
 
 
 
@@ -272,8 +294,8 @@ struct NowPlayingHeader: View {
                 .frame(maxWidth: .infinity)
                 .frame(height: size)
             }
-            // Up against the top of the space, not floating in its middle.
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            // Centred in the space, as a player screen.
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
     }
 
@@ -415,6 +437,18 @@ struct AirPlayButton: View {
         }
         .accessibilityLabel("AirPlay")
         .background(RoutePickerHost(picker: picker).frame(width: 1, height: 1).opacity(0.01).allowsHitTesting(false))
+    }
+}
+
+extension View {
+    /// The toolbar's round Liquid Glass buttons, for buttons drawn in the content (iOS 26 and up;
+    /// plain bordered circles before).
+    @ViewBuilder func glassButtons() -> some View {
+        if #available(iOS 26.0, *) {
+            self.buttonStyle(.glass).buttonBorderShape(.circle).controlSize(.large)
+        } else {
+            self.buttonStyle(.bordered).buttonBorderShape(.circle).controlSize(.large)
+        }
     }
 }
 
