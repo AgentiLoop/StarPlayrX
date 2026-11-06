@@ -9,16 +9,14 @@
 //
 
 import SwiftUI
-import AVFoundation
 import StarPlayrKit
 
 @main
 struct StarPlayrXApp: App {
     init() {
-        // Radio keeps playing with the screen locked or another app in front (UIBackgroundModes audio).
-        let session = AVAudioSession.sharedInstance()
-        try? session.setCategory(.playback, mode: .default, policy: .longFormAudio)
-        try? session.setActive(true)
+        // Keeps playing with the screen locked or another app in front (UIBackgroundModes audio),
+        // resumes after calls, next/previous channel on the lock screen (StarPlayrKit's RadioSession).
+        Radio.shared.startAudioSession()
         LyricSync.shared.start { AppState.shared.lyrics }
     }
 
@@ -41,6 +39,8 @@ final class AppState: ObservableObject {
     @Published var search = ""
     /// "All Stars": the list shows only the starred channels.
     @Published var starsOnly = false
+    /// The current art full size, over the list or lyrics.
+    @Published var bigArt = false
 
     /// Signs in with the account saved in the Keychain, as the Mac does at launch.
     func signInWithSaved() async {

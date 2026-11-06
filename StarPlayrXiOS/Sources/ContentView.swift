@@ -9,6 +9,7 @@
 //
 
 import SwiftUI
+import AVKit
 import StarPlayrKit
 
 struct ContentView: View {
@@ -79,7 +80,9 @@ struct PlayerView: View {
                     .padding(.horizontal)
                     .padding(.vertical, 10)
                 Divider()
-                if app.lyrics { LyricsView() } else { ChannelList() }
+                // Big art lies over the list or lyrics, as on the Mac.
+                if app.bigArt, let url = radio.shownArtURL { BigArtView(url: url) }
+                else if app.lyrics { LyricsView() } else { ChannelList() }
             }
             .navigationTitle(app.lyrics ? "Lyrics" : "Channels")
             .navigationBarTitleDisplayMode(.inline)
@@ -94,13 +97,14 @@ struct PlayerView: View {
                     .accessibilityLabel("Account")
                 }
                 ToolbarItemGroup(placement: .topBarTrailing) {
+                    AirPlayButton().frame(width: 28, height: 28)
                     if !app.lyrics {
                         Button { app.starsOnly.toggle() } label: {
                             Image(systemName: app.starsOnly ? "star.fill" : "star")
                         }
                         .accessibilityLabel(app.starsOnly ? "All Stars On" : "All Stars Off")
                     }
-                    Button { app.lyrics.toggle() } label: {
+                    Button { app.bigArt = false; app.lyrics.toggle() } label: {
                         Image(systemName: app.lyrics ? "list.bullet" : "quote.bubble")
                     }
                     .accessibilityLabel(app.lyrics ? "Channels" : "Lyrics")
@@ -110,21 +114,43 @@ struct PlayerView: View {
     }
 }
 
-/// Art, channel, song and artist, play/pause and the star — the Mac panel's header.
+/// Art, channel, song and artist, play/pause and the star, with the equalizer under them —
+/// the Mac panel's header.
 struct NowPlayingHeader: View {
     @EnvironmentObject var radio: Radio
     @ObservedObject private var app = AppState.shared
 
     var body: some View {
+        VStack(spacing: 6) {
+            row
+            // Same bars as the Mac; before anything has played, keep their space so nothing jumps.
+            if radio.current != nil { SpectrumBars() }
+            else { Color.clear.frame(height: CGFloat(SpectrumRenderer.barHeight)) }
+        }
+    }
+
+    private var row: some View {
         HStack(spacing: 12) {
             let np = radio.current.flatMap { radio.displayed($0.id) }
             let isAlbumArt = np?.image.isEmpty == false
             ArtTile(url: (isAlbumArt ? np?.image : radio.current?.imageURL) ?? "", size: 72,
                     isAlbumArt: isAlbumArt, cornerRadius: 16)
-                // Tap the art: album art → channel logo → show art, as the channel has them.
-                .onTapGesture { if let id = radio.current?.id { radio.cycleArt(id) } }
+                // Tap the art: full size first; while it's big, album art → channel logo → show art,
+                // and with nothing to switch to it closes again (as on the Mac).
+                .onTapGesture {
+                    if !app.bigArt, radio.shownArtURL != nil { app.bigArt = true; return }
+                    if let id = radio.current?.id, radio.cycleArt(id) { return }
+                    app.bigArt = false
+                }
+                .task(id: radio.artCandidates.map(\.url)) {
+                    for art in radio.artCandidates {
+                        ArtCache.shared.prefetch(art.url, pixels: ArtCache.pixels(BigArtView.size), trimBorder: !art.isLogo)
+                    }
+                }
                 .accessibilityAddTraits(.isButton)
                 .accessibilityLabel(isAlbumArt ? "Album art" : "Channel art")
+                .accessibilityHint(app.bigArt ? "Switches between the album art, channel logo and show art"
+                                              : "Shows the art full size")
 
             VStack(alignment: .leading, spacing: 2) {
                 if let ch = radio.current {
@@ -138,7 +164,11 @@ struct NowPlayingHeader: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .contentShape(Rectangle())
             // Tap the song/artist: the lyrics take the channel list's place, and back again.
-            .onTapGesture { app.lyrics.toggle() }
+            // Over big art it first just closes the art.
+            .onTapGesture {
+                if app.bigArt { app.bigArt = false; return }
+                app.lyrics.toggle()
+            }
             .accessibilityElement(children: .combine)
             .accessibilityAddTraits(.isButton)
             .accessibilityHint(app.lyrics ? "Shows the channel list" : "Shows the song's lyrics")
@@ -156,6 +186,44 @@ struct NowPlayingHeader: View {
             }
         }
     }
+}
+
+/// The current art full size in the list's place; tapping it shows the list or lyrics again.
+struct BigArtView: View {
+    static let size: CGFloat = 600
+    @EnvironmentObject var radio: Radio
+    let url: String
+
+    var body: some View {
+        let isLogo = radio.current.map { radio.shownArt($0.id) == .channel } ?? false
+        CachedArt(url: url, size: Self.size, isAlbumArt: !isLogo) { art, _ in
+            // Until the full size arrives, the header's bitmap stretched, so the big art appears at once.
+            if let art = ArtCache.shared.cached(url, pixels: ArtCache.pixels(Self.size))
+                ?? ArtCache.shared.cached(url, pixels: ArtCache.pixels(72)) ?? art {
+                Image(platformImage: art).resizable().scaledToFit()
+            } else { Color.clear }
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .padding()
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .contentShape(Rectangle())
+        .onTapGesture { AppState.shared.bigArt = false }
+        .accessibilityElement()
+        .accessibilityAddTraits(.isButton)
+        .accessibilityLabel(isLogo ? "Channel art" : "Album art")
+        .accessibilityHint(AppState.shared.lyrics ? "Shows the lyrics" : "Shows the channel list")
+    }
+}
+
+/// AirPlay / Bluetooth / speaker picker.
+struct AirPlayButton: UIViewRepresentable {
+    func makeUIView(context: Context) -> AVRoutePickerView {
+        let view = AVRoutePickerView()
+        view.prioritizesVideoDevices = false
+        return view
+    }
+
+    func updateUIView(_ view: AVRoutePickerView, context: Context) {}
 }
 
 /// Channel art in a squircle: album art fills it, a logo sits whole on a dark tile.
