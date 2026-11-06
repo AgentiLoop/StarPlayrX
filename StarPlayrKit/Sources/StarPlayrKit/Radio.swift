@@ -520,7 +520,9 @@ public final class Radio: ObservableObject {
                 lookAround[number] = Self.keepingArt(la, of: lookAround[number])
             }
         }
-        nowPlaying = lookAround.merging(xtraNowPlaying) { live, _ in live }
+        // Only when something changed: every assignment redraws every row of the channel list.
+        let merged = lookAround.merging(xtraNowPlaying) { live, _ in live }
+        if merged != nowPlaying { nowPlaying = merged }
         applyHeard()
         updateNowPlayingInfo()
         Task { await refreshXtraNowPlaying() }

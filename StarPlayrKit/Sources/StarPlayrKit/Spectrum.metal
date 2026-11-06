@@ -95,7 +95,12 @@ fragment float4 spectrumFragment(float4 pos [[position]], constant Globals &g [[
 
     float bw = (W - 2 * (BANDS - 1)) / BANDS;
     float sigma = max(g.glowStyle.y * 0.5, 0.5);
-    for (int i = 0; i < BANDS; i++) {
+    // A pixel can only be covered by the bar whose slot it is in (the glow is off, and the
+    // antialiased edge reaches half a pixel out, inside the 2 pt gap), so test that bar and its two
+    // neighbours instead of all of them: same picture, an eighth of the work per pixel.
+    int slot = int(floor(p.x / (bw + 2)));
+    int last = min(BANDS - 1, slot + 1);
+    for (int i = max(0, slot - 1); i <= last; i++) {
         Bar b = bars[i];
         // Tween from the previous 30 Hz step to this one; rise wraps at 1, so go forward round it.
         float t = g.glowStyle.z;
