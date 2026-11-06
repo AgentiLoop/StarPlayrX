@@ -145,6 +145,27 @@ public final class Radio: ObservableObject {
 
     // MARK: Login
 
+    /// The player went up from the disk list before the network sign-in finished.
+    private var shownFromCache = false
+
+    /// Shows the player at once with the list kept on disk, before the network sign-in: launch
+    /// doesn't wait on the server. `login` then signs in and tunes the last channel; if it fails,
+    /// the app goes back to the sign-in screen. Returns false when there's no list to show.
+    @discardableResult
+    public func showCachedChannels() -> Bool {
+        guard !isLoggedIn else { return true }
+        let cached = Self.cachedChannels(locale: localeIsCA ? "en-CA" : "en-US")
+        guard !cached.isEmpty else { return false }
+        apply(cached)
+        if let last = UserDefaults.standard.string(forKey: "lastChannel") {
+            current = channels.first { $0.id == last }
+        }
+        status = "Signing in…"
+        isLoggedIn = true
+        shownFromCache = true
+        return true
+    }
+
     /// Signs in to the SiriusXM API; every channel (live and Xtra) comes from XtraClient.channels().
     /// The full list takes ~35 s (the server answers its 26 pages one after another), so the last
     /// list is kept on disk: it shows right after sign-in and the fresh one replaces it when it arrives.
@@ -159,6 +180,7 @@ public final class Radio: ObservableObject {
             try await xtra.signIn(user: user, pass: pass)
         } catch {
             status = error.localizedDescription
+            if shownFromCache { shownFromCache = false; isLoggedIn = false }
             return false
         }
         Keychain.save(user: user, pass: pass)
@@ -199,6 +221,7 @@ public final class Radio: ObservableObject {
 
     private func signedIn() async {
         isLoggedIn = true
+        shownFromCache = false
         channelsLoaded = true
         status = "Signed in"
         if let last = UserDefaults.standard.string(forKey: "lastChannel") {

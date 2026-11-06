@@ -14,18 +14,11 @@ import StarPlayrKit
 
 @main
 struct StarPlayrXApp: App {
-    init() {
-        // Keeps playing with the screen locked or another app in front (UIBackgroundModes audio),
-        // resumes after calls, next/previous channel on the lock screen (StarPlayrKit's RadioSession).
-        Radio.shared.startAudioSession()
-        LyricSync.shared.start { AppState.shared.lyrics }
-    }
-
     var body: some Scene {
         WindowGroup {
             ContentView()
                 .environmentObject(Radio.shared)
-                .task { await AppState.shared.signInWithSaved() }
+                .task { await AppState.shared.launch() }
                 // starplayrx://play/1001 tunes channel 1001, starplayrx://lyrics shows the lyrics
                 // (`xcrun simctl openurl booted starplayrx://play/1001` drives the simulator).
                 .onOpenURL { url in
@@ -60,10 +53,20 @@ final class AppState: ObservableObject {
     /// The current art full size, over the list or lyrics.
     @Published var bigArt = false
 
-    /// Signs in with the account saved in the Keychain, as the Mac does at launch.
-    func signInWithSaved() async {
+    private var launched = false
+
+    /// Runs after the first frame, so launch only draws. Keeps playing with the screen locked or
+    /// another app in front (UIBackgroundModes audio), resumes after calls, next/previous channel on
+    /// the lock screen (StarPlayrKit's RadioSession). With a saved account the player goes up at
+    /// once from the channel list on disk, while the sign-in runs, as the Mac does at launch.
+    func launch() async {
+        guard !launched else { return }  // once, not per window (iPad has several)
+        launched = true
         let radio = Radio.shared
-        guard !radio.isLoggedIn, !radio.isBusy, let saved = Keychain.load() else { return }
+        radio.startAudioSession()
+        LyricSync.shared.start { AppState.shared.lyrics }
+        guard !radio.isBusy, let saved = Keychain.load() else { return }
+        radio.showCachedChannels()
         _ = await radio.login(user: saved.user, pass: saved.pass)
     }
 }

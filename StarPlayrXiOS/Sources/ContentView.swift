@@ -24,7 +24,7 @@ struct ContentView: View {
 
 struct SignInView: View {
     @EnvironmentObject var radio: Radio
-    @State private var user = Keychain.load()?.user ?? ""
+    @State private var user = ""
     @State private var pass = ""
 
     var body: some View {
@@ -58,6 +58,8 @@ struct SignInView: View {
                 }
             }
             .navigationTitle("StarPlayrX")
+            // Once, not on every init of this view (each Radio change re-creates it).
+            .task { if user.isEmpty { user = Keychain.load()?.user ?? "" } }
         }
     }
 
