@@ -15,13 +15,11 @@
 		8489F0CE3E44B23D8B984C16 /* SearchField.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74DCB8300E5FAB44FC58A9F8 /* SearchField.swift */; };
 		8B8D4221E3B5D9DA693BACAA /* StarPlayrXMacTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5AACB58C22D23FF75DF15D1A /* StarPlayrXMacTests.swift */; };
 		97E3C433757ED71D95CB2524 /* MenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9CF5EC7805BCA42169AF4ECE /* MenuView.swift */; };
-		A31CE963BD060610EDFBBD19 /* Spectrum.metal in Sources */ = {isa = PBXBuildFile; fileRef = DA977B1658B9908A1857CA86 /* Spectrum.metal */; };
 		AAF02C1F2D58A6F4F585EDF7 /* StarPlayrX.sdef in Resources */ = {isa = PBXBuildFile; fileRef = 9AE9931B956CB2DA3D48715B /* StarPlayrX.sdef */; };
 		B92350C46BD992AC2AA8DDCA /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 6E8F68BA0D44926EF37BBB62 /* Assets.xcassets */; };
 		C1BBBCF52CBE121D9E31AE22 /* StarPlayrXMacApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47D0341DA36FCC82C2C684B6 /* StarPlayrXMacApp.swift */; };
 		C1DCC21623D246122B6DAB6F /* MenuController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95A1B6D05467A2297EAAE180 /* MenuController.swift */; };
 		C4EADC40C4C5D1B84D6005BA /* BubblePopup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 399F131CDB1FBB41334F85DF /* BubblePopup.swift */; };
-		C8A0A19F83AA9E90EFCAB52A /* SpectrumRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C9B3A2D12DB0EEA154457BF /* SpectrumRenderer.swift */; };
 		C8F6A2E065C7DF33930B6C11 /* Updater.swift in Sources */ = {isa = PBXBuildFile; fileRef = C61B9780B3DFA615D3ABFAD1 /* Updater.swift */; };
 		F74DACEF74A0B173A402FDD6 /* LyricsPane.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75DF1ADD881C81DE5663BC12 /* LyricsPane.swift */; };
 		FEECE6E47C08F86D1BF40921 /* DisplayAudio.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50D2FBEC353F1EC8718E81F7 /* DisplayAudio.swift */; };
@@ -45,7 +43,6 @@
 		47D0341DA36FCC82C2C684B6 /* StarPlayrXMacApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StarPlayrXMacApp.swift; sourceTree = "<group>"; };
 		50D2FBEC353F1EC8718E81F7 /* DisplayAudio.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DisplayAudio.swift; sourceTree = "<group>"; };
 		5AACB58C22D23FF75DF15D1A /* StarPlayrXMacTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StarPlayrXMacTests.swift; sourceTree = "<group>"; };
-		5C9B3A2D12DB0EEA154457BF /* SpectrumRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpectrumRenderer.swift; sourceTree = "<group>"; };
 		6E4311F836AD4A7A0120E737 /* Scripting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Scripting.swift; sourceTree = "<group>"; };
 		6E8F68BA0D44926EF37BBB62 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		74DCB8300E5FAB44FC58A9F8 /* SearchField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchField.swift; sourceTree = "<group>"; };
@@ -56,7 +53,6 @@
 		9CF5EC7805BCA42169AF4ECE /* MenuView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuView.swift; sourceTree = "<group>"; };
 		AFC2175A4B9226A8F1E4A18B /* MarqueeText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarqueeText.swift; sourceTree = "<group>"; };
 		C61B9780B3DFA615D3ABFAD1 /* Updater.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Updater.swift; sourceTree = "<group>"; };
-		DA977B1658B9908A1857CA86 /* Spectrum.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = Spectrum.metal; sourceTree = "<group>"; };
 		DF28422D48A23F0C3140CF55 /* SpectrumView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpectrumView.swift; sourceTree = "<group>"; };
 		F01AA8AFA99C2B4D451D3BAF /* StarPlayrKit */ = {isa = PBXFileReference; lastKnownFileType = folder; name = StarPlayrKit; path = ../StarPlayrKit; sourceTree = SOURCE_ROOT; };
 		F780CB7683BB43494DE45275 /* ScriptedTour.applescript */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.applescript; path = ScriptedTour.applescript; sourceTree = "<group>"; };
@@ -97,8 +93,6 @@
 				9CF5EC7805BCA42169AF4ECE /* MenuView.swift */,
 				6E4311F836AD4A7A0120E737 /* Scripting.swift */,
 				74DCB8300E5FAB44FC58A9F8 /* SearchField.swift */,
-				DA977B1658B9908A1857CA86 /* Spectrum.metal */,
-				5C9B3A2D12DB0EEA154457BF /* SpectrumRenderer.swift */,
 				DF28422D48A23F0C3140CF55 /* SpectrumView.swift */,
 				8597FCE01D54FAA77BEF60A4 /* StarPlayrX.entitlements */,
 				9AE9931B956CB2DA3D48715B /* StarPlayrX.sdef */,
@@ -251,8 +245,6 @@
 				97E3C433757ED71D95CB2524 /* MenuView.swift in Sources */,
 				78D07A43295425FB93CF8574 /* Scripting.swift in Sources */,
 				8489F0CE3E44B23D8B984C16 /* SearchField.swift in Sources */,
-				A31CE963BD060610EDFBBD19 /* Spectrum.metal in Sources */,
-				C8A0A19F83AA9E90EFCAB52A /* SpectrumRenderer.swift in Sources */,
 				823B69E4E49005C7947B6854 /* SpectrumView.swift in Sources */,
 				C1BBBCF52CBE121D9E31AE22 /* StarPlayrXMacApp.swift in Sources */,
 				C8F6A2E065C7DF33930B6C11 /* Updater.swift in Sources */,

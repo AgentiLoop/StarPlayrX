@@ -1,6 +1,6 @@
 //
 //  SpectrumRenderer.swift
-//  StarPlayrXMac
+//  StarPlayrKit
 //
 //  Created by Todd Bruss on 10/31/26.
 //  Modified by Todd Bruss on 11/2/26.
@@ -8,24 +8,24 @@
 //
 
 import MetalKit
-import StarPlayrKit
 
-/// AppKit stays on main; frame preparation and drawable waits belong to the render worker.
+/// AppKit/UIKit stays on main; frame preparation and drawable waits belong to the render worker.
 @MainActor
-final class SpectrumRenderer: NSObject, MTKViewDelegate {
-    static let pad: Float = 18
-    static let barHeight: Float = 40
-    let device = MTLCreateSystemDefaultDevice()
+public final class SpectrumRenderer: NSObject, MTKViewDelegate {
+    public static let pad: Float = 18
+    public static let barHeight: Float = 40
+    public let device = MTLCreateSystemDefaultDevice()
     private lazy var worker = SpectrumRenderWorker(device: device)
-    var fixed = 0.025, bg = 0.025, light = false, bubbles = 0.5
+    public var fixed = 0.025, bg = 0.025, light = false, bubbles = 0.5
     private var rendering = false
 
-    func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {}
+    public override init() { super.init() }
 
-    func draw(in view: MTKView) {
+    public func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {}
+
+    public func draw(in view: MTKView) {
         guard !rendering, view.bounds.width > 0, view.bounds.height > 0,
-              let window = view.window, window.isVisible,
-              window.occlusionState.contains(.visible),
+              Self.isShowing(view),
               let layer = view.layer as? CAMetalLayer else { return }
         let frame = SpectrumRenderWorker.Input(
             surface: SpectrumRenderWorker.Surface(layer),
@@ -35,6 +35,16 @@ final class SpectrumRenderer: NSObject, MTKViewDelegate {
         worker.render(frame) { [weak self] in
             Task { @MainActor in self?.rendering = false }
         }
+    }
+
+    /// Nothing is drawn into a window that is hidden or covered (Mac), or a view off screen.
+    private static func isShowing(_ view: MTKView) -> Bool {
+        guard let window = view.window else { return false }
+        #if os(macOS)
+        return window.isVisible && window.occlusionState.contains(.visible)
+        #else
+        return !window.isHidden
+        #endif
     }
 }
 
@@ -60,7 +70,7 @@ private final class SpectrumRenderWorker: @unchecked Sendable {
     private let device: MTLDevice?
     private lazy var queue = device?.makeCommandQueue()
     private lazy var pipeline: MTLRenderPipelineState? = {
-        guard let device, let library = device.makeDefaultLibrary() else { return nil }
+        guard let device, let library = try? device.makeDefaultLibrary(bundle: .module) else { return nil }
         do {
             var bands = Int32(Visualizer.bandCount)
             let constants = MTLFunctionConstantValues()

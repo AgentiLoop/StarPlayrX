@@ -12,6 +12,6 @@ let package = Package(
         .library(name: "StarPlayrKit", targets: ["StarPlayrKit"]),
     ],
     targets: [
-        .target(name: "StarPlayrKit"),
+        .target(name: "StarPlayrKit", resources: [.process("Spectrum.metal")]),
     ]
 )
