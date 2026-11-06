@@ -1,6 +1,6 @@
 //
 //  LyricSync.swift
-//  StarPlayrXMac
+//  StarPlayrKit
 //
 //  Copyright © 2026 Todd Bruss. All rights reserved.
 //
@@ -11,22 +11,25 @@
 //
 
 import Foundation
+#if os(macOS)
 import AppKit
-import StarPlayrKit
+#else
+import UIKit
+#endif
 
 @MainActor
-final class LyricSync: ObservableObject {
-    static let shared = LyricSync()
+public final class LyricSync: ObservableObject {
+    public static let shared = LyricSync()
 
     /// The song the shift belongs to, and the shift itself. Published so the pane can show it.
-    @Published private(set) var key = ""
-    @Published private(set) var shift: Double?
+    @Published public private(set) var key = ""
+    @Published public private(set) var shift: Double?
     /// Set when the shift came from the user clicking a line rather than from the aligner. The
     /// person listening is the better judge, so no later measurement overrules it; cleared when
     /// the song changes.
-    @Published private(set) var isPinned = false
+    @Published public private(set) var isPinned = false
     /// The last measurement, for the `lyric sync` scripting property.
-    private(set) var report = "no measurement yet"
+    public private(set) var report = "no measurement yet"
     /// Another measurement is taken each time a new segment of audio has been decoded (~9.75 s on
     /// live channels), so it stays in step with the segments whatever their length, and a DJ break,
     /// ad or dead air between songs never leaves it waiting on a timer. Each one looks at everything
@@ -53,16 +56,24 @@ final class LyricSync: ObservableObject {
     /// Held while a live channel plays, so App Nap doesn't slow the timer and the decoding down
     /// when the window is hidden or covered.
     private var activity: NSObjectProtocol?
+    /// Whether the lyrics are on screen (on the Mac, MenuController's lyrics pane): nothing is
+    /// looked up or measured while they aren't.
+    private var lyricsShown: @MainActor () -> Bool = { false }
 
-    func start() {
+    public func start(lyricsShown: @escaping @MainActor () -> Bool) {
         guard timer == nil else { return }
+        self.lyricsShown = lyricsShown
         timer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { _ in
             Task { @MainActor in LyricSync.shared.tick() }
         }
         timer?.tolerance = 0.1
         // Back on screen: measure now rather than waiting for the next segment.
+        #if os(macOS)
         let names = [NSApplication.didUnhideNotification, NSApplication.didBecomeActiveNotification,
                      NSWindow.didChangeOcclusionStateNotification]
+        #else
+        let names = [UIApplication.didBecomeActiveNotification]
+        #endif
         for name in names {
             NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { _ in
                 Task { @MainActor in LyricSync.shared.remeasure() }
@@ -85,7 +96,7 @@ final class LyricSync: ObservableObject {
             ProcessInfo.processInfo.endActivity(held)
             activity = nil
         }
-        guard radio.isLoggedIn, MenuController.shared.lyrics else { return }
+        guard radio.isLoggedIn, lyricsShown() else { return }
         // Load the lyrics for whatever is on now, even while the pane can't redraw (repeat calls
         // for the same song do nothing).
         let showing = radio.playingNow ?? radio.current.flatMap { radio.nowPlaying[$0.id] }
@@ -109,11 +120,11 @@ final class LyricSync: ObservableObject {
 
     /// The measured shift for this song, or nil while there isn't a confident one (the caller
     /// falls back to `Radio.liveLyricsLead`).
-    func shift(forKey key: String) -> Double? { key == self.key ? shift : nil }
+    public func shift(forKey key: String) -> Double? { key == self.key ? shift : nil }
 
     /// The shift the user pinned by clicking a line, for the players that have no measured shift
     /// of their own (Xtra tracks, where the position comes straight out of the player).
-    func pinnedShift(forKey key: String) -> Double? { isPinned ? shift(forKey: key) : nil }
+    public func pinnedShift(forKey key: String) -> Double? { isPinned ? shift(forKey: key) : nil }
 
     /// Xtra tracks: the player knows where the file is, but not where the record is — the file can
     /// be another edit, or have its own lead-in, and the lyrics are timed to the record. Shazam
@@ -136,7 +147,7 @@ final class LyricSync: ObservableObject {
     private static let xtraMaxShift: TimeInterval = 9.75
 
     /// The shift for this Xtra file: Shazam's once there is one, else the aligner's.
-    func xtraShift(for file: URL) -> Double? { file == xtraFile ? (xtraFound ?? xtraAligned) : nil }
+    public func xtraShift(for file: URL) -> Double? { file == xtraFile ? (xtraFound ?? xtraAligned) : nil }
 
     private func xtra() {
         // Timed lyrics to line up, or none at all under the station's names: then Shazam's names
@@ -213,7 +224,7 @@ final class LyricSync: ObservableObject {
     /// The moments the aligner lines up with the audio: only lines the pane draws (an LRC times
     /// the gaps between verses as empty lines, and nobody sings those), plus every word where the
     /// source times them. Words within a tenth of a second of the last are the same moment.
-    static func lineTimes(_ lyrics: Lyrics) -> [Double] {
+    public static func lineTimes(_ lyrics: Lyrics) -> [Double] {
         let stamps = lyrics.lines.flatMap { $0.text.isEmpty ? [] : ($0.at.map { [$0] } ?? []) + $0.words }
         var times = [Double]()
         for at in stamps.sorted() where at - (times.last ?? -.infinity) >= 0.1 { times.append(at) }
@@ -225,7 +236,7 @@ final class LyricSync: ObservableObject {
     /// turns up, which only means the same thing on a live channel — an Xtra track's position is
     /// the file's own, not a cut's stamp.
     @discardableResult
-    func pin(shift: Double, forKey key: String, remember: Bool) -> Bool {
+    public func pin(shift: Double, forKey key: String, remember: Bool) -> Bool {
         // A click a minute or more away from where the song is can't be "this line is being sung
         // now" (a stray click, or the pane drawn from a stale position): it threw a song 2 minutes out.
         guard abs(shift) <= 60 else { return false }
@@ -239,7 +250,7 @@ final class LyricSync: ObservableObject {
 
     /// Called on the model's own tick (`tick`). Measures once per newly decoded segment, and only replaces what
     /// it has when the new measurement stands out further than the old one did.
-    func update(lyrics: Lyrics, key: String, songStart: Date) {
+    public func update(lyrics: Lyrics, key: String, songStart: Date) {
         if key != self.key {
             self.key = key
             // Only trust a remembered shift that measured this song in THIS cut: a shift saved from a
@@ -357,7 +368,7 @@ final class LyricSync: ObservableObject {
     /// for with an offset of zero, and an offset past the end of the lyrics (plus a minute for an
     /// outro) can't be this record either; trusting either throws every line out, so the caller
     /// stays on its fallback timing instead.
-    static func hasTiming(_ match: ShazamSync.Match, lyrics: Lyrics?) -> Bool {
+    public static func hasTiming(_ match: ShazamSync.Match, lyrics: Lyrics?) -> Bool {
         guard match.offset.isFinite, match.offset > 0.5 else { return false }
         guard let last = lyrics?.lines.compactMap(\.at).max() else { return true }
         return match.offset <= last + 60
@@ -365,7 +376,7 @@ final class LyricSync: ObservableObject {
 
     /// Shazam heard the song on now: by the station's names, or by the names the lyrics were found
     /// under (Shazam's own, when the station's found nothing).
-    static func heard(_ match: ShazamSync.Match, key: String) -> Bool {
+    public static func heard(_ match: ShazamSync.Match, key: String) -> Bool {
         if same(match, as: key) { return true }
         guard let lyrics = LyricsStore.shared.lyrics else { return false }
         return same(match, as: LyricsStore.key(lyrics.artist, lyrics.song))
@@ -374,7 +385,7 @@ final class LyricSync: ObservableObject {
     /// Whether Shazam heard the song the lyrics are for (`key` is "artist|song", lowercased).
     /// Loose on purpose: the station says "Lose Yourself", Shazam "Lose Yourself (From "8 Mile")";
     /// the artist one way round or the other ("Eminem" / "Eminem & Dido").
-    static func same(_ match: ShazamSync.Match, as key: String) -> Bool {
+    public static func same(_ match: ShazamSync.Match, as key: String) -> Bool {
         let parts = key.split(separator: "|", maxSplits: 1).map(String.init)
         guard parts.count == 2 else { return false }
         func plain(_ s: String) -> String {

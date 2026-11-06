@@ -1,6 +1,6 @@
 //
 //  Radio.swift
-//  StarPlayrXMac
+//  StarPlayrKit
 //
 //  Created by Todd Bruss on 10/31/26.
 //  Modified by Todd Bruss on 11/2/26.
@@ -8,44 +8,42 @@
 //
 
 import Foundation
-import AppKit
 import AVFoundation
 import MediaPlayer
 import Combine
 import os
-import StarPlayrKit
 
 @MainActor
-final class Radio: ObservableObject {
-    static let shared = Radio()
+public final class Radio: ObservableObject {
+    public static let shared = Radio()
 
-    @Published var status = "Not signed in"
-    @Published var isBusy = false
-    @Published var isLoggedIn = false
-    @Published var isPlaying = false
-    @Published var channels = [Channel]()
-    @Published var current: Channel?
-    @Published var nowPlaying = [String: NowPlaying]()
+    @Published public var status = "Not signed in"
+    @Published public var isBusy = false
+    @Published public var isLoggedIn = false
+    @Published public var isPlaying = false
+    @Published public var channels = [Channel]()
+    @Published public var current: Channel?
+    @Published public var nowPlaying = [String: NowPlaying]()
     /// Channels where the user clicked the artwork to see the show's art instead of the channel logo.
     /// Logo is the default; the choice is per channel and remembered.
-    @Published private(set) var showArtChannels = Set(UserDefaults.standard.stringArray(forKey: "showArtChannels") ?? [])
+    @Published public private(set) var showArtChannels = Set(UserDefaults.standard.stringArray(forKey: "showArtChannels") ?? [])
 
     /// Which art the now-playing tile shows.
-    enum ArtKind { case album, channel, show }
+    public enum ArtKind { case album, channel, show }
 
     /// Channels where the user clicked past the song's album art to the channel logo or show art
     /// (this session only). Without song art, `showArtChannels` decides instead.
-    @Published private(set) var artChoice = [String: ArtKind]()
+    @Published public private(set) var artChoice = [String: ArtKind]()
 
     /// The art a channel has right now, in click order: album art, channel logo, show art.
-    func artKinds(_ id: String) -> [ArtKind] {
+    public func artKinds(_ id: String) -> [ArtKind] {
         guard let np = nowPlaying[id] else { return [.channel] }
         return (np.image.isEmpty ? [] : [.album]) + [.channel] + (np.showImage.isEmpty ? [] : [.show])
     }
 
     /// The art shown for a channel: song art unless the user clicked past it, else the show's art
     /// on channels where the user chose it, else the channel logo.
-    func shownArt(_ id: String) -> ArtKind {
+    public func shownArt(_ id: String) -> ArtKind {
         let kinds = artKinds(id)
         if kinds.contains(.album) {
             return artChoice[id].flatMap { kinds.contains($0) ? $0 : nil } ?? .album
@@ -54,7 +52,7 @@ final class Radio: ObservableObject {
     }
 
     /// Now playing as shown: the image of `shownArt` (empty for the channel logo, which is drawn instead).
-    func displayed(_ id: String) -> NowPlaying? {
+    public func displayed(_ id: String) -> NowPlaying? {
         guard var np = nowPlaying[id] else { return nil }
         switch shownArt(id) {
         case .album: break
@@ -67,7 +65,7 @@ final class Radio: ObservableObject {
     /// Clicking the small artwork steps album art → channel logo → show art, skipping what the channel
     /// doesn't have. Returns false when there is nothing to switch to.
     @discardableResult
-    func cycleArt(_ id: String) -> Bool {
+    public func cycleArt(_ id: String) -> Bool {
         let kinds = artKinds(id)
         guard kinds.contains(.album) else { return toggleShowArt(id) }
         guard kinds.count > 1, let i = kinds.firstIndex(of: shownArt(id)) else { return false }
@@ -79,7 +77,7 @@ final class Radio: ObservableObject {
     /// Clicking the artwork switches between the channel logo and the show's art, for that channel only.
     /// Returns false when there is nothing to switch to (song art, or no show art).
     @discardableResult
-    func toggleShowArt(_ id: String) -> Bool {
+    public func toggleShowArt(_ id: String) -> Bool {
         guard let np = nowPlaying[id], np.image.isEmpty, !np.showImage.isEmpty else { return false }
         if showArtChannels.contains(id) { showArtChannels.remove(id) } else { showArtChannels.insert(id) }
         UserDefaults.standard.set(Array(showArtChannels).sorted(), forKey: "showArtChannels")
@@ -87,17 +85,17 @@ final class Radio: ObservableObject {
     }
     /// Starred channels ("presets" on iOS; same key and starting set as the iOS app). Kept on this
     /// Mac only, not on the SiriusXM account.
-    @Published private(set) var presets = Set(UserDefaults.standard.stringArray(forKey: "SPXPresets") ?? ["2", "3", "4"])
+    @Published public private(set) var presets = Set(UserDefaults.standard.stringArray(forKey: "SPXPresets") ?? ["2", "3", "4"])
 
     /// The star: adds the channel to the presets, or takes it out. Remembered.
-    func togglePreset(_ id: String) {
+    public func togglePreset(_ id: String) {
         if presets.contains(id) { presets.remove(id) } else { presets.insert(id) }
         UserDefaults.standard.set(Array(presets).sorted { Int($0) ?? 0 < Int($1) ?? 0 }, forKey: "SPXPresets")
     }
     /// Canadian account: the API is the same, the request locale is en-CA (as can.siriusxm.com sends).
-    @Published var localeIsCA = UserDefaults.standard.bool(forKey: "localeIsCA")
+    @Published public var localeIsCA = UserDefaults.standard.bool(forKey: "localeIsCA")
     /// True once sign-in has finished loading every channel, Xtra included.
-    @Published var channelsLoaded = false
+    @Published public var channelsLoaded = false
 
     private let playback = PlaybackWorker.shared
     private var playbackID = UUID()
@@ -133,7 +131,7 @@ final class Radio: ObservableObject {
     // MARK: Login
 
     /// Signs in to the SiriusXM API; every channel (live and Xtra) comes from XtraClient.channels().
-    func login(user: String, pass: String) async -> Bool {
+    public func login(user: String, pass: String) async -> Bool {
         isBusy = true
         channelsLoaded = false
         defer { isBusy = false }
@@ -167,7 +165,7 @@ final class Radio: ObservableObject {
         return true
     }
 
-    func signOut() {
+    public func signOut() {
         stop()
         pdtTimer?.invalidate()
         Keychain.delete()
@@ -181,14 +179,14 @@ final class Radio: ObservableObject {
     }
 
     /// Canada or US. Takes effect at the next sign-in.
-    func setRegion(ca: Bool) {
+    public func setRegion(ca: Bool) {
         localeIsCA = ca
         UserDefaults.standard.set(ca, forKey: "localeIsCA")
     }
 
     // MARK: Playback
 
-    func play(_ channel: Channel) {
+    public func play(_ channel: Channel) {
         haltXtra()
         liveTask?.cancel()
         playbackID = UUID()
@@ -217,16 +215,14 @@ final class Radio: ObservableObject {
         }
     }
 
-    func togglePlayPause() {
+    public func togglePlayPause() {
         if isPlaying { stop() } else if let current { play(current) }
     }
 
-    /// Plays through the speakers of the display `screen`, when the Mac's sound is on a display's
-    /// speakers (see `DisplayAudio`). The Mac's sound output itself moves there, not just this
-    /// app's: the volume keys and slider work on the system output, so sending only the radio
-    /// left them turning the other display up and down. Each display keeps its own volume.
-    func routeAudio(to screen: NSScreen?) {
-        guard let screen, let uid = DisplayAudio.device(for: screen) else { return }
+    /// Moves the sound to the output `uid` with `route` (on the Mac: a display's speakers, see
+    /// `DisplayAudio` there). Moves asked for while one is under way are run after it, newest only,
+    /// and the stall watchdog leaves the fade alone.
+    public func routeAudio(toOutput uid: String, via route: @escaping (String) async -> Void) {
         pendingOutputUID = uid
         guard routeTask == nil else { return }
         routeTask = Task { @MainActor [weak self] in
@@ -237,7 +233,7 @@ final class Radio: ObservableObject {
             }
             while let uid = pendingOutputUID {
                 pendingOutputUID = nil
-                await playback.route(to: uid)
+                await route(uid)
             }
         }
     }
@@ -245,7 +241,7 @@ final class Radio: ObservableObject {
     private var routeTask: Task<Void, Never>?
 
 
-    func stop() {
+    public func stop() {
         stopWatchdog()
         haltXtra()
         liveTask?.cancel()
@@ -417,7 +413,7 @@ final class Radio: ObservableObject {
         }
     }
 
-    func updatePDT() async {
+    public func updatePDT() async {
         // One source for every live row, tuned or not: the newer API (lookAround).
         // The player's date runs ahead of the stream's real PDT (segments are tagged 10 s but hold
         // ~9.75 s, so the gap grows to ~8 s). The song list was matched to the player's date, so it
@@ -497,7 +493,7 @@ final class Radio: ObservableObject {
     /// The PDT feed only has album art for songs the server has just seen on a now-playing-live
     /// fetch (it forgets them on the next one), so a later poll of the same song often comes back
     /// without art. Keep the album art until the song changes, instead of flipping back to the logo.
-    nonisolated static func keepingArt(_ new: NowPlaying, of old: NowPlaying?) -> NowPlaying {
+    public nonisolated static func keepingArt(_ new: NowPlaying, of old: NowPlaying?) -> NowPlaying {
         guard new.image.isEmpty, let old, !old.image.isEmpty, old.artist == new.artist, old.song == new.song else { return new }
         var kept = new
         kept.image = old.image
@@ -507,7 +503,7 @@ final class Radio: ObservableObject {
     private var peekFlushScheduled = false
 
     /// What is actually coming out of the speakers: the Xtra track in the player, or the live channel's PDT.
-    var playingNow: NowPlaying? {
+    public var playingNow: NowPlaying? {
         guard isPlaying, let current else { return nil }
         guard current.xtraID != nil else { return nowPlaying[current.id] }
         guard let track = playbackState.track else { return nil }
@@ -518,7 +514,7 @@ final class Radio: ObservableObject {
     /// files in the player, so the player knows. A live channel's stream has no song boundaries:
     /// the cut's `validFrom` is the song's start in stream time, and the music runs `streamLag`
     /// behind real time, so now minus that lag minus the start is how far into the song it is.
-    var trackPosition: TimeInterval? {
+    public var trackPosition: TimeInterval? {
         guard isPlaying else { return nil }
         guard current?.xtraID != nil else {
             guard let np = current.flatMap({ nowPlaying[$0.id] }), let started = np.startedAt,
@@ -545,7 +541,7 @@ final class Radio: ObservableObject {
     }
 
     /// The Xtra file in the player and the player's position in it, for matching with Shazam.
-    var xtraNow: (file: URL, at: Double)? {
+    public var xtraNow: (file: URL, at: Double)? {
         let state = playbackState
         guard isPlaying, current?.xtraID != nil, state.xtraStatus == .playing,
               let file = state.file else { return nil }
@@ -570,19 +566,19 @@ final class Radio: ObservableObject {
     /// so this is only the fallback until that lands, and zero is the honest one. How far is per
     /// song — a radio edit is cut differently from the record LRCLIB has — `defaults write
     /// com.starplayrx.mac lyricsLiveLead -float -1` (or 0, or -3) moves it without a rebuild.
-    static var liveLyricsLead: TimeInterval {
+    public static var liveLyricsLead: TimeInterval {
         UserDefaults.standard.object(forKey: "lyricsLiveLead") as? Double ?? 0
     }
 
     /// Length of the Xtra track in the player, which sharpens LRCLIB's matching. Nil on live channels.
-    var trackDuration: TimeInterval? {
+    public var trackDuration: TimeInterval? {
         guard current?.xtraID != nil else { return nil }
         let length = playbackState.duration
         return length.isFinite && length > 0 ? length : nil
     }
 
     /// Whether the player for the current channel is actually producing audio (not just buffering).
-    var audioStarted: Bool {
+    public var audioStarted: Bool {
         guard isPlaying, let current else { return false }
         return (current.xtraID != nil ? playbackState.xtraStatus : playbackState.liveStatus) == .playing
     }
@@ -591,7 +587,7 @@ final class Radio: ObservableObject {
     /// ahead of time at the player's exact position; nil when nothing is playing.
     /// `ahead` seconds past the playing position: the bars are frames worked out in advance, so the
     /// visualizer can read slightly ahead to make up for the time its smoothing takes to show them.
-    func spectrumNow(ahead: Double = 0) -> [Float]? {
+    public func spectrumNow(ahead: Double = 0) -> [Float]? {
         guard isPlaying, let current else { return nil }
         let state = playbackState
         if current.xtraID != nil { return state.spectrum(ahead: ahead) }

@@ -231,3 +231,14 @@ extension PlaybackWorker {
                     switchOutput: { DisplayAudio.makeSystemOutput(uid) })
     }
 }
+
+extension Radio {
+    /// Plays through the speakers of the display `screen`, when the Mac's sound is on a display's
+    /// speakers (see `DisplayAudio`). The Mac's sound output itself moves there, not just this
+    /// app's: the volume keys and slider work on the system output, so sending only the radio
+    /// left them turning the other display up and down. Each display keeps its own volume.
+    func routeAudio(to screen: NSScreen?) {
+        guard let screen, let uid = DisplayAudio.device(for: screen) else { return }
+        routeAudio(toOutput: uid) { await PlaybackWorker.shared.route(to: $0) }
+    }
+}

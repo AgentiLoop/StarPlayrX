@@ -54,7 +54,7 @@ public struct XtraChannel {
     }
 }
 
-public struct XtraTrack {
+public struct XtraTrack: Sendable {
     public let id: String
     public let artist: String
     public let title: String

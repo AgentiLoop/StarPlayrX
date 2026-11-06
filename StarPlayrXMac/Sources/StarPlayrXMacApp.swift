@@ -28,7 +28,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Hosting unit tests: no network sign-in or password prompt.
         guard ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil else { return }
         Updater.shared.start()
-        LyricSync.shared.start()
+        LyricSync.shared.start { MenuController.shared.lyrics }
         Task { @MainActor in
             if let saved = Keychain.load(), await Radio.shared.login(user: saved.user, pass: saved.pass) {
                 return

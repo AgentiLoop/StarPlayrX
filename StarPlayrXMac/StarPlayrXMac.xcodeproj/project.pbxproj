@@ -8,7 +8,6 @@
 
 /* Begin PBXBuildFile section */
 		37C5EF8724535B8840F96FA2 /* StarPlayrKit in Frameworks */ = {isa = PBXBuildFile; productRef = 0D6FDF691FE5495F2FA0E55B /* StarPlayrKit */; };
-		5310F78B88421F8D2981B92F /* LyricSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91A3CDA1815575A5BB00737F /* LyricSync.swift */; };
 		6C400293FE0D8C7434417F04 /* ScriptedTour.applescript in Resources */ = {isa = PBXBuildFile; fileRef = F780CB7683BB43494DE45275 /* ScriptedTour.applescript */; };
 		70ED440C2742A2523849C564 /* MarqueeText.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFC2175A4B9226A8F1E4A18B /* MarqueeText.swift */; };
 		78D07A43295425FB93CF8574 /* Scripting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E4311F836AD4A7A0120E737 /* Scripting.swift */; };
@@ -18,7 +17,6 @@
 		97E3C433757ED71D95CB2524 /* MenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9CF5EC7805BCA42169AF4ECE /* MenuView.swift */; };
 		A31CE963BD060610EDFBBD19 /* Spectrum.metal in Sources */ = {isa = PBXBuildFile; fileRef = DA977B1658B9908A1857CA86 /* Spectrum.metal */; };
 		AAF02C1F2D58A6F4F585EDF7 /* StarPlayrX.sdef in Resources */ = {isa = PBXBuildFile; fileRef = 9AE9931B956CB2DA3D48715B /* StarPlayrX.sdef */; };
-		B6FECCF24C354B0733A16988 /* ArtCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7FAE59B5C9E7F2FA47E63AE0 /* ArtCache.swift */; };
 		B92350C46BD992AC2AA8DDCA /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 6E8F68BA0D44926EF37BBB62 /* Assets.xcassets */; };
 		C1BBBCF52CBE121D9E31AE22 /* StarPlayrXMacApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47D0341DA36FCC82C2C684B6 /* StarPlayrXMacApp.swift */; };
 		C1DCC21623D246122B6DAB6F /* MenuController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95A1B6D05467A2297EAAE180 /* MenuController.swift */; };
@@ -26,7 +24,6 @@
 		C8A0A19F83AA9E90EFCAB52A /* SpectrumRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C9B3A2D12DB0EEA154457BF /* SpectrumRenderer.swift */; };
 		C8F6A2E065C7DF33930B6C11 /* Updater.swift in Sources */ = {isa = PBXBuildFile; fileRef = C61B9780B3DFA615D3ABFAD1 /* Updater.swift */; };
 		F74DACEF74A0B173A402FDD6 /* LyricsPane.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75DF1ADD881C81DE5663BC12 /* LyricsPane.swift */; };
-		F9A9498FC10093CAB657AD06 /* Radio.swift in Sources */ = {isa = PBXBuildFile; fileRef = A828F86C0FE74B3D990CC160 /* Radio.swift */; };
 		FEECE6E47C08F86D1BF40921 /* DisplayAudio.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50D2FBEC353F1EC8718E81F7 /* DisplayAudio.swift */; };
 /* End PBXBuildFile section */
 
@@ -53,13 +50,10 @@
 		6E8F68BA0D44926EF37BBB62 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		74DCB8300E5FAB44FC58A9F8 /* SearchField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchField.swift; sourceTree = "<group>"; };
 		75DF1ADD881C81DE5663BC12 /* LyricsPane.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LyricsPane.swift; sourceTree = "<group>"; };
-		7FAE59B5C9E7F2FA47E63AE0 /* ArtCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArtCache.swift; sourceTree = "<group>"; };
 		8597FCE01D54FAA77BEF60A4 /* StarPlayrX.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = StarPlayrX.entitlements; sourceTree = "<group>"; };
-		91A3CDA1815575A5BB00737F /* LyricSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LyricSync.swift; sourceTree = "<group>"; };
 		95A1B6D05467A2297EAAE180 /* MenuController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuController.swift; sourceTree = "<group>"; };
 		9AE9931B956CB2DA3D48715B /* StarPlayrX.sdef */ = {isa = PBXFileReference; path = StarPlayrX.sdef; sourceTree = "<group>"; };
 		9CF5EC7805BCA42169AF4ECE /* MenuView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuView.swift; sourceTree = "<group>"; };
-		A828F86C0FE74B3D990CC160 /* Radio.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Radio.swift; sourceTree = "<group>"; };
 		AFC2175A4B9226A8F1E4A18B /* MarqueeText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarqueeText.swift; sourceTree = "<group>"; };
 		C61B9780B3DFA615D3ABFAD1 /* Updater.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Updater.swift; sourceTree = "<group>"; };
 		DA977B1658B9908A1857CA86 /* Spectrum.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = Spectrum.metal; sourceTree = "<group>"; };
@@ -93,17 +87,14 @@
 		3CCD99341C1648777CB8A56C /* Sources */ = {
 			isa = PBXGroup;
 			children = (
-				7FAE59B5C9E7F2FA47E63AE0 /* ArtCache.swift */,
 				6E8F68BA0D44926EF37BBB62 /* Assets.xcassets */,
 				399F131CDB1FBB41334F85DF /* BubblePopup.swift */,
 				50D2FBEC353F1EC8718E81F7 /* DisplayAudio.swift */,
 				24B9C2880FFCDCA06B056FF3 /* Info.plist */,
 				75DF1ADD881C81DE5663BC12 /* LyricsPane.swift */,
-				91A3CDA1815575A5BB00737F /* LyricSync.swift */,
 				AFC2175A4B9226A8F1E4A18B /* MarqueeText.swift */,
 				95A1B6D05467A2297EAAE180 /* MenuController.swift */,
 				9CF5EC7805BCA42169AF4ECE /* MenuView.swift */,
-				A828F86C0FE74B3D990CC160 /* Radio.swift */,
 				6E4311F836AD4A7A0120E737 /* Scripting.swift */,
 				74DCB8300E5FAB44FC58A9F8 /* SearchField.swift */,
 				DA977B1658B9908A1857CA86 /* Spectrum.metal */,
@@ -252,15 +243,12 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				B6FECCF24C354B0733A16988 /* ArtCache.swift in Sources */,
 				C4EADC40C4C5D1B84D6005BA /* BubblePopup.swift in Sources */,
 				FEECE6E47C08F86D1BF40921 /* DisplayAudio.swift in Sources */,
-				5310F78B88421F8D2981B92F /* LyricSync.swift in Sources */,
 				F74DACEF74A0B173A402FDD6 /* LyricsPane.swift in Sources */,
 				70ED440C2742A2523849C564 /* MarqueeText.swift in Sources */,
 				C1DCC21623D246122B6DAB6F /* MenuController.swift in Sources */,
 				97E3C433757ED71D95CB2524 /* MenuView.swift in Sources */,
-				F9A9498FC10093CAB657AD06 /* Radio.swift in Sources */,
 				78D07A43295425FB93CF8574 /* Scripting.swift in Sources */,
 				8489F0CE3E44B23D8B984C16 /* SearchField.swift in Sources */,
 				A31CE963BD060610EDFBBD19 /* Spectrum.metal in Sources */,

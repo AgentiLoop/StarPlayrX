@@ -1,6 +1,6 @@
 //
 //  ArtCache.swift
-//  StarPlayrXMac
+//  StarPlayrKit
 //
 //  Created by Todd Bruss on 10/31/26.
 //  Modified by Todd Bruss on 11/2/26.
@@ -9,19 +9,60 @@
 
 import SwiftUI
 import ImageIO
-import StarPlayrKit
+#if os(macOS)
+import AppKit
+/// NSImage on the Mac, UIImage on iPhone and iPad.
+public typealias PlatformImage = NSImage
+#else
+import UIKit
+public typealias PlatformImage = UIImage
+#endif
+
+extension PlatformImage {
+    /// A bitmap shown at 1/`scale` of its pixels in points.
+    public static func make(_ cg: CGImage, scale: CGFloat) -> PlatformImage {
+        #if os(macOS)
+        NSImage(cgImage: cg, size: NSSize(width: CGFloat(cg.width) / scale, height: CGFloat(cg.height) / scale))
+        #else
+        UIImage(cgImage: cg, scale: scale, orientation: .up)
+        #endif
+    }
+
+    public var cgImageValue: CGImage? {
+        #if os(macOS)
+        cgImage(forProposedRect: nil, context: nil, hints: nil)
+        #else
+        cgImage
+        #endif
+    }
+}
+
+extension Image {
+    public init(platformImage: PlatformImage) {
+        #if os(macOS)
+        self.init(nsImage: platformImage)
+        #else
+        self.init(uiImage: platformImage)
+        #endif
+    }
+}
 
 /// Channel art scaled to fit; when the art is square (it would fit the squircle but leave a margin
 /// and show its own baked-in corners) it's enlarged to fill the squircle instead — but only as far
 /// as the art's own blank margin allows, so a show logo whose lettering runs close to the edge
 /// ("The Rich Eisen Show") keeps its wording instead of being cropped into.
-struct ChannelLogo: View {
-    let image: NSImage
-    var inset: CGFloat = 4
+public struct ChannelLogo: View {
+    public let image: PlatformImage
+    public var inset: CGFloat = 4
 
-    var body: some View {
+    public init(image: PlatformImage, inset: CGFloat = 4) {
+        self.image = image
+        self.inset = inset
+    }
+
+    public var body: some View {
         let isSquare = abs(image.size.width - image.size.height) < 2
-        Image(nsImage: image).resizable().interpolation(.high).scaledToFit()
+        Image(platformImage: image).resizable().interpolation(.high).scaledToFit()
             .scaleEffect(isSquare ? Self.fillScale(image) : 1)
             .padding(isSquare ? 0 : inset)
     }
@@ -30,12 +71,12 @@ struct ChannelLogo: View {
 extension ChannelLogo {
     /// Most the art is enlarged, even when it is blank all around: covers the corner a logo of its
     /// own rounded tile leaves behind.
-    static let maxFill: CGFloat = 1.12
+    public static let maxFill: CGFloat = 1.12
     /// Scanning the bitmap costs more than a row's body may spend, and the same art is shown in
-    /// every row refresh; `ArtCache` hands back the same `NSImage` each time, so key on it.
+    /// every row refresh; `ArtCache` hands back the same image each time, so key on it.
     @MainActor private static var fillScales: [ObjectIdentifier: CGFloat] = [:]
 
-    @MainActor static func fillScale(_ image: NSImage) -> CGFloat {
+    @MainActor public static func fillScale(_ image: PlatformImage) -> CGFloat {
         if let scale = fillScales[ObjectIdentifier(image)] { return scale }
         let margin = blankMargin(image)
         // scaleEffect shows 1/s of the art, centred, so each side loses (1 - 1/s)/2.
@@ -47,8 +88,8 @@ extension ChannelLogo {
 
     /// The blank band around the art — transparent, or the flat colour its edges are — as a
     /// fraction of the art, taken from its tightest side. 0 when the artwork reaches an edge.
-    nonisolated private static func blankMargin(_ image: NSImage) -> CGFloat {
-        guard let cg = image.cgImage(forProposedRect: nil, context: nil, hints: nil) else { return 0 }
+    nonisolated private static func blankMargin(_ image: PlatformImage) -> CGFloat {
+        guard let cg = image.cgImageValue else { return 0 }
         let w = cg.width, h = cg.height
         guard w >= 16, h >= 16,
               let ctx = CGContext(data: nil, width: w, height: h, bitsPerComponent: 8, bytesPerRow: w * 4,
@@ -94,10 +135,10 @@ extension ChannelLogo {
 /// (where the server can resize) and decoded at 2x the points it is shown at, so the 32pt channel
 /// rows and the 64pt Now Playing tile each get their own size, and the cache is bounded.
 @MainActor
-final class ArtCache {
-    static let shared = ArtCache()
-    private let images: NSCache<NSString, NSImage> = {
-        let cache = NSCache<NSString, NSImage>()
+public final class ArtCache {
+    public static let shared = ArtCache()
+    private let images: NSCache<NSString, PlatformImage> = {
+        let cache = NSCache<NSString, PlatformImage>()
         cache.countLimit = 200
         cache.totalCostLimit = 200 * 192 * 192 * 4
         return cache
@@ -114,27 +155,27 @@ final class ArtCache {
         return URLSession(configuration: config)
     }()
     // Download and decode run off the main actor so arriving art never stalls scrolling;
-    // the NSImage is made here on the main actor, since NSImage is only Sendable from macOS 14.
+    // the image is made here on the main actor, since NSImage is only Sendable from macOS 14.
     private var loading: [String: Task<Thumbnail?, Never>] = [:]
     /// `sized(_:pixels:)` results: it base64-decodes JSON, too slow to redo in every row's body.
     private var sizedURLs: [String: String] = [:]
 
     /// A decoded bitmap handed back from a background task.
-    struct Thumbnail: @unchecked Sendable { let image: CGImage }
+    public struct Thumbnail: @unchecked Sendable { let image: CGImage }
 
     /// Pixels for art shown at `points`: 3x, so square logos enlarged 1.12x to fill the squircle
     /// are still downscaled on a 2x display instead of stretched (which made them blurry).
-    static let scale: CGFloat = 3
-    static func pixels(_ points: CGFloat) -> Int { Int((points * scale).rounded(.up)) }
+    public static let scale: CGFloat = 3
+    public static func pixels(_ points: CGFloat) -> Int { Int((points * scale).rounded(.up)) }
 
     // Keyed by pixels too: hosts with one size give the 32pt row and the 64pt header the same URL,
     // and the header must not get the row's small bitmap.
-    func cached(_ url: String, pixels: Int) -> NSImage? {
+    public func cached(_ url: String, pixels: Int) -> PlatformImage? {
         images.object(forKey: "\(pixels) \(sizedURL(url, pixels: pixels))" as NSString)
     }
 
     /// `trimBorder` (album art): a solid frame around the picture is cropped off, see `trimmedBorder`.
-    func image(_ url: String, pixels: Int, trimBorder: Bool = false) async -> NSImage? {
+    public func image(_ url: String, pixels: Int, trimBorder: Bool = false) async -> PlatformImage? {
         let url = sizedURL(url, pixels: pixels)
         let key = "\(pixels) \(url)"
         if let image = images.object(forKey: key as NSString) { return image }
@@ -150,13 +191,13 @@ final class ArtCache {
         loading[key] = nil
         if let image = images.object(forKey: key as NSString) { return image }   // another caller already made it
         guard let thumb else { return nil }
-        let image = NSImage(cgImage: thumb, size: NSSize(width: CGFloat(thumb.width) / Self.scale, height: CGFloat(thumb.height) / Self.scale))
+        let image = PlatformImage.make(thumb, scale: Self.scale)
         images.setObject(image, forKey: key as NSString, cost: thumb.bytesPerRow * thumb.height)
         return image
     }
 
     /// Starts loading art that isn't shown yet; `image` shares the download if a row asks for it meanwhile.
-    func prefetch(_ url: String, pixels: Int, trimBorder: Bool = false) {
+    public func prefetch(_ url: String, pixels: Int, trimBorder: Bool = false) {
         guard !url.isEmpty, cached(url, pixels: pixels) == nil else { return }
         Task { _ = await image(url, pixels: pixels, trimBorder: trimBorder) }
     }
@@ -312,14 +353,22 @@ final class ArtCache {
 
 /// Shows the image at `url` from `ArtCache`, loading it lazily at 2x `size` points. `content` gets
 /// the image and whether it is album art (`isAlbumArt` belongs to `url`); nil when nothing is loaded.
-struct CachedArt<Content: View>: View {
-    let url: String
-    let size: CGFloat
-    var isAlbumArt = false
-    @ViewBuilder let content: (NSImage?, Bool) -> Content
-    @State private var loaded: (url: String, image: NSImage?, isAlbumArt: Bool)?
+public struct CachedArt<Content: View>: View {
+    public let url: String
+    public let size: CGFloat
+    public var isAlbumArt = false
+    @ViewBuilder public let content: (PlatformImage?, Bool) -> Content
+    @State private var loaded: (url: String, image: PlatformImage?, isAlbumArt: Bool)?
 
-    var body: some View {
+    public init(url: String, size: CGFloat, isAlbumArt: Bool = false,
+                @ViewBuilder content: @escaping (PlatformImage?, Bool) -> Content) {
+        self.url = url
+        self.size = size
+        self.isAlbumArt = isAlbumArt
+        self.content = content
+    }
+
+    public var body: some View {
         let pixels = ArtCache.pixels(size)
         let image = loaded?.url == url ? loaded?.image : ArtCache.shared.cached(url, pixels: pixels)
         // Until the new art arrives, keep showing the previous art as it was (album art stays album
