@@ -64,7 +64,8 @@ struct LyricsView: View {
                             ForEach(section) { line in
                                 let adLib = LyricsLayout.isAdLib(line.text)
                                 Text(line.text)
-                                    .font(line.id == current ? .title3.bold() : adLib ? .callout : .title3)
+                                    // 15% over title3 / callout.
+                                    .font(line.id == current ? .system(size: 23, weight: .bold) : adLib ? .system(size: 18) : .system(size: 23))
                                     .foregroundStyle(!lyrics.synced || line.id == current ? .primary : .secondary)
                                     .padding(.leading, adLib ? 16 : 0)
                                     .frame(maxWidth: .infinity, alignment: .leading)

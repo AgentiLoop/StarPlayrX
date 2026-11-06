@@ -248,8 +248,9 @@ struct PlayerView: View {
                 let fold = (geo.size.height + geo.safeAreaInsets.top + geo.safeAreaInsets.bottom) / 2
                     - geo.safeAreaInsets.top
                 VStack(spacing: 0) {
-                    // Top half: now playing, then the search field and chips. The list, lyrics or
-                    // art fill the bottom half, so nothing straddles the fold.
+                    // Top half: now playing, then the search field and chips. The list or art fill
+                    // the bottom half, so nothing straddles the fold. The lyrics have nothing above
+                    // the fold to wait for, so they start right under now playing.
                     VStack(spacing: 0) {
                         NowPlayingHeader(spread: true)
                             .padding(.horizontal)
@@ -260,7 +261,7 @@ struct PlayerView: View {
                         if !app.lyrics && !app.bigArt { ChannelFilters(keepSubRow: true, inline: true) }
                         Spacer(minLength: 0)
                     }
-                    .frame(height: fold)
+                    .frame(height: app.lyrics && !app.bigArt ? art + 20 : fold)
                     Divider()
                     if app.bigArt, let url = radio.shownArtURL { BigArtView(url: url) }
                     else if app.lyrics { LyricsView() } else { ChannelList(filters: false) }
