@@ -171,7 +171,16 @@ struct MenuView: View {
 
 
 
+    /// Art, titles and star on top; previous, play/pause and next centred under them (as on iOS).
     private var nowPlaying: some View {
+        VStack(spacing: 6) {
+            nowPlayingRow
+            controls
+        }
+    }
+
+    /// Art, channel, song and artist, and the star — the titles get the whole width beside the art.
+    private var nowPlayingRow: some View {
         HStack(spacing: 10) {
             let np = radio.current.flatMap { radio.displayed($0.id) }
             let isAlbumArt = np?.image.isEmpty == false
@@ -218,7 +227,8 @@ struct MenuView: View {
 
             VStack(alignment: .leading, spacing: 2) {
                 if let ch = radio.current {
-                    Text("\(ch.id) · \(ch.name)").font(.caption).foregroundStyle(.secondary)
+                    // A marquee like the song and artist (as on iOS), so a long channel name scrolls too.
+                    MarqueeText(text: "\(ch.id) · \(ch.name)", font: .caption, secondary: true).id("\(ch.id) · \(ch.name)")
                     MarqueeText(text: np?.song ?? "", font: .headline).id(np?.song ?? "")
                     MarqueeText(text: np?.artist ?? "", font: .body).id(np?.artist ?? "")
                 } else {
@@ -239,18 +249,8 @@ struct MenuView: View {
             // also toggle the lyrics).
             .onTapGesture(count: 2) {}
             .onTapGesture { PlayerState.shared.tapTitles() }
-            Button {
-                radio.togglePlayPause()
-            } label: {
-                Image(systemName: radio.isPlaying ? "pause.circle.fill" : "play.circle.fill")
-                    .font(.system(size: 30))
-            }
-            .buttonStyle(.plain)
-            .disabled(radio.current == nil)
-            .help(radio.isPlaying ? "Pause" : "Play")
-            .accessibilityLabel(radio.isPlaying ? "Pause" : "Play")
             // The star (as the iOS "All Star" button): the current channel in or out of the presets.
-            // Outside the play button, same size and trailing edge as the search-bar and row stars.
+            // Same size and trailing edge as the search-bar and row stars.
             if let ch = radio.current {
                 let starred = radio.presets.contains(ch.id)
                 Button { radio.togglePreset(ch.id) } label: {
@@ -268,6 +268,35 @@ struct MenuView: View {
             }
         }
     }
+
+    /// Previous, play/pause and next, centred on their own row under the titles (as on iOS).
+    private var controls: some View {
+        HStack(spacing: 36) {
+            // Previous / next: StarPlayrKit's playAdjacent, the same the iOS lock screen's ⏮ ⏭ send.
+            Button { radio.playAdjacent(-1) } label: {
+                Image(systemName: "backward.fill").font(.system(size: 16))
+            }
+            .help("Previous")
+            .accessibilityLabel("Previous")
+
+            Button { radio.togglePlayPause() } label: {
+                Image(systemName: radio.isPlaying ? "pause.circle.fill" : "play.circle.fill")
+                    .font(.system(size: 32))
+            }
+            .help(radio.isPlaying ? "Pause" : "Play")
+            .accessibilityLabel(radio.isPlaying ? "Pause" : "Play")
+
+            Button { radio.playAdjacent(1) } label: {
+                Image(systemName: "forward.fill").font(.system(size: 16))
+            }
+            .help("Next")
+            .accessibilityLabel("Next")
+        }
+        .buttonStyle(.plain)
+        .disabled(radio.current == nil)
+        .frame(maxWidth: .infinity)
+    }
+
 
     /// Single click on the now-playing art or titles: bring the current channel's row into view.
     private func revealCurrent() {
