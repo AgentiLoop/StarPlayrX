@@ -145,9 +145,6 @@ struct LyricsPane: View {
         }
     }
 
-    /// Where the pane treats the song as being (see `LyricsLayout.position`).
-    private var position: TimeInterval? { LyricsLayout.position }
-
     static var displayLead: TimeInterval { LyricsLayout.displayLead }
 
     static func sections(of lyrics: Lyrics) -> [[LyricLine]] { LyricsLayout.sections(of: lyrics) }
