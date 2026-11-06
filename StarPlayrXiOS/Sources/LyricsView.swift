@@ -68,6 +68,9 @@ struct LyricsView: View {
                                     .frame(maxWidth: .infinity, alignment: .leading)
                                     .contentShape(Rectangle())
                                     .onTapGesture { tap(line, in: lyrics) }
+                                    // VoiceOver says which line is being sung, and that a double-tap sets it.
+                                    .accessibilityAddTraits(line.id == current ? .isSelected : [])
+                                    .accessibilityHint(lyrics.synced ? "Sets this as the line being sung" : "")
                                     .id(line.id)
                             }
                         }
@@ -110,6 +113,8 @@ struct LyricsView: View {
 
     private func showBubble(_ text: String) {
         bubbleTask?.cancel()
+        // The bubble is a passing label VoiceOver never lands on, so say it out loud instead.
+        UIAccessibility.post(notification: .announcement, argument: text)
         withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) { bubble = text }
         bubbleTask = Task {
             try? await Task.sleep(nanoseconds: 1_600_000_000)

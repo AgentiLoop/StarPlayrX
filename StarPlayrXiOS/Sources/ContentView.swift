@@ -145,8 +145,9 @@ struct NowPlayingHeader: View {
                         ArtCache.shared.prefetch(art.url, pixels: ArtCache.pixels(BigArtView.size), trimBorder: !art.isLogo)
                     }
                 }
+                .accessibilityElement()
                 .accessibilityAddTraits(.isButton)
-                .accessibilityLabel(isAlbumArt ? "Album art" : "Channel art")
+                .accessibilityLabel(radio.current.map { isAlbumArt ? "Album art, \($0.name)" : "Channel art, \($0.name)" } ?? "StarPlayrX")
                 .accessibilityHint(app.bigArt ? "Switches between the album art, channel logo and show art"
                                               : "Shows the art full size")
 
@@ -177,7 +178,7 @@ struct NowPlayingHeader: View {
             .accessibilityLabel(radio.isPlaying ? "Pause" : "Play")
 
             if let ch = radio.current {
-                StarButton(isStarred: radio.presets.contains(ch.id)) { radio.togglePreset(ch.id) }
+                StarButton(isStarred: radio.presets.contains(ch.id), channel: ch.name) { radio.togglePreset(ch.id) }
             }
         }
     }
@@ -251,6 +252,8 @@ struct ArtTile: View {
 
 struct StarButton: View {
     let isStarred: Bool
+    /// Named in the VoiceOver label, so a star is never just "Add to stars" without saying which channel.
+    let channel: String
     let toggle: () -> Void
 
     var body: some View {
@@ -261,7 +264,7 @@ struct StarButton: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(.borderless)
-        .accessibilityLabel(isStarred ? "Remove from stars" : "Add to stars")
+        .accessibilityLabel(isStarred ? "Remove \(channel) from stars" : "Add \(channel) to stars")
     }
 }
 
@@ -291,11 +294,17 @@ struct ChannelList: View {
                         ChannelRow(channel: ch, nowPlaying: radio.displayed(ch.id), isCurrent: ch == radio.current)
                     }
                     .buttonStyle(.plain)
+                    .accessibilityValue(isPlaying ? "Playing" : ch == radio.current ? "Current channel" : "")
+                    .accessibilityAddTraits(ch == radio.current ? .isSelected : [])
+                    .accessibilityHint("Plays this channel")
+                    // The star is its own element too; as a row action it's one swipe away without leaving the row.
+                    .accessibilityAction(named: radio.presets.contains(ch.id) ? "Remove from stars" : "Add to stars") {
+                        radio.togglePreset(ch.id)
+                    }
                     .overlay(alignment: .trailing) {
-                        StarButton(isStarred: radio.presets.contains(ch.id)) { radio.togglePreset(ch.id) }
+                        StarButton(isStarred: radio.presets.contains(ch.id), channel: ch.name) { radio.togglePreset(ch.id) }
                     }
                     .listRowBackground(isPlaying ? Color.accentColor.opacity(0.15) : nil)
-                    .accessibilityHint("Plays this channel")
                     .id(ch.id)
                 }
                 .listStyle(.plain)
@@ -353,6 +362,7 @@ struct ChannelRow: View, Equatable {
             Text(channel.id).font(.subheadline).monospacedDigit().foregroundStyle(.secondary)
                 .lineLimit(1).minimumScaleFactor(0.7)
                 .frame(width: 40, alignment: .trailing)
+                .accessibilityLabel("Channel \(channel.id)")
             let albumArt = nowPlaying?.image.isEmpty == false
             ArtTile(url: (albumArt ? nowPlaying?.image : channel.imageURL) ?? "", size: 44, isAlbumArt: albumArt)
                 .accessibilityHidden(true)
