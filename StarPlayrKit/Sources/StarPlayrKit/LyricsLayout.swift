@@ -66,16 +66,14 @@ public enum LyricsLayout {
     /// How long a line stays lit into such a stretch.
     public static let lineHold: TimeInterval = 7
 
-    /// `defaults write com.starplayrx.mac lyricsDisplayLead -float 1.0` moves it without a rebuild.
+    /// `defaults write com.starplayrx.mac lyricsDisplayLead -float 0.3` moves it without a rebuild.
     public static var displayLead: TimeInterval {
-        UserDefaults.standard.object(forKey: "lyricsDisplayLead") as? Double ?? 0.3
+        UserDefaults.standard.object(forKey: "lyricsDisplayLead") as? Double ?? 0
     }
 
-    /// Where the lyrics treat the song as being: the track's position plus `displayLead`, so a line
-    /// lights as its first word is sung rather than a word or two after (an LRC stamp is the
-    /// first syllable, and the eye needs the line just before the voice reaches it). Kept small:
-    /// with the position measured from the audio a large lead is what puts the highlight a word or
-    /// two ahead of the singing.
+    /// Where the lyrics treat the song as being: the track's position plus `displayLead`. No lead by
+    /// default: with the position measured from the audio (Shazam) the highlight was running 0.3 s
+    /// ahead of the singing, so the line lights on its own stamp.
     @MainActor public static var position: TimeInterval? {
         Radio.shared.trackPosition.map { $0 + displayLead }
     }
