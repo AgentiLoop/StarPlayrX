@@ -106,16 +106,19 @@ struct PlayerView: View {
                     ToolbarItem(placement: .topBarLeading) { accountMenu }
                     ToolbarItemGroup(placement: .topBarTrailing) {
                         AirPlayButton()
+                        // Label, not a bare Image: on iOS 26 a bare image's tap region is just the
+                        // glyph, though the whole glass pill lights up — taps on the pill's edge
+                        // did nothing. A Label's region is the pill.
                         if !app.lyrics {
                             Button { app.starsOnly.toggle() } label: {
-                                Image(systemName: app.starsOnly ? "star.fill" : "star")
+                                Label(app.starsOnly ? "All Stars On" : "All Stars Off",
+                                      systemImage: app.starsOnly ? "star.fill" : "star")
                             }
-                            .accessibilityLabel(app.starsOnly ? "All Stars On" : "All Stars Off")
                         }
                         Button { app.bigArt = false; app.lyrics.toggle() } label: {
-                            Image(systemName: app.lyrics ? "list.bullet" : "quote.bubble")
+                            Label(app.lyrics ? "Channels" : "Lyrics",
+                                  systemImage: app.lyrics ? "list.bullet" : "quote.bubble")
                         }
-                        .accessibilityLabel(app.lyrics ? "Channels" : "Lyrics")
                     }
                 }
             }
@@ -394,7 +397,9 @@ struct NowPlayingHeader: View {
         return ArtTile(url: (isAlbumArt ? np?.image : radio.current?.imageURL) ?? "", size: size,
                        isAlbumArt: isAlbumArt, cornerRadius: cornerRadius)
             // Tap the art: full size first; while it's big, album art → channel logo → show art,
-            // and with nothing to switch to it closes again (as on the Mac).
+            // and with nothing to switch to it closes again (as on the Mac). The tile is the tap
+            // region (not the image, which may be scaled past it or not loaded yet).
+            .contentShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
             .onTapGesture { app.tapArt() }
             .task(id: radio.artCandidates.map(\.url)) {
                 for art in radio.artCandidates {
