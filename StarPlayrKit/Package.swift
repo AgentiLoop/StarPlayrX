@@ -7,7 +7,7 @@ import PackageDescription
 
 let package = Package(
     name: "StarPlayrKit",
-    platforms: [.macOS(.v13), .iOS(.v17)],
+    platforms: [.macOS(.v13), .iOS(.v17), .tvOS(.v17)],
     products: [
         .library(name: "StarPlayrKit", targets: ["StarPlayrKit"]),
     ],

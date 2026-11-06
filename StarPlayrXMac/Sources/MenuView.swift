@@ -274,10 +274,7 @@ struct MenuView: View {
     }
 
     /// The art the small tile shows now (album art, show art or the channel logo), nil when there is none.
-    private var shownArtURL: String? {
-        radio.current.flatMap { ch in radio.displayed(ch.id).map(\.image).flatMap { $0.isEmpty ? nil : $0 } ?? ch.imageURL }
-            .flatMap { $0.isEmpty ? nil : $0 }
-    }
+    private var shownArtURL: String? { radio.shownArtURL }
 
     /// The art shown full size over the list or lyrics; nil when it's off or there is no art.
     private var bigArtURL: String? { menu.bigArt ? shownArtURL : nil }
@@ -285,13 +282,8 @@ struct MenuView: View {
     /// Points the big art is loaded at.
     private static let bigArtSize: CGFloat = 336
 
-    /// Every art the current channel has (album art, channel logo, show art) with whether it's a logo,
-    /// so the big versions are loaded before the user opens or cycles them.
-    private var bigArtCandidates: [(url: String, isLogo: Bool)] {
-        guard let ch = radio.current else { return [] }
-        let np = radio.nowPlaying[ch.id]
-        return [(np?.image ?? "", false), (ch.imageURL, true), (np?.showImage ?? "", false)].filter { !$0.url.isEmpty }
-    }
+    /// Every art the current channel has, so the big versions are loaded before the user opens or cycles them.
+    private var bigArtCandidates: [(url: String, isLogo: Bool)] { radio.artCandidates }
 
     private func prefetchBigArt() {
         for art in bigArtCandidates {

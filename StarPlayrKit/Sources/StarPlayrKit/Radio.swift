@@ -62,6 +62,21 @@ public final class Radio: ObservableObject {
         return np
     }
 
+    /// The art the current channel's tile shows now (album art, show art or the channel logo), nil
+    /// when there is none.
+    public var shownArtURL: String? {
+        current.flatMap { ch in displayed(ch.id).map(\.image).flatMap { $0.isEmpty ? nil : $0 } ?? ch.imageURL }
+            .flatMap { $0.isEmpty ? nil : $0 }
+    }
+
+    /// Every art the current channel has (album art, channel logo, show art) with whether it's a logo,
+    /// so the big versions are loaded before the user opens or cycles them.
+    public var artCandidates: [(url: String, isLogo: Bool)] {
+        guard let ch = current else { return [] }
+        let np = nowPlaying[ch.id]
+        return [(np?.image ?? "", false), (ch.imageURL, true), (np?.showImage ?? "", false)].filter { !$0.url.isEmpty }
+    }
+
     /// Clicking the small artwork steps album art → channel logo → show art, skipping what the channel
     /// doesn't have. Returns false when there is nothing to switch to.
     @discardableResult
