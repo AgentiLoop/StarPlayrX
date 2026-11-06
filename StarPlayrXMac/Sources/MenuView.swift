@@ -264,7 +264,7 @@ struct MenuView: View {
                 .buttonStyle(.plain)
                 .padding(.trailing, 2)
                 .help(starred ? "Remove from stars" : "Add to stars")
-                .accessibilityLabel(starred ? "Preset On, Channel \(ch.name)" : "Preset Off, Channel \(ch.name)")
+                .accessibilityLabel(starred ? "Remove \(ch.name) from stars" : "Add \(ch.name) to stars")   // as on iOS
             }
         }
     }
@@ -360,6 +360,10 @@ struct MenuView: View {
                                 .equatable()
                         }
                         .buttonStyle(.plain)
+                        // As on iOS: playing / current channel as the value, plus the selected trait.
+                        .accessibilityValue(ch == radio.current && radio.isPlaying ? "Playing"
+                                            : ch == radio.current ? "Current channel" : "")
+                        .accessibilityAddTraits(ch == radio.current ? .isSelected : [])
                         .accessibilityHint("Plays this channel")
                         // The row is one element (its star is inside the button's label, so VoiceOver
                         // can't click it): offer the star as an action on the row instead.
@@ -374,6 +378,13 @@ struct MenuView: View {
                 .background(SkinnyScrollers().frame(width: 0, height: 0))
             }
             .frame(height: menu.listHeight)
+            // As on iOS: say why the list is empty instead of showing a blank area.
+            .overlay {
+                if list.isEmpty {
+                    Text(menu.starsOnly && menu.search.isEmpty && menu.category == nil ? "No starred channels" : "No matches")
+                        .foregroundStyle(.secondary)
+                }
+            }
             // The list reaches 8pt past the content area on the left (room for the playing row's squircle,
             // which sits 8pt from the window edge) and 12pt on the right (scroll bar at the window's edge).
             .padding(.leading, -8)
@@ -434,7 +445,7 @@ private struct ChannelRow: View, Equatable {
     var body: some View {
         HStack {
             Text(channel.id).monospacedDigit().foregroundStyle(.secondary).frame(width: 34, alignment: .trailing)
-                .accessibilityLabel("Channel \(channel.id)" + (isPlaying ? ", playing" : isCurrent ? ", current channel" : ""))
+                .accessibilityLabel("Channel \(channel.id)")   // playing / current is the row button's value
             // Album art when the channel has it, else the channel logo, else the StarPlayrX logo.
             let albumArt = nowPlaying?.image.isEmpty == false
             CachedArt(url: (albumArt ? nowPlaying?.image : channel.imageURL) ?? "", size: 32, isAlbumArt: albumArt) { art, albumArt in
@@ -479,7 +490,9 @@ private struct ChannelRow: View, Equatable {
             }
             .buttonStyle(.plain)
             .help(isStarred ? "Remove from stars" : "Add to stars")
-            .accessibilityLabel(isStarred ? "Preset On, Channel \(channel.name)" : "Preset Off, Channel \(channel.name)")
+            // Inside the row button's label, so VoiceOver reads it with the row but can't press it:
+            // the row's "Add to stars" action does that.
+            .accessibilityHidden(true)
         }
         .padding(.vertical, 4)
         // The squircle reaches further out on each side than the row's content (4pt from the window
