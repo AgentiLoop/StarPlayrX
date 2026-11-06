@@ -307,7 +307,7 @@ struct PlayerView: View {
         let title = app.subcategory ?? app.category ?? (app.starsOnly ? "Starred" : "All Channels")
         let count = app.visibleChannels.count
         return HStack(alignment: .firstTextBaseline) {
-            Text(title).font(.largeTitle.bold())
+            Text(title).font(.largeTitle.weight(.semibold))
             Spacer()
             Text("\(count) channel\(count == 1 ? "" : "s")").font(.title3).foregroundStyle(.secondary)
         }
