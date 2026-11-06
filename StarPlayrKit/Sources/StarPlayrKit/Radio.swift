@@ -416,6 +416,7 @@ public final class Radio: ObservableObject {
         if xtraNowPlaying[current.id] != np { printXtra("XTRA playing \(current.id) \(track.artist) – \(track.title)") }
         xtraNowPlaying[current.id] = np
         nowPlaying[current.id] = np
+        applyHeard()
         updateNowPlayingInfo()
     }
 
@@ -448,6 +449,7 @@ public final class Radio: ObservableObject {
             }
         }
         nowPlaying = lookAround.merging(xtraNowPlaying) { live, _ in live }
+        applyHeard()
         updateNowPlayingInfo()
         Task { await refreshXtraNowPlaying() }
     }
@@ -518,11 +520,54 @@ public final class Radio: ObservableObject {
     private var peekFlushScheduled = false
 
     /// What is actually coming out of the speakers: the Xtra track in the player, or the live channel's PDT.
+    /// Shazam's names stand in for the station's when those were blank or wrong (see `hear`).
     public var playingNow: NowPlaying? {
         guard isPlaying, let current else { return nil }
         guard current.xtraID != nil else { return nowPlaying[current.id] }
         guard let track = playbackState.track else { return nil }
-        return NowPlaying(artist: track.artist, song: track.title, image: track.imageURL)
+        return corrected(NowPlaying(artist: track.artist, song: track.title, image: track.imageURL), channel: current.id)
+    }
+
+    /// The station's own names for what is on now, before Shazam's correction. A live channel with no
+    /// cut at all is a blank one.
+    public var stationNowPlaying: NowPlaying? {
+        guard isPlaying, let current else { return nil }
+        guard current.xtraID != nil else { return lookAround[current.id] ?? NowPlaying() }
+        return playbackState.track.map { NowPlaying(artist: $0.artist, song: $0.title, image: $0.imageURL) }
+    }
+
+    /// What Shazam heard on the channel playing now, standing in for the station's artist and title
+    /// when those were blank or named another song: in Now Playing, the lock screen and for the
+    /// lyrics. Only while the station still shows the names it corrected (`station`), so the
+    /// station moving on to its next cut drops it.
+    private struct Heard { let channel: String; let station: String; let artist: String; let song: String; let startedAt: Date? }
+    private var heard: Heard?
+
+    /// Shazam's names (and, when it timed the record, the song's real start) in place of the station's.
+    public func hear(artist: String, song: String, startedAt: Date?) {
+        guard let current, let station = stationNowPlaying else { return }
+        heard = Heard(channel: current.id, station: LyricsStore.key(station.artist, station.song),
+                      artist: artist, song: song, startedAt: startedAt)
+        LyricSync.log.notice("now playing ch=\(current.id, privacy: .public): station \"\(station.artist, privacy: .public) – \(station.song, privacy: .public)\" -> Shazam \"\(artist, privacy: .public) – \(song, privacy: .public)\"")
+        applyHeard()
+    }
+
+    private func applyHeard() {
+        guard let current, let station = stationNowPlaying else { return }
+        let np = corrected(station, channel: current.id)
+        guard np != station, nowPlaying[current.id] != np else { return }
+        nowPlaying[current.id] = np
+        updateNowPlayingInfo()
+    }
+
+    private func corrected(_ np: NowPlaying, channel: String) -> NowPlaying {
+        guard let heard, heard.channel == channel, heard.station == LyricsStore.key(np.artist, np.song) else { return np }
+        var np = np
+        np.artist = heard.artist
+        np.song = heard.song
+        np.image = ""   // the station's art is for the song it named, not this one: the channel logo instead
+        np.startedAt = heard.startedAt ?? np.startedAt
+        return np
     }
 
     /// Seconds into the song that's playing, for the time-synced lyrics. Xtra tracks are whole

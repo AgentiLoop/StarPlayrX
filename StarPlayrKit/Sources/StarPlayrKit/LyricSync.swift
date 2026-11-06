@@ -102,7 +102,9 @@ public final class LyricSync: ObservableObject {
             ProcessInfo.processInfo.endActivity(held)
             activity = nil
         }
-        guard radio.isLoggedIn, lyricsShown() else { return }
+        guard radio.isLoggedIn else { return }
+        checkNames(radio, live: live)
+        guard lyricsShown() else { return }
         // Load the lyrics for whatever is on now, even while the pane can't redraw (repeat calls
         // for the same song do nothing).
         let showing = radio.playingNow ?? radio.current.flatMap { radio.nowPlaying[$0.id] }
@@ -122,6 +124,50 @@ public final class LyricSync: ObservableObject {
         guard live, let lyrics = LyricsStore.shared.lyrics, let channel = radio.current,
               let np = radio.nowPlaying[channel.id], let started = np.startedAt else { return }
         update(lyrics: lyrics, key: LyricsStore.key(np.artist, np.song), songStart: started)
+    }
+
+    /// The channel last ticked, so a Shazam match heard on the one before isn't taken for this one.
+    private var channel: String?
+    /// A match naming another song than the station does, waiting for a second match to agree, so
+    /// one stray match (a DJ over a music bed, a jingle) doesn't rename the song.
+    private var doubted: (key: String, found: Date)?
+
+    /// The station's artist and title blank, or naming another song than Shazam hears on air: Shazam's
+    /// names stand in for them (`Radio.hear`), in Now Playing and for the lyrics, which are then
+    /// looked up under those names. Runs whether or not the lyrics are on screen. Xtra: see `xtra()`.
+    private func checkNames(_ radio: Radio, live: Bool) {
+        if radio.current?.id != channel {
+            channel = radio.current?.id
+            doubted = nil
+            ShazamSync.shared.reset()
+        }
+        guard live, let station = radio.stationNowPlaying else { return }
+        let blank = Self.isBlank(station)
+        let shown = radio.playingNow.map { LyricsStore.key($0.artist, $0.song) }
+        // Listen all the time on a live channel (every half minute; every segment while the names
+        // are blank or a doubt waits to be confirmed), so wrong names are caught with the pane shut.
+        ShazamSync.shared.want(eager: (blank && shown == LyricsStore.key(station.artist, station.song)) || doubted != nil)
+        // Only a match heard since this cut started counts.
+        guard let match = ShazamSync.shared.current.match, !match.title.isEmpty,
+              station.startedAt.map({ match.real >= $0 }) ?? true else { return }
+        guard blank || !Self.same(match, as: LyricsStore.key(station.artist, station.song)) else { doubted = nil; return }
+        let heard = LyricsStore.key(match.artist, match.title)
+        guard heard != shown else { doubted = nil; return }
+        if !blank {
+            guard let doubt = doubted, doubt.key == heard, match.found > doubt.found else {
+                if doubted?.key != heard || doubted == nil { doubted = (heard, match.found) }
+                return
+            }
+        }
+        doubted = nil
+        // Shazam timed the record: the song really started `offset` before `real`. Else the station's
+        // cut start stands, or with none (blank names) the moment it was heard.
+        let start = match.offset > 0.5 ? match.real.addingTimeInterval(-match.offset) : (station.startedAt == nil ? match.real : nil)
+        radio.hear(artist: match.artist, song: match.title, startedAt: start)
+    }
+
+    private static func isBlank(_ np: NowPlaying) -> Bool {
+        np.artist.trimmingCharacters(in: .whitespaces).isEmpty || np.song.trimmingCharacters(in: .whitespaces).isEmpty
     }
 
     /// The measured shift for this song, or nil while there isn't a confident one (the caller
@@ -165,7 +211,7 @@ public final class LyricSync: ObservableObject {
         // Timed lyrics to line up, or none at all under the station's names: then Shazam's names
         // are the next thing to look them up by.
         guard let (file, at) = Radio.shared.xtraNow, let np = Radio.shared.playingNow,
-              LyricsStore.shared.missed || LyricsStore.shared.lyrics?.synced == true else { return }
+              LyricsStore.shared.missed || LyricsStore.shared.lyrics?.synced == true || Self.isBlank(np) else { return }
         if file != xtraFile {
             xtraFile = file; xtraFound = nil; xtraTries = 0; xtraAsked = .distantPast
             xtraAligned = nil; xtraAlignedAt = .distantPast
@@ -182,6 +228,13 @@ public final class LyricSync: ObservableObject {
                 let sync = LyricSync.shared
                 guard sync.xtraFile == file else { return }
                 let store = LyricsStore.shared
+                // Blank names, or Shazam heard another song than the track says: its names stand in,
+                // and the lyrics are looked up under them (the next tick shows them).
+                if let match, !match.title.isEmpty, Self.isBlank(np) || !Self.same(match, as: key) {
+                    Radio.shared.hear(artist: match.artist, song: match.title, startedAt: nil)
+                    sync.xtraTries = 0
+                    return
+                }
                 if let match, store.missed {
                     store.tryHeard(artist: match.artist, song: match.title, duration: Radio.shared.trackDuration)
                 }
