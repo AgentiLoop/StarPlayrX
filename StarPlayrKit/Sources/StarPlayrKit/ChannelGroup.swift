@@ -16,7 +16,7 @@ import SwiftUI
 /// carry music genres and sit in Music with the live ones. Search still matches the API's own genre.
 public enum ChannelGroup {
     public static let order: [(group: String, subs: [String])] = [
-        ("Music", ["Pop", "Rock", "Hip-Hop & R&B", "Country", "Dance", "Latin & World", "Jazz & Classical",
+        ("Music", ["Pop", "Rock", "Alt", "Hip-Hop & R&B", "Country", "Dance", "Latin & World", "Jazz & Classical",
                    "Christian", "Chill", "Kids", "Holiday"]),
         ("Sports", ["Sports Talk", "NFL", "MLB", "NBA", "NHL", "College", "Live Games"]),
         ("News", ["News", "Business"]),
@@ -27,7 +27,7 @@ public enum ChannelGroup {
     private static let genres: [String: (group: String, sub: String)] = [
         "Pop": ("Music", "Pop"),
         "Rock": ("Music", "Rock"), "Classic Rock": ("Music", "Rock"),
-        "Hard Rock & Metal": ("Music", "Rock"), "Alternative & Indie": ("Music", "Rock"),
+        "Hard Rock & Metal": ("Music", "Rock"), "Alternative & Indie": ("Music", "Alt"),
         "Hip-Hop": ("Music", "Hip-Hop & R&B"), "R&B": ("Music", "Hip-Hop & R&B"),
         "Country": ("Music", "Country"),
         "Dance & Electronic": ("Music", "Dance"),
