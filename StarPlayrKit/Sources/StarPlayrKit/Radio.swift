@@ -146,28 +146,58 @@ public final class Radio: ObservableObject {
     // MARK: Login
 
     /// Signs in to the SiriusXM API; every channel (live and Xtra) comes from XtraClient.channels().
+    /// The full list takes ~35 s (the server answers its 26 pages one after another), so the last
+    /// list is kept on disk: it shows right after sign-in and the fresh one replaces it when it arrives.
     public func login(user: String, pass: String) async -> Bool {
         isBusy = true
         channelsLoaded = false
         defer { isBusy = false }
         status = "Signing in…"
-        let all: [XtraChannel]
+        let locale = localeIsCA ? "en-CA" : "en-US"
         do {
-            await xtra.setLocale(localeIsCA ? "en-CA" : "en-US")
+            await xtra.setLocale(locale)
             try await xtra.signIn(user: user, pass: pass)
-            status = "Loading channels…"
-            all = try await xtra.channels()
         } catch {
             status = error.localizedDescription
             return false
         }
-        guard !all.isEmpty else { status = "Error reading channels."; return false }
         Keychain.save(user: user, pass: pass)
+        let cached = Self.cachedChannels(locale: locale)
+        if !cached.isEmpty {
+            apply(cached)
+            isBusy = false
+            await signedIn()
+        } else {
+            status = "Loading channels…"
+        }
+        let all: [XtraChannel]
+        do {
+            all = try await xtra.channels()
+        } catch {
+            if cached.isEmpty { status = error.localizedDescription; return false }
+            return true
+        }
+        guard !all.isEmpty else {
+            if cached.isEmpty { status = "Error reading channels."; return false }
+            return true
+        }
+        Self.saveChannels(all, locale: locale)
+        apply(all)
+        if cached.isEmpty { await signedIn() }
+        return true
+    }
+
+    private func apply(_ all: [XtraChannel]) {
         liveIDs = Dictionary(all.filter { !$0.isXtra }.map { ($0.number, $0.id) }) { first, _ in first }
         channels = all.map {
             Channel(id: $0.number, name: $0.name, category: $0.genre, imageURL: $0.imageURL, xtraID: $0.isXtra ? $0.id : nil)
         }
         .sorted { $0.id.localizedStandardCompare($1.id) == .orderedAscending }
+        // A refreshed list may carry new art URLs; keep `current` the list's own value so it still matches.
+        if let id = current?.id, let fresh = channels.first(where: { $0.id == id }) { current = fresh }
+    }
+
+    private func signedIn() async {
         isLoggedIn = true
         channelsLoaded = true
         status = "Signed in"
@@ -177,13 +207,29 @@ public final class Radio: ObservableObject {
         }
         await updatePDT()
         startPDTTimer()
-        return true
+    }
+
+    private static func channelCache(locale: String) -> URL? {
+        FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first?
+            .appendingPathComponent("channels-\(locale).json")
+    }
+
+    private static func cachedChannels(locale: String) -> [XtraChannel] {
+        guard let url = channelCache(locale: locale), let data = try? Data(contentsOf: url) else { return [] }
+        return (try? JSONDecoder().decode([XtraChannel].self, from: data)) ?? []
+    }
+
+    private static func saveChannels(_ all: [XtraChannel], locale: String) {
+        guard let url = channelCache(locale: locale), let data = try? JSONEncoder().encode(all) else { return }
+        try? data.write(to: url, options: .atomic)
     }
 
     public func signOut() {
         stop()
         pdtTimer?.invalidate()
         Keychain.delete()
+        // The list is per account; the next one shouldn't see this one's.
+        for locale in ["en-US", "en-CA"] { if let url = Self.channelCache(locale: locale) { try? FileManager.default.removeItem(at: url) } }
         Task { await xtra.signOut() }
         isLoggedIn = false
         channelsLoaded = false

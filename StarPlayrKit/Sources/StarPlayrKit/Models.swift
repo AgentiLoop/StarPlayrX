@@ -41,7 +41,7 @@ public struct NowPlaying: Equatable {
 
 // MARK: SiriusXM API (XtraClient)
 
-public struct XtraChannel {
+public struct XtraChannel: Codable {
     public let id: String          // entity id (guid)
     public let number: String
     public let name: String

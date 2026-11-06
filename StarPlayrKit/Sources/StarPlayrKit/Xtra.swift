@@ -86,28 +86,32 @@ public actor XtraClient {
         var offset = 0
         // The API returns at most 30 items per page; fetch pages in parallel batches until one comes back empty.
         while offset < 3000 {
-            let pages = try await withThrowingTaskGroup(of: (Int, [[String: Any]]).self) { group in
+            let pages = try await withThrowingTaskGroup(of: (Int, [[String: Any]]?).self) { group in
                 for i in 0..<6 {
                     let o = offset + i * 30
-                    // A page the server fails on (it sometimes answers 500) is retried once, then
-                    // treated as the end of the list, so one bad page doesn't lose every tile.
+                    // The server sometimes answers 500 (or times out) on a page; retry it a few times.
+                    // A page that still fails is nil — skipped, NOT taken as the end of the list,
+                    // which used to cut the list off at that page (e.g. only 90 channels).
                     group.addTask {
-                        if let items = try? await self.channelPage(offset: o, bearer: auth) { return (o, items) }
-                        try await Task.sleep(nanoseconds: 500_000_000)
-                        return (o, (try? await self.channelPage(offset: o, bearer: auth)) ?? [])
+                        for attempt in 0..<4 {
+                            if let items = try? await self.channelPage(offset: o, bearer: auth) { return (o, items) }
+                            try await Task.sleep(nanoseconds: UInt64(attempt + 1) * 500_000_000)
+                        }
+                        return (o, nil)
                     }
                 }
-                var pages = [(Int, [[String: Any]])]()
+                var pages = [(Int, [[String: Any]]?)]()
                 for try await page in group { pages.append(page) }
                 return pages.sorted { $0.0 < $1.0 }
             }
             for (_, items) in pages {
-                for item in items {
+                for item in items ?? [] {
                     guard let ch = Self.channel(from: item), seen.insert(ch.id).inserted else { continue }
                     result.append(ch)
                 }
             }
-            if pages.contains(where: { $0.1.isEmpty }) { break }
+            // The end: a page that loaded and was empty, or a whole batch that failed.
+            if pages.contains(where: { $0.1?.isEmpty == true }) || pages.allSatisfy({ $0.1 == nil }) { break }
             offset += 6 * 30
         }
         return result

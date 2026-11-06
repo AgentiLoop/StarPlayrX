@@ -53,6 +53,10 @@ final class AppState: ObservableObject {
     @Published var search = ""
     /// "All Stars": the list shows only the starred channels.
     @Published var starsOnly = false
+    /// The top-level chip picked over the list (Music, Sports, …); nil is "All Channels".
+    @Published var category: String? { didSet { if category != oldValue { genre = nil } } }
+    /// The second-row chip inside `category` (NFL, Rock, …); nil is all of them.
+    @Published var genre: String?
     /// The current art full size, over the list or lyrics.
     @Published var bigArt = false
 
