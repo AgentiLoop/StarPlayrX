@@ -31,7 +31,7 @@ struct MenuView: View {
                         // Paused: the bars stay, frozen where the music stopped. Before anything has
                         // played, keep their space so the window doesn't change size.
                         Group {
-                            if radio.current != nil { SpectrumView() }
+                            if radio.current != nil { SpectrumView(running: PlayerState.shared.barsRunning) }
                             else { Color.clear.frame(height: CGFloat(SpectrumRenderer.barHeight)) }
                         }
                         .padding(.top, -5)

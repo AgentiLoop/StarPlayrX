@@ -34,6 +34,16 @@ public final class PlayerState: ObservableObject {
                                    group: category, sub: subcategory)
     }
 
+    /// Whether the EQ bars animate (both apps): only while music plays. On iPhone and iPad also not
+    /// while the lyrics or the big art are up; the bars then stay frozen.
+    public var barsRunning: Bool {
+        #if os(macOS)
+        Radio.shared.isPlaying
+        #else
+        Radio.shared.isPlaying && !lyrics && !bigArt
+        #endif
+    }
+
     /// A tap on the now-playing art: full size first; while it's big, album art → channel logo →
     /// show art, and with nothing to switch to it closes again. False when there was nothing to do
     /// (no art at all), so the Mac can scroll the list to the channel instead.

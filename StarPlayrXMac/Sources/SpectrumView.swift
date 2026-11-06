@@ -24,6 +24,8 @@ struct SpectrumView: View {
     @State private var wallpaper: Double?
     /// Clicking the bars steps the bubbles (BubbleStage, shared with iOS/tvOS); remembered.
     @AppStorage(BubbleStage.key) private var bubbleStage = BubbleStage.defaultStage
+    /// False while paused (PlayerState.barsRunning, shared with iOS): the bars stay frozen.
+    var running = true
 
     var body: some View {
         let fixed = ContrastColor.background(scheme)
@@ -34,7 +36,7 @@ struct SpectrumView: View {
         // bright wallpaper makes it light in Dark Mode too: decide from the wallpaper, not just the scheme.
         let light = bg >= 0.5 || (wallpaper ?? 0) >= 0.35
         // The Metal view overhangs the bars on every side so the glow and the blurred blob aren't clipped.
-        SpectrumMetalView(fixed: fixed, bg: bg, light: light, bubbles: BubbleStage.strength(bubbleStage))
+        SpectrumMetalView(fixed: fixed, bg: bg, light: light, bubbles: BubbleStage.strength(bubbleStage), running: running)
             .padding(-CGFloat(SpectrumRenderer.pad))
             .frame(height: CGFloat(SpectrumRenderer.barHeight))
             .background(WallpaperProbe(luminance: $wallpaper))
@@ -59,7 +61,7 @@ struct SpectrumView: View {
 }
 
 private struct SpectrumMetalView: NSViewRepresentable {
-    let fixed: Double, bg: Double, light: Bool, bubbles: Double
+    let fixed: Double, bg: Double, light: Bool, bubbles: Double, running: Bool
 
     func makeCoordinator() -> SpectrumRenderer { SpectrumRenderer() }
 
@@ -77,6 +79,7 @@ private struct SpectrumMetalView: NSViewRepresentable {
     func updateNSView(_ view: MTKView, context: Context) {
         let r = context.coordinator
         (r.fixed, r.bg, r.light, r.bubbles) = (fixed, bg, light, bubbles)
+        (view as? PassThroughMTKView)?.running = running
     }
 
     /// Clicks go through to the SwiftUI gestures (and the tear-off area) behind it.
@@ -85,6 +88,8 @@ private struct SpectrumMetalView: NSViewRepresentable {
 
         private var observers = [NSObjectProtocol]()
         deinit { observers.forEach(NotificationCenter.default.removeObserver) }
+        /// False while playback is paused: the loop stops too, leaving the bars frozen.
+        var running = true { didSet { if running != oldValue { updatePaused() } } }
 
         /// Stops the 60 fps loop entirely while the window is hidden or covered, instead of waking
         /// up every frame only to find there is nothing to draw on.
@@ -102,7 +107,8 @@ private struct SpectrumMetalView: NSViewRepresentable {
 
         private func updatePaused() {
             guard let window else { return }
-            isPaused = !(window.isVisible && window.occlusionState.contains(.visible))
+            let visible = window.isVisible && window.occlusionState.contains(.visible)
+            (delegate as? SpectrumRenderer)?.setRunning(running && visible, on: self)
         }
     }
 }

@@ -126,7 +126,7 @@ struct NowPlayingHeader: View {
         VStack(spacing: 6) {
             row
             // Same bars as the Mac; before anything has played, keep their space so nothing jumps.
-            if radio.current != nil { SpectrumBars() }
+            if radio.current != nil { SpectrumBars(running: app.barsRunning) }
             else { Color.clear.frame(height: CGFloat(SpectrumRenderer.barHeight)) }
         }
     }
