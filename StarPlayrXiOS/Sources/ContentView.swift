@@ -118,15 +118,13 @@ struct PlayerView: View {
                             }
                         }
                         // Side by side the list is always showing, so the pane beside it
-                        // switches between the art and the lyrics instead.
+                        // switches between the art and the lyrics instead. One Label, not an
+                        // if/else of two: the toolbar only gives a bare Label the whole glass pill
+                        // as its tap region; wrapped in a condition only the glyph took taps.
+                        let pane = sideBySide && hSize == .regular
                         Button { app.bigArt = false; app.lyrics.toggle() } label: {
-                            if sideBySide && hSize == .regular {
-                                Label(app.lyrics ? "Art" : "Lyrics",
-                                      systemImage: app.lyrics ? "photo" : "quote.bubble")
-                            } else {
-                                Label(app.lyrics ? "Channels" : "Lyrics",
-                                      systemImage: app.lyrics ? "list.bullet" : "quote.bubble")
-                            }
+                            Label(app.lyrics ? (pane ? "Art" : "Channels") : "Lyrics",
+                                  systemImage: app.lyrics ? (pane ? "photo" : "list.bullet") : "quote.bubble")
                         }
                     }
                 }
