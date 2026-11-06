@@ -235,16 +235,16 @@ struct PlayerView: View {
             .overlay(alignment: .bottomTrailing) {
                 if sideEQ, radio.current != nil {
                     // Turned clockwise: the first (heaviest) bars at the top, each bar growing
-                    // from the strip's left edge to the right. Half the height less a point per bar
-                    // (the bars share the length, 2 pt apart), so each bar is a point narrower;
-                    // flush with the bottom, under the toolbar's pill.
-                    let length = geo.size.height * 0.5 - CGFloat(Visualizer.bandCount)
+                    // from the strip's left edge to the right. Half the height less two points per
+                    // bar (the bars share the length, 2 pt apart), so each bar is 2 pt narrower;
+                    // dropped through the bottom safe-area inset, so it ends at the screen's edge.
+                    let length = geo.size.height * 0.5 - 2 * CGFloat(Visualizer.bandCount)
                     SpectrumBars(running: app.barsRunning)
                         .frame(width: length)
                         .rotationEffect(.degrees(90))
                         .frame(width: CGFloat(SpectrumRenderer.barHeight), height: length)
                         .frame(width: side)
-                        .offset(x: side)
+                        .offset(x: side, y: geo.safeAreaInsets.bottom)
                 }
             }
         }
