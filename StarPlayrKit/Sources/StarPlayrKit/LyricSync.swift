@@ -53,6 +53,22 @@ public final class LyricSync: ObservableObject {
     /// A Shazam match placing the song somewhere else than the Shazam lock held, waiting for a
     /// later match to agree with it before the lock moves.
     private var doubtedShift: (shift: Double, found: Date)?
+    /// `found` of the last Shazam match taken in, so one match counts once.
+    private var lastMatchFound: Date?
+    /// The shift from every Shazam match agreeing with the lock; the lock is their mean.
+    private var shazamSamples = [Double]()
+    private var shazamMean: Double? {
+        shazamSamples.isEmpty ? nil : shazamSamples.reduce(0, +) / Double(shazamSamples.count)
+    }
+    /// Live channels' `xtraTune`: each confident aligner reading within `liveTuneLimit` of the Shazam
+    /// lock, minus the lock; their mean (capped) fine-tunes the lock.
+    private var liveTunes = [Double]()
+    private static let liveTuneLimit: TimeInterval = 1.5
+    private var liveTune: Double {
+        guard !liveTunes.isEmpty else { return 0 }
+        let mean = liveTunes.reduce(0, +) / Double(liveTunes.count)
+        return min(max(mean, -Self.liveTuneLimit), Self.liveTuneLimit)
+    }
     /// An aligner lock within this many seconds of the one held is the same lock, refined.
     /// 0.5 s rather than a second: a lock that moves by more than half a second is a different
     /// place in the song, and keeping the old one is what parked the highlight a line or two out.
@@ -400,6 +416,9 @@ public final class LyricSync: ObservableObject {
             isPinned = false
             heldBy = nil
             doubtedShift = nil
+            lastMatchFound = nil
+            shazamSamples = []
+            liveTunes = []
             lockedAt = nil
             lastSegment = -1
         }
@@ -411,6 +430,9 @@ public final class LyricSync: ObservableObject {
             heldBy = nil
             shift = nil
             lockedAt = nil
+            doubtedShift = nil
+            shazamSamples = []
+            liveTunes = []
             report = "same song again: re-measuring"
         }
 
@@ -425,40 +447,56 @@ public final class LyricSync: ObservableObject {
         // doesn't, and the lyrics stay on the fallback (the aligner, else the remembered shift or
         // the cut's stamp) instead of being thrown wherever a bad offset puts them.
         let timed = match.map { Self.hasTiming($0, lyrics: lyrics) } ?? false
-        // Until Shazam has timed this song, ask on every segment rather than every half minute.
-        ShazamSync.shared.want(eager: !(heard && timed))
-        if let match, heard, timed {
+        // Until Shazam has timed this song, ask on every segment rather than every half minute;
+        // and again while a match that disagrees with the lock waits for a second one.
+        ShazamSync.shared.want(eager: !(heard && timed) || doubtedShift != nil)
+        // Each match is taken in once; the same match seen again on the next segment is nothing new.
+        if let match, heard, timed, match.found != lastMatchFound {
+            lastMatchFound = match.found
             // At broadcast time `match.real` the record was `match.offset` seconds in; the cut's
             // stamp put that moment `real - songStart` in. The difference is the shift. Shazam
             // heard this very song, so its word stands even when the cut's stamp is minutes out
             // (it used to be thrown away past a minute, leaving the lyrics way off until a re-tune).
             let found = match.offset - match.real.timeIntervalSince(songStart)
             if abs(found) <= 600 {
-                // Shazam has already placed this song and this match says somewhere else (a chorus
-                // or riff that repeats, matched at the wrong one of them): one stray match threw
-                // the lyrics 27 s out mid-song. It takes two matches in a row agreeing with each
-                // other to move a Shazam lock; a match that agrees with the lock refines it.
-                if heldBy == .shazam, let held = shift, abs(found - held) > Self.agree {
-                    if let doubt = doubtedShift, abs(found - doubt.shift) <= Self.agree, match.found > doubt.found {
-                        doubtedShift = nil
+                if heldBy == .shazam, let held = shazamMean, abs(found - held) > Self.agree {
+                    // Shazam has already placed this song and this match says somewhere else (a chorus
+                    // or riff that repeats, matched at the wrong one of them): one stray match threw
+                    // the lyrics 27 s out mid-song. It takes two matches in a row agreeing with each
+                    // other to move a Shazam lock, and the next one is asked for on the next segment.
+                    if let doubt = doubtedShift, abs(found - doubt.shift) <= Self.agree {
+                        shazamSamples = [doubt.shift, found]
+                        liveTunes = []
                     } else {
-                        if doubtedShift.map({ abs(found - $0.shift) > Self.agree }) ?? true { doubtedShift = (found, match.found) }
+                        doubtedShift = (found, match.found)
+                        ShazamSync.shared.want(eager: true)
                         report = String(format: "kept %+.1fs; Shazam now says %+.1fs (at %.1fs), waiting for a second match to agree",
                                         held, found, match.offset)
                         return
                     }
+                } else if heldBy == .shazam {
+                    // Agrees with the lock: Shazam's offset jitters ±0.3 s from one match to the next,
+                    // so the lock is the mean of every agreeing match rather than the newest one.
+                    shazamSamples.append(found)
+                } else {
+                    shazamSamples = [found]
+                    liveTunes = []
                 }
                 doubtedShift = nil
                 heldBy = .shazam
-                shift = found
+                let mean = shazamMean ?? found
+                shift = mean + liveTune
                 lockedAt = songStart
-                report = String(format: "%+.1fs (Shazam: %@ – %@ at %.1fs)", found, match.artist, match.title, match.offset)
-                LyricsCache.shared.saveShift(found, for: key)
+                report = String(format: "%+.2fs (Shazam: %@ – %@ at %.1fs, %d match%@ averaged%@)", shift ?? mean,
+                                match.artist, match.title, match.offset, shazamSamples.count, shazamSamples.count == 1 ? "" : "es",
+                                liveTunes.isEmpty ? "" : String(format: ", aligner tune %+.2fs", liveTune))
+                LyricsCache.shared.saveShift(shift ?? mean, for: key)
                 return
             }
         }
-        // Shazam already placed this song (its match since gone stale or moved on): keep that.
-        if heldBy == .shazam { return }
+        // Shazam already placed this song: its lock stands, and from here the aligner only fine-tunes
+        // it (`liveTune`), as `xtraTune` does for an Xtra track; it never moves the lock itself.
+        let tuning = heldBy == .shazam
         let shazam = (heard && !timed ? " · Shazam: no timing, using fallback" : "")
             + (error.map { " · Shazam: \($0)" } ?? "")
         // Only lines the pane draws: an LRC times the gaps between verses as empty lines, and
@@ -469,7 +507,7 @@ public final class LyricSync: ObservableObject {
         var times = [Double]()
         for at in stamps.sorted() where at - (times.last ?? -.infinity) >= 0.1 { times.append(at) }
         guard times.count >= LyricAligner.minimumLines else {
-            report = "only \(times.count) timed lines" + shazam
+            if !tuning { report = "only \(times.count) timed lines" + shazam }
             return
         }
         // #2, Apple's sound classifier: how sure it is someone is singing, frame by frame. A line
@@ -482,14 +520,28 @@ public final class LyricSync: ObservableObject {
             Self.logUnsure(lineTimes: times, songStart: songStart, onsets: singing, key: key + " (singing)")
         }
         guard let onsets = bySinging != nil ? singing : SpectrumTimeline.shared.onsets() else {
-            report = "no decoded audio yet" + shazam
+            if !tuning { report = "no decoded audio yet" + shazam }
             return
         }
         let by = bySinging != nil ? "singing" : "onsets"
         let audio = Double(onsets.values.count) * onsets.step
         guard let found = bySinging ?? LyricAligner.align(lineTimes: times, songStart: songStart, onsets: onsets) else {
-            report = String(format: "no confident match (%.0fs of audio, %d lines)", audio, times.count) + shazam
-            Self.logUnsure(lineTimes: times, songStart: songStart, onsets: onsets, key: key)
+            if !tuning {
+                report = String(format: "no confident match (%.0fs of audio, %d lines)", audio, times.count) + shazam
+                Self.logUnsure(lineTimes: times, songStart: songStart, onsets: onsets, key: key)
+            }
+            return
+        }
+        if tuning {
+            // A confident reading this close to Shazam's lock is the lyric file's own timing error,
+            // not a misplaced song: the lock is fine-tuned by the mean of those readings, never by
+            // more than `liveTuneLimit`. Further out is the aligner being wrong, and ignored.
+            guard let base = shazamMean, abs(found.shift - base) <= Self.liveTuneLimit else { return }
+            liveTunes.append(found.shift - base)
+            shift = base + liveTune
+            LyricsCache.shared.saveShift(base + liveTune, for: key)
+            report = String(format: "%+.2fs (Shazam %+.2fs over %d match%@, fine-tuned %+.2fs by the aligner over %d readings, %@)",
+                            base + liveTune, base, shazamSamples.count, shazamSamples.count == 1 ? "" : "es", liveTune, liveTunes.count, by)
             return
         }
         // A lock this song already has: a new measurement replaces it when it is a refinement of
