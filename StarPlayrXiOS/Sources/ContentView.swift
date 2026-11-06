@@ -140,41 +140,48 @@ struct PlayerView: View {
         // in one corner. The now-playing block spans the full width regardless; only the button
         // row keeps the inset, so a button never lands on the camera.
         GeometryReader { geo in
-            VStack(spacing: 16) {
-                // The header's art fills whatever height it gets, so it's handed a share of the
-                // shade and the slack goes above and below the whole block — centred.
-                NowPlayingHeader(spread: true)
-                    .frame(height: geo.size.height * 0.72)
-                // Drawn in the content, not the toolbar (the bar would stack them down the camera's
-                // side), so they need the toolbar's Liquid Glass look given by hand.
-                HStack {
-                    accountMenu
-                    Spacer()
-                    AirPlayButton()
-                }
-                .font(.title2)
-                .glassButtons()
-                .padding(.leading, geo.safeAreaInsets.leading)
-                .padding(.trailing, geo.safeAreaInsets.trailing)
-            }
-            .padding(.horizontal, 24)
-            .padding(.vertical, 12)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .ignoresSafeArea(.container, edges: .horizontal)
-        }
-        .toolbar {
-            ToolbarItem(placement: .principal) {
-                TimelineView(.everyMinute) { context in
-                    HStack(alignment: .firstTextBaseline, spacing: 10) {
-                        Text(context.date, format: .dateTime.hour().minute())
-                            .font(.title3.weight(.semibold)).monospacedDigit()
-                        Text(context.date, format: .dateTime.weekday(.abbreviated).month(.abbreviated).day())
-                            .font(.title3).foregroundStyle(.secondary)
+            // The header's art fills whatever height it gets, so it's handed a share of the
+            // shade; the slack goes above and below it — centred between the clock and the buttons.
+            NowPlayingHeader(spread: true)
+                .frame(height: geo.size.height * 0.66)
+                .padding(.horizontal, 24)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .padding(.top, 64)
+                .padding(.bottom, 56)
+                // The clock, drawn in the content and centred on the whole screen: a toolbar item
+                // would be centred on the bar, which stops short of the camera's side.
+                .overlay(alignment: .top) {
+                    TimelineView(.everyMinute) { context in
+                        HStack(alignment: .firstTextBaseline, spacing: 14) {
+                            Text(context.date, format: .dateTime.hour().minute())
+                                .font(.system(size: 44, weight: .semibold, design: .rounded)).monospacedDigit()
+                            Text(context.date, format: .dateTime.weekday(.abbreviated).month(.abbreviated).day())
+                                .font(.system(size: 26, weight: .regular, design: .rounded)).foregroundStyle(.secondary)
+                        }
                     }
+                    .accessibilityElement(children: .combine)
+                    .padding(.top, 14)
                 }
-                .accessibilityElement(children: .combine)
-            }
+                // Drawn in the content, not the toolbar (the bar would stack them down the camera's
+                // side), so they need the toolbar's Liquid Glass look given by hand; in the bottom
+                // corners, their centres as far in from the edges as the camera dot's (about 46 pt),
+                // so they sit on the dot's row and column. The dot is bottom-right when the inset is
+                // trailing and top-left when it's leading, so only the trailing side moves in past it.
+                .overlay(alignment: .bottom) {
+                    HStack {
+                        accountMenu
+                        Spacer()
+                        AirPlayButton()
+                    }
+                    .font(.title2)
+                    .glassButtons()
+                    .padding(.leading, 18)
+                    .padding(.trailing, 18 + geo.safeAreaInsets.trailing)
+                    .padding(.bottom, 18)
+                }
+                .ignoresSafeArea(.container, edges: [.horizontal, .bottom])
         }
+        .toolbar(.hidden, for: .navigationBar)
     }
 
 
@@ -242,6 +249,8 @@ struct PlayerView: View {
                             .padding(.horizontal)
                             .padding(.vertical, 10)
                             .frame(height: art + 20)
+                        // Centred in the room left between now playing and the fold.
+                        Spacer(minLength: 0)
                         if !app.lyrics && !app.bigArt { ChannelFilters(keepSubRow: true, inline: true) }
                         Spacer(minLength: 0)
                     }
