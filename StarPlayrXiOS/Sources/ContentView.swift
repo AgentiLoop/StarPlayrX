@@ -222,8 +222,8 @@ struct PlayerView: View {
                 NowPlayingHeader(showsBars: !sideEQ)
                     .padding(.horizontal)
                     // The Duo's empty top bar (its buttons are down the side) leaves a ~25 pt
-                    // inset; that and most of the padding go, so the art starts ~10 pt down.
-                    .padding(.top, sideEQ ? 10 : 16)
+                    // inset; that goes, so the art starts 15 pt down — about the side padding.
+                    .padding(.top, sideEQ ? 15 : 16)
                     .padding(.bottom, 10)
                 Divider()
                 // Big art lies over the list or lyrics, as on the Mac.
