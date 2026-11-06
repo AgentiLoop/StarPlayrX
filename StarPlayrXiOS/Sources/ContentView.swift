@@ -689,8 +689,9 @@ struct ChannelFilters: View {
             // Picking a group opens a second row with its detailed chips (Sports → NFL, NBA, …).
             if let group = app.category, case let subs = ChannelGroup.subs(of: group, in: radio.channels), subs.count > 1 {
                 CategoryBar(titles: subs, all: "All \(group)", selected: $app.subcategory, small: true)
-                    // With the bar's own 4: 10 under the sub-chips, the same as above the main ones.
-                    .padding(.bottom, inline ? 6 : 0)
+                    // With the bar's own 4: 10 under the sub-chips inline, the same as above the
+                    // main ones; 7 on a phone, a little air over the list.
+                    .padding(.bottom, inline ? 6 : 3)
             } else if keepSubRow {
                 // An empty, invisible row of the same height holds the place.
                 CategoryBar(titles: [], all: "All Channels", selected: .constant(nil), small: true).hidden()

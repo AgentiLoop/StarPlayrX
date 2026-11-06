@@ -129,6 +129,7 @@ public struct CategoryBar: View {
     @Binding var selected: String?
     var small = false
     var inset: CGFloat = 16
+    @Environment(\.colorScheme) private var scheme
 
     /// `inset`: the space before the first chip and after the last (the Mac panel already has its own margin).
     public init(titles: [String], all: String, selected: Binding<String?>, small: Bool = false, inset: CGFloat = 16) {
@@ -152,12 +153,18 @@ public struct CategoryBar: View {
 
     private func chip(_ title: String, value: String?) -> some View {
         let isOn = selected == value
+        // A 15% tint all but vanishes on the black panel in dark mode (iPhone); there it's stronger.
+        #if os(macOS)
+        let tint = 0.15
+        #else
+        let tint = scheme == .dark ? 0.35 : 0.15
+        #endif
         return Button { selected = value } label: {
             Text(title)
                 .font(small ? .caption.weight(.medium) : .subheadline.weight(.medium))
                 .padding(.horizontal, small ? 10 : 12)
                 .padding(.vertical, small ? 4 : 6)
-                .background(Capsule().fill(isOn ? Color.accentColor : Color.secondary.opacity(0.15)))
+                .background(Capsule().fill(isOn ? Color.accentColor : Color.secondary.opacity(tint)))
                 .foregroundStyle(isOn ? Color.white : Color.primary)
         }
         .buttonStyle(.plain)
