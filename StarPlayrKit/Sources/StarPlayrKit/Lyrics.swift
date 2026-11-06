@@ -134,7 +134,9 @@ public class LyricsStore: ObservableObject {
             status = "Nothing playing."
             return
         }
-        if let cached = cache[k] ?? LyricsCache.shared.lyrics(for: k) {
+        // A live take saved before those were turned away is looked up again rather than shown.
+        if let cached = cache[k] ?? LyricsCache.shared.lyrics(for: k),
+           !(cached.map { LyricsEngine.isOtherVersion($0.song, of: song) } ?? false) {
             cache[k] = cached
             lyrics = cached
             missed = cached == nil
@@ -292,7 +294,9 @@ public enum LyricsEngine {
         // up a copy of the same song timed all the way through. LRCLIB's exact match for the Gap
         // Band's "You Dropped a Bomb On Me" skips 76 s of singing; four other records don't.
         var holed: Lyrics?
-        if let record = try await ask("/api/get", get) as? [String: Any],
+        // The exact match goes by length too, and a live take of about the same length is the answer
+        // it gives (Anthology's "I Feel Fine" for a 135 s file): only the record itself is taken.
+        if let record = try await ask("/api/get", get) as? [String: Any], !isOtherVersion(record, of: song),
            let got = lyrics(from: record, artist: artist, song: song) {
             guard got.hasHole || got.isShouting else { return got }
             holed = got
@@ -303,6 +307,7 @@ public enum LyricsEngine {
         if holed == nil, plainSong != song || plainArtist != artist,
            let record = try await ask("/api/get", [URLQueryItem(name: "track_name", value: plainSong),
                                                    URLQueryItem(name: "artist_name", value: plainArtist)]) as? [String: Any],
+           !isOtherVersion(record, of: song),
            let got = lyrics(from: record, artist: artist, song: song) {
             guard got.hasHole || got.isShouting else { return got }
             holed = got
@@ -318,13 +323,30 @@ public enum LyricsEngine {
         // Only a record that really is this song. The search endpoint answers with whatever it has
         // (a search for Ed Sheeran's "Don't" came back as a Chinese song that happened to carry
         // timestamps), and the wrong lyrics are worse than none, so artist and title must both fit.
-        let mine = records.filter { matches(plainArtist, $0) && isSong(plainSong, $0) }
+        let mine = records.filter { matches(plainArtist, $0) && isSong(plainSong, $0) && !isOtherVersion($0, of: song) }
         let timed = mine.filter { $0["syncedLyrics"] is String }.compactMap { lyrics(from: $0, artist: artist, song: song) }
         if let whole = timed.first(where: { $0.synced && !$0.hasHole && !$0.isShouting }) { return whole }
         if let holed { return holed }
         if let first = timed.first { return first }
         guard let best = mine.first else { return nil }
         return lyrics(from: best, artist: artist, song: song)
+    }
+
+    /// A live take, demo, remix… of the song, when the station's title doesn't ask for one: its
+    /// words are the same but its timing isn't the record on air ("I Feel Fine" from Anthology 2
+    /// sings its first line 4 s early and drifts from there). `name` and `album` are the hit's.
+    public nonisolated static func isOtherVersion(_ name: String, album: String = "", of song: String) -> Bool {
+        func words(_ s: String) -> Set<String> {
+            Set(s.lowercased().split { !$0.isLetter }.map(String.init))
+        }
+        let markers: Set<String> = ["live", "anthology", "demo", "acoustic", "remix", "karaoke", "unplugged",
+                                    "rehearsal", "bbc", "outtake", "instrumental", "cover", "tribute"]
+        let asked = words(song)
+        return !markers.subtracting(asked).isDisjoint(with: words(name).union(words(album)))
+    }
+
+    private nonisolated static func isOtherVersion(_ record: [String: Any], of song: String) -> Bool {
+        isOtherVersion(record["trackName"] as? String ?? "", album: record["albumName"] as? String ?? "", of: song)
     }
 
     /// The record's title is this song's, give or take the brackets either side carries.
@@ -358,6 +380,8 @@ public enum LyricsEngine {
         let mine = hits.filter { hit in
             (hit["artists"] as? [[String: Any]] ?? []).contains { matches(plainArtist, name: $0["name"] as? String ?? "") }
                 && isSong(plainSong, name: hit["name"] as? String ?? "")
+                && !isOtherVersion(hit["name"] as? String ?? "",
+                                   album: (hit["album"] as? [String: Any])?["name"] as? String ?? "", of: song)
         }
         guard let best = mine.min(by: { gap($0, "duration", 1000, duration) < gap($1, "duration", 1000, duration) }),
               let id = best["id"] as? Int else { return nil }
@@ -413,6 +437,7 @@ public enum LyricsEngine {
         let mine = hits.filter { hit in
             (hit["singer"] as? [[String: Any]] ?? []).contains { matches(plainArtist, name: $0["name"] as? String ?? "") }
                 && isSong(plainSong, name: hit["songname"] as? String ?? "")
+                && !isOtherVersion(hit["songname"] as? String ?? "", album: hit["albumname"] as? String ?? "", of: song)
         }
         guard let best = mine.min(by: { gap($0, "interval", 1, duration) < gap($1, "interval", 1, duration) }),
               let mid = best["songmid"] as? String else { return nil }
@@ -442,6 +467,7 @@ public enum LyricsEngine {
         let mine = hits.filter { hit in
             matches(plainArtist, name: hit["SingerName"] as? String ?? "")
                 && isSong(plainSong, name: hit["SongName"] as? String ?? "")
+                && !isOtherVersion(hit["SongName"] as? String ?? "", album: hit["AlbumName"] as? String ?? "", of: song)
         }
         guard let best = mine.min(by: { gap($0, "Duration", 1, duration) < gap($1, "Duration", 1, duration) }),
               let hash = best["FileHash"] as? String, let length = best["Duration"] as? Int else { return nil }
