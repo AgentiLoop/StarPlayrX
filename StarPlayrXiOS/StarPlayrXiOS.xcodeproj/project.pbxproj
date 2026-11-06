@@ -353,7 +353,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.starplayrx.ios;
+				PRODUCT_BUNDLE_IDENTIFIER = com.toddbruss.StarPlayr;
 				PRODUCT_NAME = StarPlayrX;
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 5.0;
@@ -374,7 +374,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.starplayrx.ios;
+				PRODUCT_BUNDLE_IDENTIFIER = com.toddbruss.StarPlayr;
 				PRODUCT_NAME = StarPlayrX;
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 5.0;
@@ -394,7 +394,7 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.starplayrx.ios.uitests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.toddbruss.StarPlayr.uitests;
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -414,7 +414,7 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.starplayrx.ios.uitests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.toddbruss.StarPlayr.uitests;
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
