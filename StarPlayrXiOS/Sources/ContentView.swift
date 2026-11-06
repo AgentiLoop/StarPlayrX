@@ -31,30 +31,34 @@ struct SignInView: View {
         NavigationStack {
             Form {
                 Section {
-                    TextField("Username or email", text: $user)
+                    TextField("Username or email", text: $user, prompt: Text("Username or email").foregroundStyle(.primary), axis: .vertical)
+                        .lineLimit(1...3)
                         .textContentType(.username)
                         .keyboardType(.emailAddress)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
-                    SecureField("Password", text: $pass)
+                    SecureField("Password", text: $pass, prompt: Text("Password").foregroundStyle(.primary))
                         .textContentType(.password)
                         .onSubmit(signIn)
                     Toggle("Canada", isOn: Binding(get: { radio.localeIsCA }, set: { radio.setRegion(ca: $0) }))
                 } header: {
                     Text("Sign in with your SiriusXM account")
+                        .foregroundStyle(.primary)
                 } footer: {
                     Text("Your username and password are kept only in this device's Keychain.")
+                        .foregroundStyle(.primary)
                 }
                 Section {
+                    // Not .disabled: its dimmed text fails contrast. signIn() ignores taps until ready.
                     Button(action: signIn) {
                         HStack {
                             Text(radio.isBusy ? "Signing in…" : "Sign In")
                             if radio.isBusy { Spacer(); ProgressView() }
                         }
                     }
-                    .disabled(radio.isBusy || user.isEmpty || pass.isEmpty)
                 } footer: {
                     Text(radio.status)
+                        .foregroundStyle(.primary)
                 }
             }
             .navigationTitle("StarPlayrX")
@@ -64,7 +68,7 @@ struct SignInView: View {
     }
 
     private func signIn() {
-        guard !user.isEmpty, !pass.isEmpty else { return }
+        guard !radio.isBusy, !user.isEmpty, !pass.isEmpty else { return }
         Task { _ = await radio.login(user: user, pass: pass) }
     }
 }

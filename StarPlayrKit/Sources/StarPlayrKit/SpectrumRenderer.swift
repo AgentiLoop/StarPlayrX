@@ -12,8 +12,14 @@ import MetalKit
 /// AppKit/UIKit stays on main; frame preparation and drawable waits belong to the render worker.
 @MainActor
 public final class SpectrumRenderer: NSObject, MTKViewDelegate {
-    public static let pad: Float = 18
-    public static let barHeight: Float = 40
+    nonisolated public static let pad: Float = 18
+    /// An iPhone/iPad point is physically smaller than a Mac point, so the bars get more of them
+    /// there to look as tall as on the Mac.
+    #if os(macOS)
+    nonisolated public static let barHeight: Float = 40
+    #else
+    nonisolated public static let barHeight: Float = 48
+    #endif
     public let device = MTLCreateSystemDefaultDevice()
     private lazy var worker = SpectrumRenderWorker(device: device)
     public var fixed = 0.025, bg = 0.025, light = false, bubbles = 0.5
@@ -141,7 +147,7 @@ private final class SpectrumRenderWorker: @unchecked Sendable {
         var blob = blobColour
         blob.w = Float(0.075 + 0.175 * pulse)
         var globals = Globals(
-            view: [input.width - 36, 40, input.scale, 18],
+            view: [input.width - 2 * SpectrumRenderer.pad, SpectrumRenderer.barHeight, input.scale, SpectrumRenderer.pad],
             state: [Float(pulse), light ? 1 : 0, Float(input.bubbles), Float(clock)],
             bubble: light ? [0, 0, 0, 0.7] : [1, 1, 1, 1],
             blob: blob,
