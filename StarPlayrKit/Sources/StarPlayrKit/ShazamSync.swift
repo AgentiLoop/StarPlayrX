@@ -49,6 +49,9 @@ public final class ShazamSync: @unchecked Sendable {
     /// Every failure goes to the log, on the Mac and on iOS:
     /// `log stream --predicate 'subsystem BEGINSWITH "com.starplayrx" AND category == "shazam"'`.
     static let log = Logger(subsystem: Bundle.main.bundleIdentifier ?? "com.starplayrx", category: "shazam")
+    /// Shazam off, to try the fallbacks (aligner, remembered shift, the cut's stamp) on their own:
+    /// `defaults write com.starplayrx.mac disableShazam -bool YES` (the iOS app: its own domain).
+    static var disabled: Bool { UserDefaults.standard.bool(forKey: "disableShazam") }
 
     /// The newest match, and why there isn't one if matching keeps failing.
     public var current: (match: Match?, error: String?) {
@@ -76,6 +79,7 @@ public final class ShazamSync: @unchecked Sendable {
     /// A live segment has just been decoded to `file`, whose first sample went out on air at `real`.
     /// The file is deleted after this returns, so its audio is read here, on the caller's thread.
     public func segment(_ file: URL, real: Date) {
+        guard !Self.disabled else { return }
         lock.lock()
         let now = Date()
         let due = now < wantedUntil
@@ -103,6 +107,7 @@ public final class ShazamSync: @unchecked Sendable {
     /// match, whose `offset` is how far into the record the file is at `seconds` (nil on no match,
     /// or when another request is in flight).
     public func track(_ file: URL, at seconds: Double, done: @escaping @Sendable (Match?) -> Void) {
+        guard !Self.disabled else { done(nil); return }
         lock.lock()
         let ask = claim(Date())
         lock.unlock()
