@@ -78,19 +78,17 @@ struct SignInView: View {
 struct PlayerView: View {
     @EnvironmentObject var radio: Radio
     @ObservedObject private var app = PlayerState.shared
+    /// Regular width is the iPad and iPhone Duo's inner display; compact is every other iPhone and
+    /// the Duo's outer display. The Duo changes it mid-session when it folds, so the layout follows
+    /// the size class, never the idiom, the orientation or the screen.
+    @Environment(\.horizontalSizeClass) private var hSize
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                NowPlayingHeader()
-                    .padding(.horizontal)
-                    .padding(.vertical, 10)
-                Divider()
-                // Big art lies over the list or lyrics, as on the Mac.
-                if app.bigArt, let url = radio.shownArtURL { BigArtView(url: url) }
-                else if app.lyrics { LyricsView() } else { ChannelList() }
+            Group {
+                if hSize == .regular { wide } else { narrow }
             }
-            .navigationTitle(app.lyrics ? "Lyrics" : "Channels")
+            .navigationTitle(hSize == .regular ? "StarPlayrX" : app.lyrics ? "Lyrics" : "Channels")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
@@ -115,6 +113,43 @@ struct PlayerView: View {
                     }
                     .accessibilityLabel(app.lyrics ? "Channels" : "Lyrics")
                 }
+            }
+        }
+    }
+
+    /// Phones (and the Duo closed): now playing on top, then the channel list or the lyrics.
+    private var narrow: some View {
+        VStack(spacing: 0) {
+            NowPlayingHeader()
+                .padding(.horizontal)
+                .padding(.vertical, 10)
+            Divider()
+            // Big art lies over the list or lyrics, as on the Mac.
+            if app.bigArt, let url = radio.shownArtURL { BigArtView(url: url) }
+            else if app.lyrics { LyricsView() } else { ChannelList() }
+        }
+    }
+
+    /// iPad and the Duo open: now playing with the art or the lyrics under it on the left, the
+    /// channel list beside it. The pane is sized from the space the app has, not the screen.
+    private var wide: some View {
+        GeometryReader { geo in
+            HStack(spacing: 0) {
+                VStack(spacing: 0) {
+                    NowPlayingHeader()
+                        .padding(.horizontal)
+                        .padding(.vertical, 10)
+                    Divider()
+                    if app.bigArt, let url = radio.shownArtURL { BigArtView(url: url) }
+                    else if app.lyrics { LyricsView() }
+                    // With the list in its own pane there's nothing for the art to hide, so it's
+                    // always full size here.
+                    else if let url = radio.shownArtURL { BigArtView(url: url) }
+                    else { Spacer() }
+                }
+                .frame(width: min(max(geo.size.width * 0.45, 320), 440))
+                Divider()
+                ChannelList()
             }
         }
     }
