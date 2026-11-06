@@ -171,6 +171,12 @@ struct PlayerView: View {
                     HStack {
                         accountMenu
                         Spacer()
+                        // "All Stars": with it on, ⏮ ⏭ skip through the starred channels only.
+                        Button { app.starsOnly.toggle() } label: {
+                            Image(systemName: app.starsOnly ? "star.fill" : "star")
+                        }
+                        .accessibilityLabel(app.starsOnly ? "All Stars On" : "All Stars Off")
+                        Spacer()
                         AirPlayButton()
                     }
                     .font(.title2)

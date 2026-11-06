@@ -14,11 +14,12 @@ import AVFoundation
 import MediaPlayer
 
 extension Radio {
-    /// The channel `step` places along from the current one: through the starred channels when
-    /// the current one is starred, else through every channel. Wraps around at either end.
+    /// The channel `step` places along from the current one: through the channels the list shows
+    /// (PlayerState's search, stars filter and chips), else through every channel. Wraps around at
+    /// either end. "All Stars" on is how to skip through the starred channels only.
     public func playAdjacent(_ step: Int) {
-        let starred = channels.filter { presets.contains($0.id) }
-        let list = current.map { presets.contains($0.id) } == true && starred.count > 1 ? starred : channels
+        let shown = PlayerState.shared.visibleChannels
+        let list = shown.count > 1 ? shown : channels
         guard !list.isEmpty else { return }
         guard let current, let i = list.firstIndex(of: current) else { play(list[0]); return }
         play(list[((i + step) % list.count + list.count) % list.count])
