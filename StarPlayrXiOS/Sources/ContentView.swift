@@ -187,9 +187,7 @@ struct PlayerView: View {
                 }
                 // Drawn in the content, not the toolbar (the bar would stack them down the camera's
                 // side), so they need the toolbar's Liquid Glass look given by hand; in the bottom
-                // corners, their centres as far in from the edges as the camera dot's (about 46 pt),
-                // so they sit on the dot's row and column. The dot is bottom-right when the inset is
-                // trailing and top-left when it's leading, so only the trailing side moves in past it.
+                // corners, the same 18 pt in from both edges whichever way round the Duo is held.
                 .overlay(alignment: .bottom) {
                     HStack {
                         accountMenu
@@ -198,8 +196,7 @@ struct PlayerView: View {
                     }
                     .font(.title2)
                     .glassButtons()
-                    .padding(.leading, 18)
-                    .padding(.trailing, 18 + geo.safeAreaInsets.trailing)
+                    .padding(.horizontal, 18)
                     .padding(.bottom, 18)
                 }
                 .ignoresSafeArea(.container, edges: [.horizontal, .bottom])
