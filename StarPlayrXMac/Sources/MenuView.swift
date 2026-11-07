@@ -568,32 +568,29 @@ struct MenuView: View {
     }
 }
 
-/// "StarPlayrX" centred in the footer: a faint, ghosted rounded italic with a hint of
-/// blue-violet tint, and a subtle sheen that drifts across it every few seconds.
+/// "StarPlayrX" centred in the footer: a faint, ghosted italic (square, not rounded) with a hint of
+/// blue-violet tint, that fades in each time the panel comes up.
 private struct WordMark: View {
-    @State private var sweep = false
+    @State private var shown = false
 
     var body: some View {
-        let text = Text("StarPlayrX")
-            .font(.system(size: 16, weight: .semibold, design: .rounded).italic())
+        Text("StarPlayrX")
+            .font(.system(size: 16, weight: .semibold, design: .default).italic())
             .kerning(1)
-        text
             .foregroundStyle(LinearGradient(colors: [Color(red: 0.80, green: 0.88, blue: 1.0),
                                                      Color(red: 0.88, green: 0.82, blue: 1.0)],
                                             startPoint: .leading, endPoint: .trailing))
-            .opacity(0.3)
-            .overlay {
-                // The sheen: a faint white band sliding left to right, clipped to the letters.
-                LinearGradient(colors: [.clear, .white.opacity(0.35), .clear],
-                               startPoint: .leading, endPoint: .trailing)
-                    .frame(width: 30)
-                    .offset(x: sweep ? 80 : -80)
-                    .mask(text)
-            }
+            .opacity(shown ? 0.3 : 0)
             .blendMode(.plusLighter)
-            .onAppear {
-                withAnimation(.easeInOut(duration: 1.6).delay(2).repeatForever(autoreverses: false)) {
-                    sweep = true
+            .onAppear { withAnimation(.easeOut(duration: 1.2)) { shown = true } }
+            // The panel is only ordered out when hidden, so onAppear runs once: follow its
+            // visibility to reset while hidden and fade in again when it comes back up.
+            .onReceive(NotificationCenter.default.publisher(for: NSWindow.didChangeOcclusionStateNotification)) { note in
+                guard let panel = note.object as? MenuPanel else { return }
+                if !panel.occlusionState.contains(.visible) {
+                    shown = false
+                } else if !shown {
+                    withAnimation(.easeOut(duration: 1.2)) { shown = true }
                 }
             }
             .accessibilityHidden(true)
