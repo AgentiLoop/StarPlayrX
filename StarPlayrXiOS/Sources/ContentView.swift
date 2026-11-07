@@ -109,16 +109,16 @@ struct PlayerView: View {
                     ToolbarItemGroup(placement: .topBarTrailing) {
                         AirPlayButton()
                         // Side by side the list is always showing, so the pane beside it
-                        // switches between the art and the lyrics instead, and the star stays.
+                        // switches between the art and the lyrics instead.
                         let pane = sideBySide && hSize == .regular
+                        // The star stays through the lyrics too (⏮ ⏭ still skip the starred
+                        // channels only), so it's always in the top-right.
                         // Label, not a bare Image: on iOS 26 a bare image's tap region is just the
                         // glyph, though the whole glass pill lights up — taps on the pill's edge
                         // did nothing. A Label's region is the pill.
-                        if !app.lyrics || pane {
-                            Button { app.starsOnly.toggle() } label: {
-                                Label(app.starsOnly ? "All Stars On" : "All Stars Off",
-                                      systemImage: app.starsOnly ? "star.fill" : "star")
-                            }
+                        Button { app.starsOnly.toggle() } label: {
+                            Label(app.starsOnly ? "All Stars On" : "All Stars Off",
+                                  systemImage: app.starsOnly ? "star.fill" : "star")
                         }
                         // One Label, not an
                         // if/else of two: the toolbar only gives a bare Label the whole glass pill
