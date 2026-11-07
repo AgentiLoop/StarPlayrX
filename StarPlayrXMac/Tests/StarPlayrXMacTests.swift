@@ -566,4 +566,39 @@ final class PanelTests: XCTestCase {
         XCTAssertEqual((NSApp.value(forKey: "spChannelNumbers") as? [String])?.count, 60)
         XCTAssertEqual(NSApp.value(forKey: "spSignedIn") as? Bool, true)
     }
+
+    func testScriptPanelView() {
+        let view = { (NSApp.value(forKey: "spPanelView") as? NSNumber)?.uint32Value }
+        XCTAssertEqual(view(), SPXCommand.code("SPV0"))
+        NSApp.setValue(NSNumber(value: SPXCommand.code("SPV1")), forKey: "spPanelView")
+        XCTAssertTrue(menu.lyrics)
+        XCTAssertEqual(view(), SPXCommand.code("SPV1"))
+        // No art for the (no) current channel: album art is refused, the lyrics stay.
+        NSApp.setValue(NSNumber(value: SPXCommand.code("SPV2")), forKey: "spPanelView")
+        XCTAssertEqual(view(), SPXCommand.code("SPV1"))
+        NSApp.setValue(NSNumber(value: SPXCommand.code("SPV0")), forKey: "spPanelView")
+        XCTAssertFalse(menu.lyrics)
+        XCTAssertEqual(view(), SPXCommand.code("SPV0"))
+    }
+
+    func testScriptCategoryChips() {
+        let chips = NSApp.value(forKey: "spCategoryChips") as? [String] ?? []
+        XCTAssertFalse(chips.isEmpty)
+        guard let chip = chips.first else { return }
+        NSApp.setValue(chip.uppercased(), forKey: "spCategoryChip")   // matched case-insensitively
+        XCTAssertEqual(NSApp.value(forKey: "spCategoryChip") as? String, chip)
+        XCTAssertEqual(NSApp.value(forKey: "spVisibleChannelNumbers") as? [String],
+                       ChannelGroup.filter(fake, group: chip, sub: nil).map(\.id))
+        let subs = NSApp.value(forKey: "spSubcategoryChips") as? [String] ?? []
+        if let sub = subs.first {
+            NSApp.setValue(sub, forKey: "spSubcategoryChip")
+            XCTAssertEqual(NSApp.value(forKey: "spSubcategoryChip") as? String, sub)
+        }
+        NSApp.setValue("no such chip", forKey: "spCategoryChip")      // ignored
+        XCTAssertEqual(NSApp.value(forKey: "spCategoryChip") as? String, chip)
+        NSApp.setValue("", forKey: "spCategoryChip")
+        XCTAssertEqual(NSApp.value(forKey: "spCategoryChip") as? String, "")
+        XCTAssertEqual(NSApp.value(forKey: "spSubcategoryChip") as? String, "")
+        XCTAssertEqual((NSApp.value(forKey: "spVisibleChannelNumbers") as? [String])?.count, 60)
+    }
 }
