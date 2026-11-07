@@ -568,14 +568,14 @@ struct MenuView: View {
     }
 }
 
-/// "StarPlayrX" centred in the footer: a faint, ghosted italic (square, not rounded) with a hint of
+/// "StarPlayrX" centred in the footer: a faint, ghosted upright (not italic, not rounded) wordmark with a hint of
 /// blue-violet tint, that fades in each time the panel comes up.
 private struct WordMark: View {
     @State private var shown = false
 
     var body: some View {
         Text("StarPlayrX")
-            .font(.system(size: 16, weight: .semibold, design: .default).italic())
+            .font(.system(size: 16, weight: .semibold, design: .default))
             .kerning(1)
             .foregroundStyle(LinearGradient(colors: [Color(red: 0.80, green: 0.88, blue: 1.0),
                                                      Color(red: 0.88, green: 0.82, blue: 1.0)],
