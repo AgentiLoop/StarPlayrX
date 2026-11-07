@@ -635,8 +635,8 @@ private struct ChannelRow: View, Equatable {
         // Inset from the scroll view's edges so the squircle's corners are never clipped. The list
         // extends 8pt past the content area on the left and 12pt on the right (scroll bar at the
         // window edge), so the trailing inset is 4pt larger and the squircle ends 4pt from the
-        // window edge on the right, 2pt on the left.
-        .padding(.leading, 2)
+        // window edge on the right, 3pt on the left.
+        .padding(.leading, 3)
         .padding(.trailing, 8)
         .contentShape(Rectangle())
     }
