@@ -518,6 +518,7 @@ struct MenuView: View {
             Spacer()
             footerButtons
         }
+        .overlay { WordMark().allowsHitTesting(false) }
     }
 
     /// AirPlay, Close and the account menu on one horizontal Liquid Glass capsule where the system
@@ -564,6 +565,38 @@ struct MenuView: View {
         .fixedSize()
         .help("Account")
         .accessibilityLabel("Account")
+    }
+}
+
+/// "StarPlayrX" centred in the footer: heavy rounded italic in a blue-violet gradient,
+/// a soft glow, and a light sheen that sweeps across it every few seconds.
+private struct WordMark: View {
+    @State private var sweep = false
+
+    var body: some View {
+        let text = Text("StarPlayrX")
+            .font(.system(size: 17, weight: .black, design: .rounded).italic())
+            .kerning(0.5)
+        text
+            .foregroundStyle(LinearGradient(colors: [Color(red: 0.55, green: 0.80, blue: 1.0),
+                                                     Color(red: 0.75, green: 0.60, blue: 1.0),
+                                                     Color(red: 1.0, green: 0.55, blue: 0.85)],
+                                            startPoint: .leading, endPoint: .trailing))
+            .overlay {
+                // The sheen: a white band sliding left to right, clipped to the letters.
+                LinearGradient(colors: [.clear, .white.opacity(0.85), .clear],
+                               startPoint: .leading, endPoint: .trailing)
+                    .frame(width: 30)
+                    .offset(x: sweep ? 80 : -80)
+                    .mask(text)
+            }
+            .shadow(color: Color(red: 0.6, green: 0.6, blue: 1.0).opacity(0.7), radius: 6)
+            .onAppear {
+                withAnimation(.easeInOut(duration: 1.6).delay(2).repeatForever(autoreverses: false)) {
+                    sweep = true
+                }
+            }
+            .accessibilityHidden(true)
     }
 }
 
