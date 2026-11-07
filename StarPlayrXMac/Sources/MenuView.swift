@@ -79,7 +79,7 @@ struct MenuView: View {
                             if let group = menu.category,
                                case let subs = ChannelGroup.subs(of: group, in: radio.channels), subs.count > 1 {
                                 CategoryBar(titles: subs, all: "All \(group)", selected: $menu.subcategory,
-                                            small: true, inset: 0)
+                                            small: true, inset: 5)   // inset scrolls with the chips, so they still run out to the edge
                                     .padding(.vertical, -4)
                                     .padding(.horizontal, -12)  // the small chips run edge to edge of the panel
                             }
