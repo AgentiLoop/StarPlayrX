@@ -64,28 +64,13 @@ struct MenuView: View {
                             LyricsPane()
                         } else {
                             // One row: the search field on the left, the category chips (as on iOS;
-                            // StarPlayrKit's ChannelGroup) scrolling sideways beside it, the star on the right.
+                            // StarPlayrKit's ChannelGroup) scrolling sideways beside it.
                             HStack(spacing: 13.5) {
                                 SearchField(text: $menu.search, placeholder: "Search")
                                     .frame(width: 120)
                                 CategoryBar(titles: ChannelGroup.groups(radio.channels), all: "All Channels",
                                             selected: $menu.category, inset: 0)
                                     .padding(.vertical, -8)   // the chips' own padding; the search field sets the row height
-                                // "All Stars" (as on iOS): the list shows only the starred channels.
-                                Button { menu.starsOnly.toggle() } label: {
-                                    Image(menu.starsOnly ? "star_on" : "star_off")
-                                        .renderingMode(menu.starsOnly ? .original : .template)
-                                        .resizable()
-                                        .scaledToFit()
-                                        .frame(width: 16, height: 16)
-                                        .foregroundStyle(Color.secondary)
-                                }
-                                .buttonStyle(.plain)
-                                // Same size and trailing edge as the row stars: a row's star ends 2pt inside the
-                                // content edge (12 outer trailing − 12 list overhang + 12 − 10 inner padding).
-                                .padding(.trailing, 2)
-                                .help(menu.starsOnly ? "Show every channel" : "Show only starred channels")
-                                .accessibilityLabel(menu.starsOnly ? "All Stars On" : "All Stars Off")
                             }
                             // A group opens a second row with its own chips (Sports → NFL, NBA, …).
                             if let group = menu.category,
@@ -252,23 +237,49 @@ struct MenuView: View {
             // also toggle the lyrics).
             .onTapGesture(count: 2) {}
             .onTapGesture { PlayerState.shared.tapTitles() }
-            // The star (as the iOS "All Star" button): the current channel in or out of the presets.
-            // Same size and trailing edge as the search-bar and row stars.
-            if let ch = radio.current {
-                let starred = radio.presets.contains(ch.id)
-                Button { radio.togglePreset(ch.id) } label: {
-                    Image(starred ? "star_on" : "star_off")
-                        .renderingMode(starred ? .original : .template)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 16, height: 16)
-                        .foregroundStyle(Color.secondary)
+            // Top right of the panel: the "All Stars" star (as on iOS; the list shows only the starred
+            // channels) on Liquid Glass, and under it the current channel's star (in or out of the presets).
+            // Same size and trailing edge as the row stars.
+            VStack(spacing: 8) {
+                allStarsButton
+                if let ch = radio.current {
+                    let starred = radio.presets.contains(ch.id)
+                    Button { radio.togglePreset(ch.id) } label: {
+                        Image(starred ? "star_on" : "star_off")
+                            .renderingMode(starred ? .original : .template)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 16, height: 16)
+                            .foregroundStyle(Color.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .help(starred ? "Remove from stars" : "Add to stars")
+                    .accessibilityLabel(starred ? "Remove \(ch.name) from stars" : "Add \(ch.name) to stars")   // as on iOS
                 }
-                .buttonStyle(.plain)
-                .padding(.trailing, 2)
-                .help(starred ? "Remove from stars" : "Add to stars")
-                .accessibilityLabel(starred ? "Remove \(ch.name) from stars" : "Add \(ch.name) to stars")   // as on iOS
             }
+            .padding(.trailing, 2)
+            .frame(height: 64, alignment: .top)   // as tall as the art, from its top edge
+        }
+    }
+
+    /// The "All Stars" filter star, on a Liquid Glass circle where the system has it.
+    @ViewBuilder private var allStarsButton: some View {
+        let button = Button { menu.starsOnly.toggle() } label: {
+            Image(menu.starsOnly ? "star_on" : "star_off")
+                .renderingMode(menu.starsOnly ? .original : .template)
+                .resizable()
+                .scaledToFit()
+                .frame(width: 16, height: 16)
+                .foregroundStyle(Color.secondary)
+                .padding(6)
+        }
+        .buttonStyle(.plain)
+        .help(menu.starsOnly ? "Show every channel" : "Show only starred channels")
+        .accessibilityLabel(menu.starsOnly ? "All Stars On" : "All Stars Off")
+        if #available(macOS 26.0, *) {
+            button.glassEffect(.regular.interactive(), in: Circle())
+        } else {
+            button
         }
     }
 
