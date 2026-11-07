@@ -61,9 +61,9 @@ struct MenuView: View {
                     // Big album art lies over the list or lyrics (kept underneath so the panel doesn't resize).
                     let big = bigArtURL
                     VStack(alignment: .leading, spacing: 10) {
-                        if menu.lyrics {
-                            LyricsPane()
-                        } else {
+                        // The lyrics lie over the channel list too: the list (with its search and chip rows)
+                        // always sets the height, so switching list, lyrics and art never resizes the window.
+                        VStack(alignment: .leading, spacing: 10) {
                             // One row: the search field on the left, the category chips (as on iOS;
                             // StarPlayrKit's ChannelGroup) scrolling sideways beside it.
                             HStack(spacing: 6.75) {
@@ -85,6 +85,12 @@ struct MenuView: View {
                                     .padding(.horizontal, -12)  // the small chips run edge to edge of the panel
                             }
                             channelList
+                        }
+                        .opacity(menu.lyrics ? 0 : 1)
+                        .allowsHitTesting(!menu.lyrics)
+                        .accessibilityHidden(menu.lyrics)
+                        .overlay(alignment: .top) {
+                            if menu.lyrics { LyricsPane() }
                         }
                     }
                     .opacity(big == nil ? 1 : 0)

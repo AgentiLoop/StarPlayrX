@@ -13,7 +13,7 @@ import StarPlayrKit
 
 // MARK: Pane
 
-/// Takes the channel list's place, same height, so the panel doesn't change size.
+/// Lies over the channel list and fills its area, so the panel doesn't change size.
 struct LyricsPane: View {
     @EnvironmentObject var radio: Radio
     @ObservedObject private var menu = MenuController.shared
@@ -55,8 +55,7 @@ struct LyricsPane: View {
                         .multilineTextAlignment(.center).padding(.horizontal, 20)
                     Spacer()
                 }
-                .frame(maxWidth: .infinity)
-                .frame(height: menu.listHeight)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
         // Follows the song: a new title (or opening the pane) starts the fetch.
@@ -106,7 +105,7 @@ struct LyricsPane: View {
                 .background(Group { if !lyrics.synced { SkinnyScrollers().frame(width: 0, height: 0) } })
             }
             .scrollIndicators(lyrics.synced ? .hidden : .automatic)
-            .frame(height: menu.listHeight)
+            .frame(maxHeight: .infinity)   // fills the channel list's area it lies over
             .padding(.trailing, -12)
             .overlay(alignment: .bottom) {
                 if let bubble {
