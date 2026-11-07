@@ -113,7 +113,8 @@ struct LyricsPane: View {
             // the header (8 pt) and down to the footer (10 pt), and only fade out (28 pt) once
             // they pass behind the header or the footer's buttons.
             // (A fade, not a blur: crisper, and cheap enough to redraw while the lyrics scroll.)
-            .padding(.top, -36).padding(.bottom, -38)
+            // The mask goes on before the negative padding: negative padding doesn't grow the
+            // view's bounds, so a mask after it would sit inside the field and fade there.
             .mask {
                 VStack(spacing: 0) {
                     LinearGradient(colors: [.clear, .black], startPoint: .top, endPoint: .bottom).frame(height: 28)
@@ -121,6 +122,7 @@ struct LyricsPane: View {
                     LinearGradient(colors: [.black, .clear], startPoint: .top, endPoint: .bottom).frame(height: 28)
                 }
             }
+            .padding(.top, -36).padding(.bottom, -38)
             .overlay(alignment: .bottom) {
                 if let bubble {
                     Text(bubble)
