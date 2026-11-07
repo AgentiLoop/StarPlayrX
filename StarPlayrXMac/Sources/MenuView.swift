@@ -149,6 +149,8 @@ struct MenuView: View {
     @State private var artFitHeight: CGFloat?
     /// Height of the sub-chip row (Sports → NFL, …), 0 when hidden; the channel list shrinks by it.
     @State private var subRowHeight: CGFloat = 0
+    /// Shared by the Channels, Lyrics and Album Art buttons' selection bubble, so it slides between them.
+    @Namespace private var modeBubble
 
     /// Drag the header to pull the panel off the menu bar; let go far enough away and the same
     /// panel stays where it was dropped (torn off). Once torn off, dragging just moves it.
@@ -308,12 +310,16 @@ struct MenuView: View {
             menu.bigArt = true
         }
         .disabled(shownArtURL == nil)
+        // Which button is lit, so the bubble slides from one to the next when it changes.
+        let mode = artMode ? 2 : (menu.lyrics ? 1 : 0)
         if #available(macOS 26.0, *) {
             HStack(spacing: 0) { list; lyrics; art }
+                .animation(.spring(response: 0.35, dampingFraction: 0.8), value: mode)
                 .padding(.horizontal, 4)
                 .glassEffect(.regular.interactive(), in: Capsule())
         } else {
             HStack(spacing: 0) { list; lyrics; art }
+                .animation(.spring(response: 0.35, dampingFraction: 0.8), value: mode)
         }
 
     }
@@ -349,10 +355,16 @@ struct MenuView: View {
             Image(systemName: symbol)
                 .font(.system(size: 13, weight: .semibold))
                 .frame(width: 16, height: 16)
-                .foregroundStyle(selected ? Color.accentColor : Color.secondary)
+                .foregroundStyle(selected ? Color.white : Color.secondary)
                 .padding(.horizontal, 6)
                 .padding(.vertical, 3)
-                .background(Capsule().fill(selected ? Color.primary.opacity(0.12) : Color.clear))
+                .background {
+                    // One bubble shared by the three buttons: it slides to whichever is selected.
+                    if selected {
+                        Capsule().fill(Color.primary.opacity(0.12))
+                            .matchedGeometryEffect(id: "modeBubble", in: modeBubble)
+                    }
+                }
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
