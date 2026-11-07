@@ -241,11 +241,11 @@ struct MenuView: View {
             // also toggle the lyrics).
             .onTapGesture(count: 2) {}
             .onTapGesture { PlayerState.shared.tapTitles() }
-            // Top right of the panel: the "All Stars" star (as on iOS; the list shows only the starred
-            // channels) on Liquid Glass, and under it the current channel's star (in or out of the presets).
-            // Same size and trailing edge as the row stars.
-            VStack(spacing: 15) {
-                allStarsButton
+            // Top right of the panel: the Lyrics and Album Art buttons and the "All Stars" star (as on
+            // iOS; the list shows only the starred channels) on Liquid Glass, and under the star the
+            // current channel's star (in or out of the presets). Same size and trailing edge as the row stars.
+            VStack(alignment: .trailing, spacing: 15) {
+                glassButtons
                 if let ch = radio.current {
                     let starred = radio.presets.contains(ch.id)
                     Button { radio.togglePreset(ch.id) } label: {
@@ -259,6 +259,7 @@ struct MenuView: View {
                     .buttonStyle(.plain)
                     .help(starred ? "Remove from stars" : "Add to stars")
                     .accessibilityLabel(starred ? "Remove \(ch.name) from stars" : "Add \(ch.name) to stars")   // as on iOS
+                    .padding(.trailing, 6)   // under the star's glyph, not its glass circle
                 }
             }
             .padding(.trailing, 2)
@@ -266,10 +267,24 @@ struct MenuView: View {
         }
     }
 
-    /// The "All Stars" filter star, on a Liquid Glass circle where the system has it.
-    @ViewBuilder private var allStarsButton: some View {
+    /// The Lyrics and Album Art buttons and the "All Stars" filter star, each on a Liquid Glass
+    /// circle where the system has it (as the iOS toolbar).
+    @ViewBuilder private var glassButtons: some View {
+        // Lyrics in the channel list's place and back again (as on iOS: the glyph shows what comes next).
+        let lyrics = glassButton(menu.lyrics ? "list.bullet" : "quote.bubble",
+                                 help: menu.lyrics ? "Show the channel list" : "Show the song's lyrics",
+                                 label: menu.lyrics ? "Channels" : "Lyrics") {
+            menu.bigArt = false
+            menu.lyrics.toggle()
+        }
+        // The art full size over the list or lyrics, and away again.
+        let art = glassButton("photo", help: menu.bigArt ? "Hide the full-size art" : "Show the art full size",
+                              label: menu.bigArt ? "Hide Album Art" : "Album Art") {
+            menu.bigArt.toggle()
+        }
+        .disabled(shownArtURL == nil)
         // Clicking it also brings the channel list back over the lyrics or big art, so the change shows.
-        let button = Button { PlayerState.shared.tapStars() } label: {
+        let stars = Button { PlayerState.shared.tapStars() } label: {
             Image(menu.starsOnly ? "star_on" : "star_off")
                 .renderingMode(menu.starsOnly ? .original : .template)
                 .resizable()
@@ -282,10 +297,31 @@ struct MenuView: View {
         .help(menu.starsOnly ? "Show every channel" : "Show only starred channels")
         .accessibilityLabel(menu.starsOnly ? "All Stars On" : "All Stars Off")
         if #available(macOS 26.0, *) {
-            button.glassEffect(.regular.interactive(), in: Circle())
+            GlassEffectContainer(spacing: 8) {
+                HStack(spacing: 8) {
+                    lyrics.glassEffect(.regular.interactive(), in: Circle())
+                    art.glassEffect(.regular.interactive(), in: Circle())
+                    stars.glassEffect(.regular.interactive(), in: Circle())
+                }
+            }
         } else {
-            button
+            HStack(spacing: 8) { lyrics; art; stars }
         }
+    }
+
+    /// One of the glass circle buttons: an SF Symbol sized like the star glyph, so the circles match.
+    private func glassButton(_ symbol: String, help: String, label: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: symbol)
+                .font(.system(size: 13, weight: .semibold))
+                .frame(width: 16, height: 16)
+                .foregroundStyle(Color.secondary)
+                .padding(6)
+                .contentShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .help(help)
+        .accessibilityLabel(label)
     }
 
     /// Previous, play/pause and next, centred on their own row under the titles (as on iOS).
