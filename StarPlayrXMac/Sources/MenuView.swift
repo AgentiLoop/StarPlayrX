@@ -279,12 +279,11 @@ struct MenuView: View {
     /// Liquid Glass capsule where the system has it (as a grouped toolbar).
     @ViewBuilder private var glassButtons: some View {
         // Lyrics in the channel list's place and back again (as on iOS: the glyph shows what comes next).
-        // Over the big art it always means lyrics, since the lyrics are what's hidden behind it.
-        let showsList = menu.lyrics && !menu.bigArt
-        let lyrics = glassButton(showsList ? "list.bullet" : "quote.bubble",
-                                 help: showsList ? "Show the channel list" : "Show the song's lyrics",
-                                 label: showsList ? "Channels" : "Lyrics") {
-            if menu.bigArt { menu.bigArt = false; menu.lyrics = true } else { menu.lyrics.toggle() }
+        let lyrics = glassButton(menu.lyrics ? "list.bullet" : "quote.bubble",
+                                 help: menu.lyrics ? "Show the channel list" : "Show the song's lyrics",
+                                 label: menu.lyrics ? "Channels" : "Lyrics") {
+            menu.bigArt = false
+            menu.lyrics.toggle()
         }
         // The art full size over the list or lyrics, and away again.
         let art = glassButton("photo", help: menu.bigArt ? "Hide the full-size art" : "Show the art full size",
