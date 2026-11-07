@@ -538,6 +538,8 @@ struct MenuView: View {
             glassButton("xmark", help: "Close", label: "Close") { menu.hide() }
             accountMenu
         }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("AirPlay, Close and Account")
         if #available(macOS 26.0, *) {
             buttons
                 .padding(.horizontal, 4)
