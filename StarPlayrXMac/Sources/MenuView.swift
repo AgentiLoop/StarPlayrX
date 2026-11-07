@@ -286,7 +286,7 @@ struct MenuView: View {
         }
     }
 
-    /// The Channel List, Album Art and Lyrics buttons side by side on one Liquid Glass capsule where
+    /// The Channel List, Lyrics and Album Art buttons side by side on one Liquid Glass capsule where
     /// the system has it (a grouped toolbar), bottom left of the window.
     @ViewBuilder private var glassButtons: some View {
         // The channel list, from the lyrics or big art.
@@ -306,11 +306,11 @@ struct MenuView: View {
         }
         .disabled(shownArtURL == nil)
         if #available(macOS 26.0, *) {
-            HStack(spacing: 0) { list; art; lyrics }
+            HStack(spacing: 0) { list; lyrics; art }
                 .padding(.horizontal, 4)
                 .glassEffect(.regular.interactive(), in: Capsule())
         } else {
-            HStack(spacing: 0) { list; art; lyrics }
+            HStack(spacing: 0) { list; lyrics; art }
         }
 
     }
