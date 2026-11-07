@@ -65,12 +65,13 @@ struct MenuView: View {
                         } else {
                             // One row: the search field on the left, the category chips (as on iOS;
                             // StarPlayrKit's ChannelGroup) scrolling sideways beside it.
-                            HStack(spacing: 13.5) {
+                            HStack(spacing: 6.75) {
                                 SearchField(text: $menu.search, placeholder: "Search")
                                     .frame(width: 168)   // half the 336pt content width
                                 CategoryBar(titles: ChannelGroup.groups(radio.channels), all: "All Channels",
                                             selected: $menu.category, inset: 0)
                                     .padding(.vertical, -8)   // the chips' own padding; the search field sets the row height
+                                    .padding(.trailing, -12)  // the chips scroll out to the panel's right edge
                             }
                             // A group opens a second row with its own chips (Sports → NFL, NBA, …).
                             if let group = menu.category,
