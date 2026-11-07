@@ -20,10 +20,6 @@ struct SearchField: NSViewRepresentable {
         field.placeholderString = placeholder
         field.setAccessibilityLabel(placeholder)
         field.contentType = nil
-        // No bezel or background of its own: the Liquid Glass capsule behind it (MenuView) is the box.
-        field.isBezeled = false
-        field.drawsBackground = false
-        field.focusRingType = .none
         field.isAutomaticTextCompletionEnabled = false
         field.sendsSearchStringImmediately = true
         field.sendsWholeSearchString = false
