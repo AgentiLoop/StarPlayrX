@@ -266,8 +266,8 @@ struct MenuView: View {
         }
     }
 
-    /// The Lyrics and Album Art buttons and the "All Stars" filter star, each on a Liquid Glass
-    /// circle where the system has it (as the iOS toolbar).
+    /// The Lyrics and Album Art buttons and the "All Stars" filter star, together on one Liquid Glass
+    /// capsule where the system has it (as a grouped toolbar).
     @ViewBuilder private var glassButtons: some View {
         // Lyrics in the channel list's place and back again (as on iOS: the glyph shows what comes next).
         let lyrics = glassButton(menu.lyrics ? "list.bullet" : "quote.bubble",
@@ -296,13 +296,10 @@ struct MenuView: View {
         .help(menu.starsOnly ? "Show every channel" : "Show only starred channels")
         .accessibilityLabel(menu.starsOnly ? "All Stars On" : "All Stars Off")
         if #available(macOS 26.0, *) {
-            GlassEffectContainer(spacing: 8) {
-                HStack(spacing: 8) {
-                    lyrics.glassEffect(.regular.interactive(), in: Circle())
-                    art.glassEffect(.regular.interactive(), in: Circle())
-                    stars.glassEffect(.regular.interactive(), in: Circle())
-                }
-            }
+            // One glass capsule around all three (a single toolbar group), not a circle each.
+            HStack(spacing: 4) { lyrics; art; stars }
+                .padding(.horizontal, 4)
+                .glassEffect(.regular.interactive(), in: Capsule())
         } else {
             HStack(spacing: 8) { lyrics; art; stars }
         }
