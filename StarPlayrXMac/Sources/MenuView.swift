@@ -160,11 +160,16 @@ struct MenuView: View {
 
 
 
-    /// Art, titles and star on top; previous, play/pause and next centred under them (as on iOS).
+    /// Art and titles on top; previous, play/pause and next centred under them (as on iOS).
+    /// On the right, beside both rows: the vertical toolbar group, and the channel's star top right.
     private var nowPlaying: some View {
-        VStack(spacing: 6) {
-            nowPlayingRow
-            controls
+        HStack(alignment: .top, spacing: 8) {
+            VStack(spacing: 6) {
+                nowPlayingRow
+                controls
+            }
+            glassButtons
+            channelStar
         }
     }
 
@@ -240,34 +245,32 @@ struct MenuView: View {
             // also toggle the lyrics).
             .onTapGesture(count: 2) {}
             .onTapGesture { PlayerState.shared.tapTitles() }
-            // Top right of the panel: the Lyrics and Album Art buttons and the "All Stars" star (as on
-            // iOS; the list shows only the starred channels) on Liquid Glass, and under the star the
-            // current channel's star (in or out of the presets). Same size and trailing edge as the row stars.
-            VStack(alignment: .trailing, spacing: 15) {
-                glassButtons
-                if let ch = radio.current {
-                    let starred = radio.presets.contains(ch.id)
-                    Button { radio.togglePreset(ch.id) } label: {
-                        Image(starred ? "star_on" : "star_off")
-                            .renderingMode(starred ? .original : .template)
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 16, height: 16)
-                            .foregroundStyle(Color.secondary)
-                    }
-                    .buttonStyle(.plain)
-                    .help(starred ? "Remove from stars" : "Add to stars")
-                    .accessibilityLabel(starred ? "Remove \(ch.name) from stars" : "Add \(ch.name) to stars")   // as on iOS
-                    .padding(.trailing, 10)   // under the star's glyph (6 + the capsule's 4), not the glass edge
-                }
-            }
-            .padding(.trailing, 2)
-            .frame(height: 64, alignment: .top)   // as tall as the art, from its top edge
         }
     }
 
-    /// The Lyrics and Album Art buttons and the "All Stars" filter star, together on one Liquid Glass
-    /// capsule where the system has it (as a grouped toolbar).
+    /// The current channel's star (in or out of the presets), top right of the panel.
+    /// Same size as the row stars; its glyph lines up with the toolbar group's first glyph.
+    @ViewBuilder private var channelStar: some View {
+        if let ch = radio.current {
+            let starred = radio.presets.contains(ch.id)
+            Button { radio.togglePreset(ch.id) } label: {
+                Image(starred ? "star_on" : "star_off")
+                    .renderingMode(starred ? .original : .template)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 16, height: 16)
+                    .foregroundStyle(Color.secondary)
+            }
+            .buttonStyle(.plain)
+            .help(starred ? "Remove from stars" : "Add to stars")
+            .accessibilityLabel(starred ? "Remove \(ch.name) from stars" : "Add \(ch.name) to stars")   // as on iOS
+            .padding(.top, 10)   // level with the first glyph (capsule's 4 + button's 6)
+            .padding(.trailing, 2)
+        }
+    }
+
+    /// The Lyrics and Album Art buttons and the "All Stars" filter star, stacked vertically on one
+    /// Liquid Glass capsule where the system has it (as a grouped toolbar).
     @ViewBuilder private var glassButtons: some View {
         // Lyrics in the channel list's place and back again (as on iOS: the glyph shows what comes next).
         let lyrics = glassButton(menu.lyrics ? "list.bullet" : "quote.bubble",
@@ -296,12 +299,12 @@ struct MenuView: View {
         .help(menu.starsOnly ? "Show every channel" : "Show only starred channels")
         .accessibilityLabel(menu.starsOnly ? "All Stars On" : "All Stars Off")
         if #available(macOS 26.0, *) {
-            // One glass capsule around all three (a single toolbar group), not a circle each.
-            HStack(spacing: 4) { lyrics; art; stars }
-                .padding(.horizontal, 4)
+            // One vertical glass capsule around all three (a single toolbar group).
+            VStack(spacing: 4) { lyrics; art; stars }
+                .padding(.vertical, 4)
                 .glassEffect(.regular.interactive(), in: Capsule())
         } else {
-            HStack(spacing: 8) { lyrics; art; stars }
+            VStack(spacing: 8) { lyrics; art; stars }
         }
     }
 
