@@ -107,6 +107,15 @@ struct LyricsPane: View {
             .scrollIndicators(lyrics.synced ? .hidden : .automatic)
             .frame(maxHeight: .infinity)   // fills the channel list's area it lies over
             .padding(.trailing, -12)
+            // Lines fade out at the top and bottom edges instead of being cut off there.
+            // (A fade, not a blur: crisper, and cheap enough to redraw while the lyrics scroll.)
+            .mask {
+                VStack(spacing: 0) {
+                    LinearGradient(colors: [.clear, .black], startPoint: .top, endPoint: .bottom).frame(height: 28)
+                    Color.black
+                    LinearGradient(colors: [.black, .clear], startPoint: .top, endPoint: .bottom).frame(height: 28)
+                }
+            }
             .overlay(alignment: .bottom) {
                 if let bubble {
                     Text(bubble)
