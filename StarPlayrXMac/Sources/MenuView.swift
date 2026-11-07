@@ -8,6 +8,7 @@
 //
 
 import SwiftUI
+import AVKit
 import StarPlayrKit
 
 struct MenuView: View {
@@ -473,14 +474,43 @@ struct MenuView: View {
             Text(Self.version).font(.caption).foregroundStyle(.tertiary).offset(y: 2)
                 .accessibilityLabel("Version \(Self.version.dropFirst())")
             Spacer()
-            // Close: under the menu bar it just hides the panel; torn off it closes the window.
-            Button("Close") { menu.hide() }
-            if radio.isLoggedIn {
-                Button("Sign Out") { radio.signOut() }
-            }
-            Button("Quit") { NSApp.terminate(nil) }
+            footerButtons
         }
     }
+
+    /// AirPlay, Close, Sign Out and Quit on one horizontal Liquid Glass capsule where the system
+    /// has it (a grouped toolbar, like the vertical one beside the now-playing area).
+    @ViewBuilder private var footerButtons: some View {
+        let buttons = HStack(spacing: 0) {
+            AirPlayButton()
+                .frame(width: 28, height: 22)
+                .help("AirPlay")
+                .accessibilityLabel("AirPlay")
+            // Close: under the menu bar it just hides the panel; torn off it closes the window.
+            glassButton("xmark", help: "Close", label: "Close") { menu.hide() }
+            if radio.isLoggedIn {
+                glassButton("rectangle.portrait.and.arrow.right", help: "Sign Out", label: "Sign Out") { radio.signOut() }
+            }
+            glassButton("power", help: "Quit StarPlayrX", label: "Quit") { NSApp.terminate(nil) }
+        }
+        if #available(macOS 26.0, *) {
+            buttons
+                .padding(.horizontal, 4)
+                .glassEffect(.regular.interactive(), in: Capsule())
+        } else {
+            buttons
+        }
+    }
+}
+
+/// The system AirPlay route picker (AVKit), for sending the audio to AirPlay speakers.
+private struct AirPlayButton: NSViewRepresentable {
+    func makeNSView(context: Context) -> AVRoutePickerView {
+        let picker = AVRoutePickerView()
+        picker.isRoutePickerButtonBordered = false
+        return picker
+    }
+    func updateNSView(_ nsView: AVRoutePickerView, context: Context) {}
 }
 
 /// Tear off, put back and roll up as VoiceOver actions on the header. The gestures that do the
