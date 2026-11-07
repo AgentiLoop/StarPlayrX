@@ -68,6 +68,8 @@ struct MenuView: View {
                             HStack(spacing: 6.75) {
                                 SearchField(text: $menu.search, placeholder: "Search")
                                     .frame(width: 168)   // half the 336pt content width
+                                    .padding(.leading, -2)
+                                    .padding(.trailing, 2)
                                 CategoryBar(titles: ChannelGroup.groups(radio.channels), all: "All Channels",
                                             selected: $menu.category, inset: 0)
                                     .padding(.vertical, -8)   // the chips' own padding; the search field sets the row height
