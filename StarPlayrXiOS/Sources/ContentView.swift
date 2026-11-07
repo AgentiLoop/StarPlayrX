@@ -695,7 +695,8 @@ struct ChannelFilters: View {
                 // The search field takes the left half, the chips the right.
                 HStack(spacing: 0) {
                     SearchField(text: $app.search, prompt: "Search")
-                        .padding(.leading)
+                        // Half the usual 16 from the screen edge: the field gets 8 pt more width.
+                        .padding(.leading, 8)
                         .padding(.trailing, 8)
                         .frame(maxWidth: .infinity)
                     groups
