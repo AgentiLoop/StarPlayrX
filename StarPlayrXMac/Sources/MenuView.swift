@@ -79,6 +79,7 @@ struct MenuView: View {
                                 CategoryBar(titles: subs, all: "All \(group)", selected: $menu.subcategory,
                                             small: true, inset: 0)
                                     .padding(.vertical, -4)
+                                    .padding(.horizontal, -12)  // the small chips run edge to edge of the panel
                             }
                             channelList
                         }
