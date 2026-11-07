@@ -21,7 +21,7 @@ StarPlayrX was built for visually impaired listeners, a group of paying subscrib
 ## 🎛️ StarPlayrX for Mac (menu bar app)
 
 <p align="center">
-  <img src="docs/starplayrx-mac-demo.gif" width="400" alt="StarPlayrX playing Always Alright by Alabama Shakes: click the menu bar icon, drag the panel off the menu bar into its own window, double-click the header to roll it up like a window shade and again to roll it down, then click the icon to glide it back under the menu bar">
+  <img src="docs/starplayrx-mac-demo.gif" width="400" alt="StarPlayrX playing Why Can&#39;t I? by Liz Phair: click the menu bar icon, drag the panel off the menu bar into its own window, double-click the header to roll it up like a window shade and again to roll it down, then click the icon to glide it back under the menu bar">
 </p>
 
 <table align="center">
@@ -49,11 +49,11 @@ StarPlayrX was built for visually impaired listeners, a group of paying subscrib
 <table align="center">
   <tr>
     <td align="center" valign="top" width="50%">
-      <img src="docs/screenshot-mac-album-art.png" width="300" alt="StarPlayrX under the menu bar showing the Welcome to the Pleasuredome album art full size for Relax by Frankie Goes To Hollywood on 80s on 8"><br>
+      <img src="docs/screenshot-mac-album-art.png" width="300" alt="StarPlayrX under the menu bar showing The Joshua Tree album art full size for Where The Streets Have No Name by U2 on 80s on 8"><br>
       <b>🖼️ Click the art, see it big</b>
     </td>
     <td align="center" valign="top" width="50%">
-      <img src="docs/screenshot-mac-album-art-2.png" width="300" alt="StarPlayrX under the menu bar showing the album art full size for Groove Line by Heatwave on 70s on 7"><br>
+      <img src="docs/screenshot-mac-album-art-2.png" width="300" alt="StarPlayrX under the menu bar showing the album art full size for Half-Breed by Cher on 70s on 7"><br>
       <b>📻 It follows the song</b>
     </td>
   </tr>
@@ -67,11 +67,11 @@ StarPlayrX was built for visually impaired listeners, a group of paying subscrib
 <table align="center">
   <tr>
     <td align="center" valign="top" width="50%">
-      <img src="docs/screenshot-mac-lyrics.png" width="300" alt="StarPlayrX under the menu bar showing time-synced lyrics for Miss Independent by Kelly Clarkson on Unwell Music, with the line being sung in bold"><br>
+      <img src="docs/screenshot-mac-lyrics.png" width="300" alt="StarPlayrX under the menu bar showing time-synced lyrics for Where The Streets Have No Name by U2 on 80s on 8"><br>
       <b>🎤 Sing along from the menu bar</b>
     </td>
     <td align="center" valign="top" width="50%">
-      <img src="docs/screenshot-mac-lyrics-2.png" width="300" alt="StarPlayrX under the menu bar showing time-synced lyrics for American Girls by Harry Styles on SiriusXM Hits 1"><br>
+      <img src="docs/screenshot-mac-lyrics-2.png" width="300" alt="StarPlayrX under the menu bar showing time-synced lyrics for Why Can&#39;t I? by Liz Phair on Pop2K"><br>
       <b>📜 The lyrics follow the song</b>
     </td>
   </tr>
@@ -109,7 +109,7 @@ StarPlayrX was built for visually impaired listeners, a group of paying subscrib
   </tr>
 </table>
 
-- **Stars (presets):** every channel row has a star; click it to add the channel to your presets or take it out. The star beside the play button stars the playing channel, and the star beside the search field shows just your starred channels. Stars are kept on this Mac, under the same key and with the same starting set as the iOS app
+- **Stars (presets):** every channel row has a star; click it to add the channel to your presets or take it out. The star beside the play button stars the playing channel, and the All Stars button at the top right shows just your starred channels. Stars are kept on this Mac, under the same key and with the same starting set as the iOS app
 - **Liquid Glass** look on macOS 26 and later
 - **AppleScript support:** play, stop, resume, and step through channels, read what each channel shows and what's actually playing (artist, song, artwork), list channels by category, search, scroll, tear off, park, and shade the window, pick the bubble mode. Open the StarPlayrX dictionary in Script Editor to see every command
 - Search channels, artists and songs
@@ -125,7 +125,7 @@ StarPlayrX was built for visually impaired listeners, a group of paying subscrib
 
 **Requirements:** macOS 13 Ventura or later, Apple Silicon or Intel, and an active SiriusXM subscription.
 
-**Download:** [StarPlayrX for Mac 1.1.23](https://github.com/AgentiLoop/StarPlayrX/releases/tag/mac-1.1.23) (signed and notarized). All builds are on the [Releases](https://github.com/AgentiLoop/StarPlayrX/releases) page.
+**Download:** [StarPlayrX for Mac 1.1.31](https://github.com/AgentiLoop/StarPlayrX/releases/tag/mac-1.1.31) (signed and notarized). All builds are on the [Releases](https://github.com/AgentiLoop/StarPlayrX/releases) page.
 
 ### 📜 AppleScript
 
