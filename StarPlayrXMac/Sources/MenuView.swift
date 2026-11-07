@@ -240,7 +240,7 @@ struct MenuView: View {
             // Top right of the panel: the "All Stars" star (as on iOS; the list shows only the starred
             // channels) on Liquid Glass, and under it the current channel's star (in or out of the presets).
             // Same size and trailing edge as the row stars.
-            VStack(spacing: 8) {
+            VStack(spacing: 13) {
                 allStarsButton
                 if let ch = radio.current {
                     let starred = radio.presets.contains(ch.id)
