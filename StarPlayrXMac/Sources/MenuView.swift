@@ -278,16 +278,16 @@ struct MenuView: View {
     /// The Lyrics and Album Art buttons and the "All Stars" filter star, stacked vertically on one
     /// Liquid Glass capsule where the system has it (as a grouped toolbar).
     @ViewBuilder private var glassButtons: some View {
-        // Lyrics in the channel list's place and back again. Lit (filled, accent) while the lyrics show,
+        // Lyrics in the channel list's place and back again. Filled while the lyrics show,
         // like the stars button, so a click on the titles shows here too.
         let lyricsOn = menu.lyrics && !menu.bigArt
-        let lyrics = glassButton(lyricsOn ? "quote.bubble.fill" : "quote.bubble", on: lyricsOn,
+        let lyrics = glassButton(lyricsOn ? "quote.bubble.fill" : "quote.bubble",
                                  help: lyricsOn ? "Show the channel list" : "Show the song's lyrics",
                                  label: lyricsOn ? "Lyrics On" : "Lyrics Off") {
             if menu.bigArt { menu.bigArt = false; menu.lyrics = true } else { menu.lyrics.toggle() }
         }
-        // The art full size over the list or lyrics, and away again. Lit while the big art shows.
-        let art = glassButton(menu.bigArt ? "photo.fill" : "photo", on: menu.bigArt,
+        // The art full size over the list or lyrics, and away again. Filled while the big art shows.
+        let art = glassButton(menu.bigArt ? "photo.fill" : "photo",
                               help: menu.bigArt ? "Hide the full-size art" : "Show the art full size",
                               label: menu.bigArt ? "Album Art On" : "Album Art Off") {
             menu.bigArt.toggle()
@@ -318,13 +318,12 @@ struct MenuView: View {
     }
 
     /// One of the glass circle buttons: an SF Symbol sized like the star glyph, so the circles match.
-    /// `on` lights it in the accent colour, as the stars button is while it's on.
-    private func glassButton(_ symbol: String, on: Bool, help: String, label: String, action: @escaping () -> Void) -> some View {
+    private func glassButton(_ symbol: String, help: String, label: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: symbol)
                 .font(.system(size: 13, weight: .semibold))
                 .frame(width: 16, height: 16)
-                .foregroundStyle(on ? Color.accentColor : Color.secondary)
+                .foregroundStyle(Color.secondary)
                 .padding(.horizontal, 6)
                 .padding(.vertical, 3)
                 .contentShape(Rectangle())
@@ -488,7 +487,7 @@ struct MenuView: View {
                 .help("AirPlay")
                 .accessibilityLabel("AirPlay")
             // Close: under the menu bar it just hides the panel; torn off it closes the window.
-            glassButton("xmark", on: false, help: "Close", label: "Close") { menu.hide() }
+            glassButton("xmark", help: "Close", label: "Close") { menu.hide() }
             accountMenu
         }
         if #available(macOS 26.0, *) {
