@@ -293,12 +293,12 @@ struct PlayerView: View {
             } else {
                 // Side by side, split down the middle: the fold is halfway across the whole window,
                 // and this view is inset by the status bar and toolbar along the right edge, so the
-                // left pane is that much less than half — the divider then lies on the fold.
+                // left pane is that much less than half — the list then starts at the fold. No
+                // divider between the panes: a line down the middle looks like a crease.
                 let fold = (geo.size.width + geo.safeAreaInsets.leading + geo.safeAreaInsets.trailing) / 2
                     - geo.safeAreaInsets.leading
                 HStack(spacing: 0) {
                     nowPlayingPane.frame(width: fold)
-                    Divider()
                     ChannelList(inlineFilters: true)
                 }
             }
