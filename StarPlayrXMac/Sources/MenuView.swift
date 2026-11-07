@@ -310,16 +310,14 @@ struct MenuView: View {
                 .scaledToFit()
                 .frame(width: 16, height: 16)
                 .foregroundStyle(Color.secondary)
-                .padding(.horizontal, 6)
-                .padding(.vertical, 3)
+                .padding(7)   // same on every side, so the glass is a circle
         }
         .buttonStyle(.plain)
         .help(menu.starsOnly ? "Show every channel" : "Show only starred channels")
         .accessibilityLabel(menu.starsOnly ? "All Stars On" : "All Stars Off")
         if #available(macOS 26.0, *) {
             stars
-                .padding(.vertical, 4)
-                .glassEffect(.regular.interactive(), in: Capsule())
+                .glassEffect(.regular.interactive(), in: Circle())
         } else {
             stars
         }
