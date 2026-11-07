@@ -63,14 +63,12 @@ struct MenuView: View {
                         if menu.lyrics {
                             LyricsPane()
                         } else {
-                            // One row: the search field on the left, the category chips (as on iOS;
-                            // StarPlayrKit's ChannelGroup) scrolling sideways beside it, the star on the right.
+                            // One row: the category chips (as on iOS; StarPlayrKit's ChannelGroup)
+                            // scrolling sideways, the star on the right. The search field is up in the header.
                             HStack(spacing: 13.5) {
-                                SearchField(text: $menu.search, placeholder: "Search")
-                                    .frame(width: 120)
                                 CategoryBar(titles: ChannelGroup.groups(radio.channels), all: "All Channels",
                                             selected: $menu.category, inset: 0)
-                                    .padding(.vertical, -8)   // the chips' own padding; the search field sets the row height
+                                    .padding(.vertical, -8)   // the chips' own padding
                                 // "All Stars" (as on iOS): the list shows only the starred channels.
                                 Button { menu.starsOnly.toggle() } label: {
                                     Image(menu.starsOnly ? "star_on" : "star_off")
@@ -252,23 +250,39 @@ struct MenuView: View {
             // also toggle the lyrics).
             .onTapGesture(count: 2) {}
             .onTapGesture { PlayerState.shared.tapTitles() }
-            // The star (as the iOS "All Star" button): the current channel in or out of the presets.
-            // Same size and trailing edge as the search-bar and row stars.
-            if let ch = radio.current {
-                let starred = radio.presets.contains(ch.id)
-                Button { radio.togglePreset(ch.id) } label: {
-                    Image(starred ? "star_on" : "star_off")
-                        .renderingMode(starred ? .original : .template)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 16, height: 16)
-                        .foregroundStyle(Color.secondary)
+            // Top right: the search field in a Liquid Glass capsule, with the channel's star
+            // (as the iOS "All Star" button: the current channel in or out of the presets) below it.
+            // Same star size and trailing edge as the row stars.
+            VStack(alignment: .trailing, spacing: 6) {
+                searchField
+                if let ch = radio.current {
+                    let starred = radio.presets.contains(ch.id)
+                    Button { radio.togglePreset(ch.id) } label: {
+                        Image(starred ? "star_on" : "star_off")
+                            .renderingMode(starred ? .original : .template)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 16, height: 16)
+                            .foregroundStyle(Color.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.trailing, 2)
+                    .help(starred ? "Remove from stars" : "Add to stars")
+                    .accessibilityLabel(starred ? "Remove \(ch.name) from stars" : "Add \(ch.name) to stars")   // as on iOS
                 }
-                .buttonStyle(.plain)
-                .padding(.trailing, 2)
-                .help(starred ? "Remove from stars" : "Add to stars")
-                .accessibilityLabel(starred ? "Remove \(ch.name) from stars" : "Add \(ch.name) to stars")   // as on iOS
             }
+            .frame(height: 64, alignment: .top)   // as tall as the art
+        }
+    }
+
+    /// The channel search box, on Liquid Glass where the system has it.
+    @ViewBuilder private var searchField: some View {
+        let field = SearchField(text: $menu.search, placeholder: "Search")
+            .frame(width: 120)
+        if #available(macOS 26.0, *) {
+            field.glassEffect(.regular, in: Capsule())
+        } else {
+            field
         }
     }
 
