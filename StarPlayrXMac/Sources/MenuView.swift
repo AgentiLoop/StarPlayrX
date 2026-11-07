@@ -471,8 +471,6 @@ struct MenuView: View {
 
     private var footer: some View {
         HStack {
-            Text(Self.version).font(.caption).foregroundStyle(.tertiary).offset(y: 2)
-                .accessibilityLabel("Version \(Self.version.dropFirst())")
             Spacer()
             footerButtons
         }
