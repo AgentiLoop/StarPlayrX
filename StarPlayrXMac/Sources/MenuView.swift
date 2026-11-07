@@ -613,7 +613,7 @@ private struct ChannelRow: View, Equatable {
         // The squircle reaches further out on each side than the row's content (4pt from the window
         // edge, see channelList); the content itself keeps its place so the stars still line up.
         .padding(.trailing, 12)
-        .padding(.leading, 8)     // half the former 16pt (12 + 4): content starts closer to the left edge
+        .padding(.leading, 6)     // small gap between the squircle's left edge and the channel number
 
         .padding(.trailing, -6)   // stars sit close to the squircle's right edge, lined up with the header star
         // The playing channel's row sits on a Liquid Glass squircle (translucent tint before macOS 26):
@@ -635,8 +635,8 @@ private struct ChannelRow: View, Equatable {
         // Inset from the scroll view's edges so the squircle's corners are never clipped. The list
         // extends 8pt past the content area on the left and 12pt on the right (scroll bar at the
         // window edge), so the trailing inset is 4pt larger and the squircle ends 4pt from the
-        // window edge on both sides (half the former 8pt).
-        .padding(.leading, 4)
+        // window edge on the right, 6pt on the left.
+        .padding(.leading, 6)
         .padding(.trailing, 8)
         .contentShape(Rectangle())
     }
