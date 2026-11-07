@@ -162,7 +162,7 @@ struct MenuView: View {
 
 
     /// Art and titles on top; previous, play/pause and next centred under them (as on iOS).
-    /// On the right, beside both rows: the channel's star with the vertical toolbar group under it.
+    /// On the right, beside both rows: the channel's star with the "All Stars" glass button under it.
     /// The controls are centred on the whole width, as if that column weren't there; only the
     /// titles make room for it.
     private var nowPlaying: some View {
@@ -174,8 +174,8 @@ struct MenuView: View {
             }
             VStack(spacing: 2) {
                 channelStar
-                glassButtons
-                    .padding(.top, 12)   // a little lower, under the star
+                starsButton
+                    .padding(.top, 34)   // where it sat in the old vertical group (under the art button)
             }
         }
     }
@@ -275,8 +275,8 @@ struct MenuView: View {
         }
     }
 
-    /// The Lyrics and Album Art buttons and the "All Stars" filter star, stacked vertically on one
-    /// Liquid Glass capsule where the system has it (as a grouped toolbar).
+    /// The Album Art and Lyrics buttons side by side on one Liquid Glass capsule where the system
+    /// has it (a grouped toolbar), bottom left of the window.
     @ViewBuilder private var glassButtons: some View {
         // Lyrics in the channel list's place and back again (as on iOS: the glyph shows what comes next).
         let lyrics = glassButton(menu.lyrics ? "list.bullet" : "quote.bubble",
@@ -291,7 +291,18 @@ struct MenuView: View {
             menu.bigArt.toggle()
         }
         .disabled(shownArtURL == nil)
-        // Clicking it also brings the channel list back over the lyrics or big art, so the change shows.
+        if #available(macOS 26.0, *) {
+            HStack(spacing: 0) { art; lyrics }
+                .padding(.horizontal, 4)
+                .glassEffect(.regular.interactive(), in: Capsule())
+        } else {
+            HStack(spacing: 0) { art; lyrics }
+        }
+    }
+
+    /// The "All Stars" filter star on its own Liquid Glass capsule, under the channel's star.
+    /// Clicking it also brings the channel list back over the lyrics or big art, so the change shows.
+    @ViewBuilder private var starsButton: some View {
         let stars = Button { PlayerState.shared.tapStars() } label: {
             Image(menu.starsOnly ? "star_on" : "star_off")
                 .renderingMode(menu.starsOnly ? .original : .template)
@@ -306,12 +317,11 @@ struct MenuView: View {
         .help(menu.starsOnly ? "Show every channel" : "Show only starred channels")
         .accessibilityLabel(menu.starsOnly ? "All Stars On" : "All Stars Off")
         if #available(macOS 26.0, *) {
-            // One vertical glass capsule around all three (a single toolbar group).
-            VStack(spacing: 0) { art; stars; lyrics }
+            stars
                 .padding(.vertical, 4)
                 .glassEffect(.regular.interactive(), in: Capsule())
         } else {
-            VStack(spacing: 0) { art; stars; lyrics }
+            stars
         }
     }
 
@@ -471,13 +481,14 @@ struct MenuView: View {
 
     private var footer: some View {
         HStack {
+            if radio.isLoggedIn { glassButtons }
             Spacer()
             footerButtons
         }
     }
 
     /// AirPlay, Close and the account menu on one horizontal Liquid Glass capsule where the system
-    /// has it (a grouped toolbar, like the vertical one beside the now-playing area).
+    /// has it (a grouped toolbar, like the Album Art and Lyrics one on the left).
     @ViewBuilder private var footerButtons: some View {
         let buttons = HStack(spacing: 0) {
             AirPlayButton()
