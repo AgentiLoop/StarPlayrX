@@ -300,7 +300,7 @@ struct MenuView: View {
         }
     }
 
-    /// The "All Stars" filter star on its own Liquid Glass capsule, under the channel's star.
+    /// The "All Stars" filter star on its own Liquid Glass circle, above the channel's star.
     /// Clicking it also brings the channel list back over the lyrics or big art, so the change shows.
     @ViewBuilder private var starsButton: some View {
         let stars = Button { PlayerState.shared.tapStars() } label: {
