@@ -289,20 +289,23 @@ struct MenuView: View {
     /// The Channel List, Lyrics and Album Art buttons side by side on one Liquid Glass capsule where
     /// the system has it (a grouped toolbar), bottom left of the window.
     @ViewBuilder private var glassButtons: some View {
+        // The mode showing now, highlighted on its button.
+        let artMode = bigArtURL != nil
         // The channel list, from the lyrics or big art.
-        let list = glassButton("list.bullet", help: "Show the channel list", label: "Channels") {
+        let list = glassButton("list.bullet", help: "Show the channel list", label: "Channels",
+                               selected: !artMode && !menu.lyrics) {
             menu.bigArt = false
             menu.lyrics = false
         }
         // The lyrics in the channel list's place.
-        let lyrics = glassButton("quote.bubble", help: "Show the song's lyrics", label: "Lyrics") {
+        let lyrics = glassButton("quote.bubble", help: "Show the song's lyrics", label: "Lyrics",
+                                 selected: !artMode && menu.lyrics) {
             menu.bigArt = false
             menu.lyrics = true
         }
-        // The art full size over the list or lyrics, and away again.
-        let art = glassButton("photo", help: menu.bigArt ? "Hide the full-size art" : "Show the art full size",
-                              label: menu.bigArt ? "Hide Album Art" : "Album Art") {
-            menu.bigArt.toggle()
+        // The art full size over the list or lyrics.
+        let art = glassButton("photo", help: "Show the art full size", label: "Album Art", selected: artMode) {
+            menu.bigArt = true
         }
         .disabled(shownArtURL == nil)
         if #available(macOS 26.0, *) {
@@ -339,19 +342,23 @@ struct MenuView: View {
     }
 
     /// One of the glass circle buttons: an SF Symbol sized like the star glyph, so the circles match.
-    private func glassButton(_ symbol: String, help: String, label: String, action: @escaping () -> Void) -> some View {
+    /// The selected one (the mode showing now) is drawn in the accent colour on a soft capsule.
+    private func glassButton(_ symbol: String, help: String, label: String, selected: Bool = false,
+                             action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: symbol)
                 .font(.system(size: 13, weight: .semibold))
                 .frame(width: 16, height: 16)
-                .foregroundStyle(Color.secondary)
+                .foregroundStyle(selected ? Color.accentColor : Color.secondary)
                 .padding(.horizontal, 6)
                 .padding(.vertical, 3)
+                .background(Capsule().fill(selected ? Color.primary.opacity(0.12) : Color.clear))
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .help(help)
         .accessibilityLabel(label)
+        .accessibilityAddTraits(selected ? .isSelected : [])
     }
 
     /// Previous, play/pause and next, centred on their own row under the titles (as on iOS).
