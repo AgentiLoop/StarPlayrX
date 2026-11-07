@@ -268,7 +268,8 @@ struct MenuView: View {
 
     /// The "All Stars" filter star, on a Liquid Glass circle where the system has it.
     @ViewBuilder private var allStarsButton: some View {
-        let button = Button { menu.starsOnly.toggle() } label: {
+        // Clicking it also brings the channel list back over the lyrics or big art, so the change shows.
+        let button = Button { PlayerState.shared.tapStars() } label: {
             Image(menu.starsOnly ? "star_on" : "star_off")
                 .renderingMode(menu.starsOnly ? .original : .template)
                 .resizable()

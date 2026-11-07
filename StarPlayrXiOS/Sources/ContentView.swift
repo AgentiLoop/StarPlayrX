@@ -116,7 +116,8 @@ struct PlayerView: View {
                         // Label, not a bare Image: on iOS 26 a bare image's tap region is just the
                         // glyph, though the whole glass pill lights up — taps on the pill's edge
                         // did nothing. A Label's region is the pill.
-                        Button { app.starsOnly.toggle() } label: {
+                        // Tapping it also brings the channel list back over the lyrics or big art.
+                        Button { app.tapStars() } label: {
                             Label(app.starsOnly ? "All Stars On" : "All Stars Off",
                                   systemImage: app.starsOnly ? "star.fill" : "star")
                         }
@@ -176,7 +177,7 @@ struct PlayerView: View {
                 // "All Stars" in the top-right corner itself: the camera's corner is bottom-right or
                 // top-left, so no inset here. With it on, ⏮ ⏭ skip through the starred channels only.
                 .overlay(alignment: .topTrailing) {
-                    Button { app.starsOnly.toggle() } label: {
+                    Button { app.tapStars() } label: {
                         Image(systemName: app.starsOnly ? "star.fill" : "star")
                     }
                     .accessibilityLabel(app.starsOnly ? "All Stars On" : "All Stars Off")

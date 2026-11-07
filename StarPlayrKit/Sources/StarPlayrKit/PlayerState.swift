@@ -55,6 +55,14 @@ public final class PlayerState: ObservableObject {
         if bigArt { bigArt = false; return }
         lyrics.toggle()
     }
+
+    /// A tap on the "All Stars" star: the list shows only the starred channels, or every channel
+    /// again — and the list itself comes back in place of the lyrics or big art, so the change shows.
+    public func tapStars() {
+        starsOnly.toggle()
+        bigArt = false
+        lyrics = false
+    }
 }
 
 extension Radio {
