@@ -162,7 +162,7 @@ struct MenuView: View {
 
 
     /// Art and titles on top; previous, play/pause and next centred under them (as on iOS).
-    /// On the right, beside both rows: the channel's star with the "All Stars" glass button under it.
+    /// On the right, beside both rows: the "All Stars" glass button with the channel's star under it.
     /// The controls are centred on the whole width, as if that column weren't there; only the
     /// titles make room for it.
     private var nowPlaying: some View {
@@ -173,9 +173,9 @@ struct MenuView: View {
                 controls
             }
             VStack(spacing: 2) {
-                channelStar
                 starsButton
-                    .padding(.top, 34)   // where it sat in the old vertical group (under the art button)
+                channelStar
+                    .padding(.top, 8)   // just under the glass button
             }
         }
     }
