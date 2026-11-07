@@ -97,7 +97,6 @@ struct MenuView: View {
                         artFitHeight = menu.listHeight + $0
                     }
                 }
-                Divider()
                 footer
             }
             .padding(.top, 10)
@@ -433,7 +432,8 @@ struct MenuView: View {
                 // Keeps the scroll bar the same skinny width when the pointer grabs it.
                 .background(SkinnyScrollers().frame(width: 0, height: 0))
             }
-            .frame(height: menu.listHeight)
+            // 11pt taller than the lyrics: down to where the divider above the footer used to be.
+            .frame(height: menu.listHeight + 11)
             // As on iOS: say why the list is empty instead of showing a blank area.
             .overlay {
                 if list.isEmpty {
