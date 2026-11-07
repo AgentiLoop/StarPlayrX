@@ -171,6 +171,7 @@ struct MenuView: View {
             VStack(spacing: 2) {
                 channelStar
                 glassButtons
+                    .padding(.top, 6)   // a little lower, under the star
             }
         }
     }
@@ -294,7 +295,8 @@ struct MenuView: View {
                 .scaledToFit()
                 .frame(width: 16, height: 16)
                 .foregroundStyle(Color.secondary)
-                .padding(6)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 3)
         }
         .buttonStyle(.plain)
         .help(menu.starsOnly ? "Show every channel" : "Show only starred channels")
@@ -302,7 +304,7 @@ struct MenuView: View {
         if #available(macOS 26.0, *) {
             // One vertical glass capsule around all three (a single toolbar group).
             VStack(spacing: 0) { lyrics; art; stars }
-                .padding(.vertical, 2)
+                .padding(.vertical, 4)
                 .glassEffect(.regular.interactive(), in: Capsule())
         } else {
             VStack(spacing: 0) { lyrics; art; stars }
@@ -316,8 +318,9 @@ struct MenuView: View {
                 .font(.system(size: 13, weight: .semibold))
                 .frame(width: 16, height: 16)
                 .foregroundStyle(Color.secondary)
-                .padding(6)
-                .contentShape(Circle())
+                .padding(.horizontal, 6)
+                .padding(.vertical, 3)
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .help(help)
