@@ -568,29 +568,29 @@ struct MenuView: View {
     }
 }
 
-/// "StarPlayrX" centred in the footer: heavy rounded italic in a blue-violet gradient,
-/// a soft glow, and a light sheen that sweeps across it every few seconds.
+/// "StarPlayrX" centred in the footer: a faint, ghosted rounded italic with a hint of
+/// blue-violet tint, and a subtle sheen that drifts across it every few seconds.
 private struct WordMark: View {
     @State private var sweep = false
 
     var body: some View {
         let text = Text("StarPlayrX")
-            .font(.system(size: 17, weight: .black, design: .rounded).italic())
-            .kerning(0.5)
+            .font(.system(size: 16, weight: .semibold, design: .rounded).italic())
+            .kerning(1)
         text
-            .foregroundStyle(LinearGradient(colors: [Color(red: 0.55, green: 0.80, blue: 1.0),
-                                                     Color(red: 0.75, green: 0.60, blue: 1.0),
-                                                     Color(red: 1.0, green: 0.55, blue: 0.85)],
+            .foregroundStyle(LinearGradient(colors: [Color(red: 0.80, green: 0.88, blue: 1.0),
+                                                     Color(red: 0.88, green: 0.82, blue: 1.0)],
                                             startPoint: .leading, endPoint: .trailing))
+            .opacity(0.3)
             .overlay {
-                // The sheen: a white band sliding left to right, clipped to the letters.
-                LinearGradient(colors: [.clear, .white.opacity(0.85), .clear],
+                // The sheen: a faint white band sliding left to right, clipped to the letters.
+                LinearGradient(colors: [.clear, .white.opacity(0.35), .clear],
                                startPoint: .leading, endPoint: .trailing)
                     .frame(width: 30)
                     .offset(x: sweep ? 80 : -80)
                     .mask(text)
             }
-            .shadow(color: Color(red: 0.6, green: 0.6, blue: 1.0).opacity(0.7), radius: 6)
+            .blendMode(.plusLighter)
             .onAppear {
                 withAnimation(.easeInOut(duration: 1.6).delay(2).repeatForever(autoreverses: false)) {
                     sweep = true
