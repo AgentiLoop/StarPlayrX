@@ -77,12 +77,15 @@ struct MenuView: View {
                                     .padding(.trailing, -12)  // the chips scroll out to the panel's right edge
                             }
                             // A group opens a second row with its own chips (Sports → NFL, NBA, …).
+                            // The list gives up that row's height, so the window doesn't grow.
                             if let group = menu.category,
                                case let subs = ChannelGroup.subs(of: group, in: radio.channels), subs.count > 1 {
                                 CategoryBar(titles: subs, all: "All \(group)", selected: $menu.subcategory,
                                             small: true, inset: 7)   // inset scrolls with the chips, so they still run out to the edge
                                     .padding(.vertical, -4)
                                     .padding(.horizontal, -12)  // the small chips run edge to edge of the panel
+                                    .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { subRowHeight = $0 }
+                                    .onDisappear { subRowHeight = 0 }
                             }
                             channelList
                         }
@@ -144,6 +147,8 @@ struct MenuView: View {
     @State private var dragMouseStart: NSPoint?
     /// List height where the big album art fits its area exactly (no bands above and below); the resize snaps to it.
     @State private var artFitHeight: CGFloat?
+    /// Height of the sub-chip row (Sports → NFL, …), 0 when hidden; the channel list shrinks by it.
+    @State private var subRowHeight: CGFloat = 0
 
     /// Drag the header to pull the panel off the menu bar; let go far enough away and the same
     /// panel stays where it was dropped (torn off). Once torn off, dragging just moves it.
@@ -455,7 +460,8 @@ struct MenuView: View {
                 .background(SkinnyScrollers().frame(width: 0, height: 0))
             }
             // 11pt taller than the lyrics: down to where the divider above the footer used to be.
-            .frame(height: menu.listHeight + 11)
+            // Shorter by the sub-chip row (and its 10pt spacing) while it shows.
+            .frame(height: menu.listHeight + 11 - (subRowHeight > 0 ? subRowHeight + 10 : 0))
             // As on iOS: say why the list is empty instead of showing a blank area.
             .overlay {
                 if list.isEmpty {
