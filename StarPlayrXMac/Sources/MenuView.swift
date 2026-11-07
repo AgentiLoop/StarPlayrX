@@ -67,7 +67,7 @@ struct MenuView: View {
                             // StarPlayrKit's ChannelGroup) scrolling sideways beside it.
                             HStack(spacing: 13.5) {
                                 SearchField(text: $menu.search, placeholder: "Search")
-                                    .frame(width: 120)
+                                    .frame(width: 168)   // half the 336pt content width
                                 CategoryBar(titles: ChannelGroup.groups(radio.channels), all: "All Channels",
                                             selected: $menu.category, inset: 0)
                                     .padding(.vertical, -8)   // the chips' own padding; the search field sets the row height
