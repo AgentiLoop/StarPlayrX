@@ -312,14 +312,19 @@ struct MenuView: View {
         .disabled(shownArtURL == nil)
         // Which button is lit, so the bubble slides from one to the next when it changes.
         let mode = artMode ? 2 : (menu.lyrics ? 1 : 0)
+        // VoiceOver: one "View" group, so the three read as a set (the lit one says "selected").
         if #available(macOS 26.0, *) {
             HStack(spacing: 0) { list; lyrics; art }
                 .animation(.spring(response: 0.35, dampingFraction: 0.8), value: mode)
                 .padding(.horizontal, 4)
                 .glassEffect(.regular.interactive(), in: Capsule())
+                .accessibilityElement(children: .contain)
+                .accessibilityLabel("View")
         } else {
             HStack(spacing: 0) { list; lyrics; art }
                 .animation(.spring(response: 0.35, dampingFraction: 0.8), value: mode)
+                .accessibilityElement(children: .contain)
+                .accessibilityLabel("View")
         }
 
     }
