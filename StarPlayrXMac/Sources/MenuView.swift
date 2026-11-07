@@ -307,11 +307,11 @@ struct MenuView: View {
         .accessibilityLabel(menu.starsOnly ? "All Stars On" : "All Stars Off")
         if #available(macOS 26.0, *) {
             // One vertical glass capsule around all three (a single toolbar group).
-            VStack(spacing: 0) { lyrics; art; stars }
+            VStack(spacing: 0) { art; stars; lyrics }
                 .padding(.vertical, 4)
                 .glassEffect(.regular.interactive(), in: Capsule())
         } else {
-            VStack(spacing: 0) { lyrics; art; stars }
+            VStack(spacing: 0) { art; stars; lyrics }
         }
     }
 
