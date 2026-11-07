@@ -569,31 +569,45 @@ struct MenuView: View {
 }
 
 /// "StarPlayrX" centred in the footer: a faint, ghosted upright (not italic, not rounded) wordmark with a hint of
-/// blue-violet tint, that fades in each time the panel comes up.
+/// blue-violet tint, that fades in each time the panel comes up, holds briefly, then fades back out.
 private struct WordMark: View {
     @State private var shown = false
+    @State private var fade: Task<Void, Never>?
 
     var body: some View {
         Text("StarPlayrX")
-            .font(.system(size: 16, weight: .semibold, design: .default))
+            .font(Font(NSFont.systemFont(ofSize: 16, weight: .semibold)))   // SF Pro, via AppKit
             .kerning(1)
             .foregroundStyle(LinearGradient(colors: [Color(red: 0.80, green: 0.88, blue: 1.0),
                                                      Color(red: 0.88, green: 0.82, blue: 1.0)],
                                             startPoint: .leading, endPoint: .trailing))
             .opacity(shown ? 0.3 : 0)
             .blendMode(.plusLighter)
-            .onAppear { withAnimation(.easeOut(duration: 1.2)) { shown = true } }
+            .onAppear { fadeInAndOut() }
             // The panel is only ordered out when hidden, so onAppear runs once: follow its
             // visibility to reset while hidden and fade in again when it comes back up.
             .onReceive(NotificationCenter.default.publisher(for: NSWindow.didChangeOcclusionStateNotification)) { note in
                 guard let panel = note.object as? MenuPanel else { return }
                 if !panel.occlusionState.contains(.visible) {
+                    fade?.cancel()
+                    fade = nil
                     shown = false
-                } else if !shown {
-                    withAnimation(.easeOut(duration: 1.2)) { shown = true }
+                } else if fade == nil {
+                    fadeInAndOut()
                 }
             }
             .accessibilityHidden(true)
+    }
+
+    /// Fade in, hold for about 1.5 s, then fade back out the same way it came in.
+    private func fadeInAndOut() {
+        fade?.cancel()
+        fade = Task { @MainActor in
+            withAnimation(.easeOut(duration: 1.2)) { shown = true }
+            try? await Task.sleep(nanoseconds: 2_700_000_000)   // 1.2 s fade-in + 1.5 s hold
+            guard !Task.isCancelled else { return }
+            withAnimation(.easeOut(duration: 1.2)) { shown = false }
+        }
     }
 }
 
