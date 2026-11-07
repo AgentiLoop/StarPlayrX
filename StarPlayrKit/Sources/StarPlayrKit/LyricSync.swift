@@ -294,9 +294,8 @@ public final class LyricSync: ObservableObject {
     }
 
     /// The live channels' fallback, on the Xtra file: the aligner lines the lyrics up with the
-    /// file's own audio, once a segment. It keeps measuring after Shazam has placed the track so
-    /// every track logs the aligner against Shazam, and its confident readings close to Shazam
-    /// fine-tune the highlight (`xtraTune`).
+    /// file's own audio, once a segment. It keeps measuring after Shazam has placed the track:
+    /// its confident readings close to Shazam fine-tune the highlight (`xtraTune`).
     private func xtraAlign(_ file: URL) {
         guard let lyrics = LyricsStore.shared.lyrics, lyrics.synced,
               Date().timeIntervalSince(xtraAlignedAt) >= Self.xtraSegment,
