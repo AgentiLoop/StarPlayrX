@@ -102,7 +102,7 @@ struct LyricsPane: View {
                 .equatable()
                 .padding(.trailing, 12)
                 // Room for the reach below, so at rest the first and last lines sit inside the field.
-                .padding(.top, 26).padding(.bottom, 26)
+                .padding(.top, 40).padding(.bottom, 40)
                 // Timed lyrics scroll themselves: no scroller flashing on every line change.
                 .background(Group { if !lyrics.synced { SkinnyScrollers().frame(width: 0, height: 0) } })
             }
