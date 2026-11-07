@@ -63,8 +63,14 @@ struct MenuView: View {
                         if menu.lyrics {
                             LyricsPane()
                         } else {
+                            // One row: the search field on the left, the category chips (as on iOS;
+                            // StarPlayrKit's ChannelGroup) scrolling sideways beside it, the star on the right.
                             HStack(spacing: 13.5) {
-                                SearchField(text: $menu.search, placeholder: "Search channels, artists, songs")
+                                SearchField(text: $menu.search, placeholder: "Search")
+                                    .frame(width: 120)
+                                CategoryBar(titles: ChannelGroup.groups(radio.channels), all: "All Channels",
+                                            selected: $menu.category, inset: 0)
+                                    .padding(.vertical, -8)   // the chips' own padding; the search field sets the row height
                                 // "All Stars" (as on iOS): the list shows only the starred channels.
                                 Button { menu.starsOnly.toggle() } label: {
                                     Image(menu.starsOnly ? "star_on" : "star_off")
@@ -81,18 +87,13 @@ struct MenuView: View {
                                 .help(menu.starsOnly ? "Show every channel" : "Show only starred channels")
                                 .accessibilityLabel(menu.starsOnly ? "All Stars On" : "All Stars Off")
                             }
-                            // Category chips, as on iOS (StarPlayrKit's ChannelGroup); a group opens
-                            // a second row with its own chips (Sports → NFL, NBA, …).
-                            VStack(alignment: .leading, spacing: 0) {
-                                CategoryBar(titles: ChannelGroup.groups(radio.channels), all: "All Channels",
-                                            selected: $menu.category, inset: 0)
-                                if let group = menu.category,
-                                   case let subs = ChannelGroup.subs(of: group, in: radio.channels), subs.count > 1 {
-                                    CategoryBar(titles: subs, all: "All \(group)", selected: $menu.subcategory,
-                                                small: true, inset: 0)
-                                }
+                            // A group opens a second row with its own chips (Sports → NFL, NBA, …).
+                            if let group = menu.category,
+                               case let subs = ChannelGroup.subs(of: group, in: radio.channels), subs.count > 1 {
+                                CategoryBar(titles: subs, all: "All \(group)", selected: $menu.subcategory,
+                                            small: true, inset: 0)
+                                    .padding(.vertical, -4)
                             }
-                            .padding(.vertical, -6)
                             channelList
                         }
                     }
