@@ -162,10 +162,13 @@ struct MenuView: View {
 
     /// Art and titles on top; previous, play/pause and next centred under them (as on iOS).
     /// On the right, beside both rows: the channel's star with the vertical toolbar group under it.
+    /// The controls are centred on the whole width, as if that column weren't there; only the
+    /// titles make room for it.
     private var nowPlaying: some View {
-        HStack(alignment: .top, spacing: 6) {
+        ZStack(alignment: .topTrailing) {
             VStack(spacing: 6) {
                 nowPlayingRow
+                    .padding(.trailing, 34)   // the column's width (28) plus the gap (6)
                 controls
             }
             VStack(spacing: 2) {
