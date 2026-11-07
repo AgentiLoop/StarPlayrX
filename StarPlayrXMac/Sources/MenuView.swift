@@ -258,7 +258,7 @@ struct MenuView: View {
                     .buttonStyle(.plain)
                     .help(starred ? "Remove from stars" : "Add to stars")
                     .accessibilityLabel(starred ? "Remove \(ch.name) from stars" : "Add \(ch.name) to stars")   // as on iOS
-                    .padding(.trailing, 6)   // under the star's glyph, not its glass circle
+                    .padding(.trailing, 10)   // under the star's glyph (6 + the capsule's 4), not the glass edge
                 }
             }
             .padding(.trailing, 2)
