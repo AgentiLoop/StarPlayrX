@@ -161,15 +161,17 @@ struct MenuView: View {
 
 
     /// Art and titles on top; previous, play/pause and next centred under them (as on iOS).
-    /// On the right, beside both rows: the vertical toolbar group, and the channel's star top right.
+    /// On the right, beside both rows: the channel's star with the vertical toolbar group under it.
     private var nowPlaying: some View {
-        HStack(alignment: .top, spacing: 8) {
+        HStack(alignment: .top, spacing: 6) {
             VStack(spacing: 6) {
                 nowPlayingRow
                 controls
             }
-            glassButtons
-            channelStar
+            VStack(spacing: 2) {
+                channelStar
+                glassButtons
+            }
         }
     }
 
@@ -264,8 +266,7 @@ struct MenuView: View {
             .buttonStyle(.plain)
             .help(starred ? "Remove from stars" : "Add to stars")
             .accessibilityLabel(starred ? "Remove \(ch.name) from stars" : "Add \(ch.name) to stars")   // as on iOS
-            .padding(.top, 10)   // level with the first glyph (capsule's 4 + button's 6)
-            .padding(.trailing, 2)
+            .padding(.top, 2)
         }
     }
 
@@ -300,11 +301,11 @@ struct MenuView: View {
         .accessibilityLabel(menu.starsOnly ? "All Stars On" : "All Stars Off")
         if #available(macOS 26.0, *) {
             // One vertical glass capsule around all three (a single toolbar group).
-            VStack(spacing: 4) { lyrics; art; stars }
-                .padding(.vertical, 4)
+            VStack(spacing: 0) { lyrics; art; stars }
+                .padding(.vertical, 2)
                 .glassEffect(.regular.interactive(), in: Capsule())
         } else {
-            VStack(spacing: 8) { lyrics; art; stars }
+            VStack(spacing: 0) { lyrics; art; stars }
         }
     }
 
