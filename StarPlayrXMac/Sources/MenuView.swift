@@ -478,7 +478,7 @@ struct MenuView: View {
         }
     }
 
-    /// AirPlay, Close, Sign Out and Quit on one horizontal Liquid Glass capsule where the system
+    /// AirPlay, Close and the account menu on one horizontal Liquid Glass capsule where the system
     /// has it (a grouped toolbar, like the vertical one beside the now-playing area).
     @ViewBuilder private var footerButtons: some View {
         let buttons = HStack(spacing: 0) {
@@ -488,10 +488,7 @@ struct MenuView: View {
                 .accessibilityLabel("AirPlay")
             // Close: under the menu bar it just hides the panel; torn off it closes the window.
             glassButton("xmark", help: "Close", label: "Close") { menu.hide() }
-            if radio.isLoggedIn {
-                glassButton("rectangle.portrait.and.arrow.right", help: "Sign Out", label: "Sign Out") { radio.signOut() }
-            }
-            glassButton("power", help: "Quit StarPlayrX", label: "Quit") { NSApp.terminate(nil) }
+            accountMenu
         }
         if #available(macOS 26.0, *) {
             buttons
@@ -500,6 +497,31 @@ struct MenuView: View {
         } else {
             buttons
         }
+    }
+
+    /// Sign Out and Quit in a pop-up menu, as the iOS app's account menu has Sign Out.
+    private var accountMenu: some View {
+        Menu {
+            Text("StarPlayrX \(Self.version)")
+            if radio.isLoggedIn {
+                Button("Sign Out", role: .destructive) { radio.signOut() }
+            }
+            Button("Quit StarPlayrX") { NSApp.terminate(nil) }
+        } label: {
+            Image(systemName: "person.crop.circle")
+                .font(.system(size: 13, weight: .semibold))
+                .frame(width: 16, height: 16)
+                .foregroundStyle(Color.secondary)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 3)
+                .contentShape(Rectangle())
+        }
+        .menuStyle(.button)
+        .buttonStyle(.plain)
+        .menuIndicator(.hidden)
+        .fixedSize()
+        .help("Account")
+        .accessibilityLabel("Account")
     }
 }
 
