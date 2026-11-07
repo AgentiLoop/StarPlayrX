@@ -76,7 +76,7 @@
             <property name="search text" code="SPsx" type="text" description="Text in the panel's search field. Setting it filters the channel list.">
                 <cocoa key="spSearchText"/>
             </property>
-            <property name="visible channel numbers" code="SPvl" access="r" description="Numbers of the channels the list shows now (after the search field).">
+            <property name="visible channel numbers" code="SPvl" access="r" description="Numbers of the channels the list shows now (after the search field, the stars filter and the chips).">
                 <type type="text" list="yes"/>
                 <cocoa key="spVisibleChannelNumbers"/>
             </property>
@@ -130,6 +130,23 @@
             <property name="stars only" code="SPso" type="boolean" description="Whether the list shows only the starred channels (the star beside the search field, &quot;All Stars&quot; on iOS).">
                 <cocoa key="spStarsOnly"/>
             </property>
+            <property name="panel view" code="SPpv" type="panel view" description="What the panel shows under the now-playing header: the channel list, the lyrics or the art full size (the Channels / Lyrics / Album Art buttons bottom left). Setting album art does nothing while there is no art.">
+                <cocoa key="spPanelView"/>
+            </property>
+            <property name="category chip" code="SPch" type="text" description="The top-row chip over the channel list (Music, Sports, …); empty is &quot;All Channels&quot;. Setting it filters the list and clears the subcategory chip.">
+                <cocoa key="spCategoryChip"/>
+            </property>
+            <property name="subcategory chip" code="SPsC" type="text" description="The second-row chip inside the category chip (Rock, NFL, …); empty is all of that category.">
+                <cocoa key="spSubcategoryChip"/>
+            </property>
+            <property name="category chips" code="SPcq" access="r" description="The top-row chips that have channels, in order.">
+                <type type="text" list="yes"/>
+                <cocoa key="spCategoryChips"/>
+            </property>
+            <property name="subcategory chips" code="SPsq" access="r" description="The second-row chips of the selected category chip (empty when none is selected).">
+                <type type="text" list="yes"/>
+                <cocoa key="spSubcategoryChips"/>
+            </property>
         </class-extension>
 
         <!-- Referenced by the Standard Suite's save command; StarPlayrX has no documents to save. -->
@@ -146,6 +163,11 @@
             <enumerator name="bubbles" code="SPB0" description="Full lava-lamp bubbles."/>
             <enumerator name="soft bubbles" code="SPB1" description="Fainter bubbles (the default)."/>
             <enumerator name="no bubbles" code="SPB2" description="Plain bars."/>
+        </enumeration>
+        <enumeration name="panel view" code="SPvw">
+            <enumerator name="channel list" code="SPV0" description="The channel list."/>
+            <enumerator name="lyrics" code="SPV1" description="The song's lyrics in the list's place."/>
+            <enumerator name="album art" code="SPV2" description="The art full size."/>
         </enumeration>
 
         <command name="select channel" code="SPrxSelc" description="Click a row in the channel list: plays it if the list is showing it (see search text) and waits until it is really playing, like play channel. Returns false otherwise.">
@@ -292,12 +314,12 @@
             <result type="text"/>
         </command>
 
-        <command name="next channel" code="SPrxNext" description="Play the next channel in the list (as the list is filtered by search text; wraps around). Waits until it really plays. Returns the new channel number, or empty if there is no current channel.">
+        <command name="next channel" code="SPrxNext" description="Play the next channel in the list (as the list shows it after the search text, the stars filter and the chips; wraps around). Waits until it really plays. Returns the new channel number, or empty if there is no current channel.">
             <cocoa class="SPXCommand"/>
             <result type="text"/>
         </command>
 
-        <command name="previous channel" code="SPrxPrev" description="Play the previous channel in the list (as the list is filtered by search text; wraps around). Waits until it really plays. Returns the new channel number, or empty if there is no current channel.">
+        <command name="previous channel" code="SPrxPrev" description="Play the previous channel in the list (as the list shows it after the search text, the stars filter and the chips; wraps around). Waits until it really plays. Returns the new channel number, or empty if there is no current channel.">
             <cocoa class="SPXCommand"/>
             <result type="text"/>
         </command>

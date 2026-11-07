@@ -26,7 +26,8 @@ extension AppDelegate {
         "spVersion", "spChannelsLoaded", "spAudioStarted", "spCurrentChannelCategory", "spCategories",
         "spTrackPosition", "spLyricSync",
         "spShownArtwork", "spCurrentChannelLogo", "spShowArt", "spBubbleMode",
-        "spPreset", "spPresetChannelNumbers", "spStarsOnly"]
+        "spPreset", "spPresetChannelNumbers", "spStarsOnly",
+        "spPanelView", "spCategoryChip", "spSubcategoryChip", "spCategoryChips", "spSubcategoryChips"]
 
     func application(_ sender: NSApplication, delegateHandlesKey key: String) -> Bool {
         Self.scriptingKeys.contains(key)
@@ -151,6 +152,38 @@ extension AppDelegate {
         get { menu.starsOnly }
         set { menu.starsOnly = newValue }
     }
+    /// Enumerator codes SPV0 / SPV1 / SPV2 = channel list / lyrics / album art (the three buttons bottom left).
+    @objc var spPanelView: NSNumber {
+        get {
+            let mode = menu.bigArt && radio.shownArtURL != nil ? 2 : (menu.lyrics ? 1 : 0)
+            return NSNumber(value: SPXCommand.code("SPV\(mode)"))
+        }
+        set {
+            switch newValue.uint32Value {
+            case SPXCommand.code("SPV0"): menu.bigArt = false; menu.lyrics = false
+            case SPXCommand.code("SPV1"): menu.bigArt = false; menu.lyrics = true
+            case SPXCommand.code("SPV2"): if radio.shownArtURL != nil { menu.bigArt = true }
+            default: break
+            }
+        }
+    }
+    /// The chips over the list; "" is "All Channels" / all of the category. Unknown names are ignored.
+    @objc var spCategoryChip: String {
+        get { menu.category ?? "" }
+        set {
+            if newValue.isEmpty { menu.category = nil; return }
+            if let chip = spCategoryChips.first(where: { $0.caseInsensitiveCompare(newValue) == .orderedSame }) { menu.category = chip }
+        }
+    }
+    @objc var spSubcategoryChip: String {
+        get { menu.subcategory ?? "" }
+        set {
+            if newValue.isEmpty { menu.subcategory = nil; return }
+            if let chip = spSubcategoryChips.first(where: { $0.caseInsensitiveCompare(newValue) == .orderedSame }) { menu.subcategory = chip }
+        }
+    }
+    @objc var spCategoryChips: [String] { ChannelGroup.groups(radio.channels) }
+    @objc var spSubcategoryChips: [String] { menu.category.map { ChannelGroup.subs(of: $0, in: radio.channels) } ?? [] }
 }
 
 @objc(SPXCommand)
@@ -214,10 +247,9 @@ final class SPXCommand: NSScriptCommand {
         case "search channels":
             return whenReady { Channel.filter(radio.channels, nowPlaying: radio.nowPlaying, search: arg).map(\.id) }
         case "next channel", "previous channel":
-            // Step through the list as the panel shows it (search text applied), wrapping at the ends.
+            // Step through the list as the panel shows it (search, stars and chips applied), wrapping at the ends.
             let step = commandDescription.commandName == "next channel" ? 1 : -1
-            let list = Channel.filter(radio.channels, nowPlaying: radio.nowPlaying, search: menu.search,
-                                      stars: menu.starsOnly ? radio.presets : nil)
+            let list = menu.visibleChannels
             guard let current = radio.current, let i = list.firstIndex(where: { $0.id == current.id }), !list.isEmpty else { return "" }
             let target = list[(i + step + list.count) % list.count]
             return later {
