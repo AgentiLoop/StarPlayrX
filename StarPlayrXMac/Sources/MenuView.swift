@@ -614,7 +614,7 @@ private struct WordMark: View {
             .accessibilityHidden(true)
     }
 
-    /// Fade in, shimmer once across the text while fully shown (1.5 s), then fade back out the same way it came in.
+    /// Fade in, shimmer across the text and back while fully shown (1.5 s each way), then fade back out.
     private func fadeInAndOut() {
         fade?.cancel()
         fade = Task { @MainActor in
@@ -623,7 +623,10 @@ private struct WordMark: View {
             try? await Task.sleep(nanoseconds: 1_200_000_000)   // fade-in
             guard !Task.isCancelled else { return }
             withAnimation(.easeInOut(duration: 1.5)) { sweep = 1 }
-            try? await Task.sleep(nanoseconds: 1_500_000_000)   // shimmer
+            try? await Task.sleep(nanoseconds: 1_500_000_000)   // shimmer right
+            guard !Task.isCancelled else { return }
+            withAnimation(.easeInOut(duration: 1.5)) { sweep = 0 }
+            try? await Task.sleep(nanoseconds: 1_500_000_000)   // shimmer back left
             guard !Task.isCancelled else { return }
             withAnimation(.easeOut(duration: 1.2)) { shown = false }
         }
