@@ -286,15 +286,18 @@ struct MenuView: View {
         }
     }
 
-    /// The Album Art and Lyrics buttons side by side on one Liquid Glass capsule where the system
-    /// has it (a grouped toolbar), bottom left of the window.
+    /// The Channel List, Album Art and Lyrics buttons side by side on one Liquid Glass capsule where
+    /// the system has it (a grouped toolbar), bottom left of the window.
     @ViewBuilder private var glassButtons: some View {
-        // Lyrics in the channel list's place and back again (as on iOS: the glyph shows what comes next).
-        let lyrics = glassButton(menu.lyrics ? "list.bullet" : "quote.bubble",
-                                 help: menu.lyrics ? "Show the channel list" : "Show the song's lyrics",
-                                 label: menu.lyrics ? "Channels" : "Lyrics") {
+        // The channel list, from the lyrics or big art.
+        let list = glassButton("list.bullet", help: "Show the channel list", label: "Channels") {
             menu.bigArt = false
-            menu.lyrics.toggle()
+            menu.lyrics = false
+        }
+        // The lyrics in the channel list's place.
+        let lyrics = glassButton("quote.bubble", help: "Show the song's lyrics", label: "Lyrics") {
+            menu.bigArt = false
+            menu.lyrics = true
         }
         // The art full size over the list or lyrics, and away again.
         let art = glassButton("photo", help: menu.bigArt ? "Hide the full-size art" : "Show the art full size",
@@ -303,12 +306,13 @@ struct MenuView: View {
         }
         .disabled(shownArtURL == nil)
         if #available(macOS 26.0, *) {
-            HStack(spacing: 0) { art; lyrics }
+            HStack(spacing: 0) { list; art; lyrics }
                 .padding(.horizontal, 4)
                 .glassEffect(.regular.interactive(), in: Capsule())
         } else {
-            HStack(spacing: 0) { art; lyrics }
+            HStack(spacing: 0) { list; art; lyrics }
         }
+
     }
 
     /// The "All Stars" filter star on its own Liquid Glass circle, above the channel's star.
