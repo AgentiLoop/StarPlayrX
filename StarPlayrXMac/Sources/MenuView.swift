@@ -569,18 +569,32 @@ struct MenuView: View {
 }
 
 /// "StarPlayrX" centred in the footer: a faint, ghosted upright (not italic, not rounded) wordmark with a hint of
-/// blue-violet tint, that fades in each time the panel comes up, holds briefly, then fades back out.
+/// blue-violet tint, that fades in each time the panel comes up, shimmers once while fully shown, then fades back out.
 private struct WordMark: View {
     @State private var shown = false
+    @State private var sweep: CGFloat = 0   // shimmer band position, 0 = off the left edge, 1 = off the right
     @State private var fade: Task<Void, Never>?
 
-    var body: some View {
+    private var label: some View {
         Text("StarPlayrX")
             .font(Font(NSFont.systemFont(ofSize: 16, weight: .semibold)))   // SF Pro, via AppKit
             .kerning(1)
+    }
+
+    var body: some View {
+        label
             .foregroundStyle(LinearGradient(colors: [Color(red: 0.80, green: 0.88, blue: 1.0),
                                                      Color(red: 0.88, green: 0.82, blue: 1.0)],
                                             startPoint: .leading, endPoint: .trailing))
+            // Shimmer: a soft bright band swept across the letters, clipped to the text.
+            .overlay {
+                GeometryReader { geo in
+                    LinearGradient(colors: [.clear, .white, .clear], startPoint: .leading, endPoint: .trailing)
+                        .frame(width: geo.size.width * 0.4)
+                        .offset(x: (sweep * 1.4 - 0.4) * geo.size.width)
+                }
+                .mask(label)
+            }
             .opacity(shown ? 0.3 : 0)
             .blendMode(.plusLighter)
             .onAppear { fadeInAndOut() }
@@ -592,6 +606,7 @@ private struct WordMark: View {
                     fade?.cancel()
                     fade = nil
                     shown = false
+                    sweep = 0
                 } else if fade == nil {
                     fadeInAndOut()
                 }
@@ -599,12 +614,16 @@ private struct WordMark: View {
             .accessibilityHidden(true)
     }
 
-    /// Fade in, hold for about 1.5 s, then fade back out the same way it came in.
+    /// Fade in, shimmer once across the text while fully shown (1.5 s), then fade back out the same way it came in.
     private func fadeInAndOut() {
         fade?.cancel()
         fade = Task { @MainActor in
+            sweep = 0
             withAnimation(.easeOut(duration: 1.2)) { shown = true }
-            try? await Task.sleep(nanoseconds: 2_700_000_000)   // 1.2 s fade-in + 1.5 s hold
+            try? await Task.sleep(nanoseconds: 1_200_000_000)   // fade-in
+            guard !Task.isCancelled else { return }
+            withAnimation(.easeInOut(duration: 1.5)) { sweep = 1 }
+            try? await Task.sleep(nanoseconds: 1_500_000_000)   // shimmer
             guard !Task.isCancelled else { return }
             withAnimation(.easeOut(duration: 1.2)) { shown = false }
         }
