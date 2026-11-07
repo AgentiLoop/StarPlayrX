@@ -174,7 +174,7 @@ struct MenuView: View {
             VStack(spacing: 2) {
                 channelStar
                 glassButtons
-                    .padding(.top, 6)   // a little lower, under the star
+                    .padding(.top, 10)   // a little lower, under the star
             }
         }
     }
