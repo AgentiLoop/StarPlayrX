@@ -162,6 +162,11 @@ private struct ScrollingStrip: UIViewRepresentable {
         private let host = UIHostingController(rootView: AnyView(EmptyView()))
         private var key = ""
         private var width: CGFloat = 0, cycle: CGFloat = 0, speed: CGFloat = 30, pause: Double = 2
+        /// The slide actually used: one hosted copy plus the gap (see layoutSubviews).
+        private var slide: CGFloat = 0
+        /// The content's size as the hosting controller lays it out (both copies and the gap).
+        private var fit = CGSize.zero
+        private var diagTimer: Timer?
 
         init() {
             super.init(frame: .zero)
@@ -169,6 +174,11 @@ private struct ScrollingStrip: UIViewRepresentable {
             isUserInteractionEnabled = false   // taps go to the row
             host.view.backgroundColor = .clear
             host.sizingOptions = []
+            // The hosted strip is the content's exact width and runs off the screen's edge, under
+            // any safe-area inset there (the Duo's camera side, 84 pt). Honouring it would propose
+            // a narrower width, the fixed-size text would overflow, and SwiftUI centres overflow —
+            // so the line paused shifted left with its first letter cut off.
+            host.safeAreaRegions = []
             addSubview(host.view)
         }
         required init?(coder: NSCoder) { nil }
@@ -177,16 +187,34 @@ private struct ScrollingStrip: UIViewRepresentable {
             guard key != self.key || cycle != self.cycle || width != self.width else { return }
             self.key = key
             (self.width, self.cycle, self.speed, self.pause) = (width, cycle, speed, pause)
+            // Measured bare (a maxWidth: .infinity frame would just answer the proposal), then
+            // flush left in whatever frame it gets: any slack goes on the right.
             host.rootView = content
+            fit = host.sizeThatFits(in: CGSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude))
+            host.rootView = AnyView(content.frame(maxWidth: .infinity, alignment: .leading))
             setNeedsLayout()
         }
 
         override func layoutSubviews() {
             super.layoutSubviews()
-            // Exactly the content's width (measured in SwiftUI), so the two copies start at the left edge.
-            let fit = host.sizeThatFits(in: CGSize(width: width, height: .greatestFiniteMagnitude)).height
-            let height = fit > 0 ? fit : bounds.height
-            host.view.frame = CGRect(x: 0, y: (bounds.height - height) / 2, width: width, height: height)
+            // The hosted content's own width, never less: the SwiftUI-measured width can come out a
+            // point or two short of what the hosting controller lays out, and a frame narrower than
+            // the content centres it, cutting the first letter off at the left edge.
+            let w = max(width, fit.width)
+            let height = fit.height > 0 ? fit.height : bounds.height
+            host.view.frame = CGRect(x: 0, y: (bounds.height - height) / 2, width: w, height: height)
+            // The slide from the content as hosted (one copy plus the gap), so the loop lands exactly
+            // on the second copy. width = 2·text + gap and cycle = text + gap, so gap = 2·cycle − width.
+            let gap = 2 * cycle - width
+            slide = fit.width > 0 ? (fit.width - gap) / 2 + gap : cycle
+            try? "DIAG key=\(key) bounds=\(bounds) hostFrame=\(host.view.frame) fit=\(fit) width=\(width) cycle=\(cycle) slide=\(slide) hostSafe=\(host.view.safeAreaInsets) stripSafe=\(safeAreaInsets)\n".write(toFile: NSTemporaryDirectory() + "marquee-diag.txt", atomically: true, encoding: .utf8)
+            diagTimer?.invalidate()
+            diagTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
+                guard let self else { return }
+                let p = self.host.view.layer.presentation()
+                let line = "T key=\(self.key.prefix(20)) tx=\(p?.affineTransform().tx ?? -9999) modelTx=\(self.host.view.layer.affineTransform().tx) hostFrame=\(self.host.view.frame) hostBounds=\(self.host.view.bounds) stripInWindow=\(self.convert(self.bounds, to: nil)) sub=\(self.host.view.subviews.map { "\($0.frame)" })\n"
+                if let h = FileHandle(forWritingAtPath: NSTemporaryDirectory() + "marquee-diag.txt") { h.seekToEndOfFile(); h.write(line.data(using: .utf8)!); h.closeFile() }
+            }
             startAnimation()
         }
 
@@ -197,9 +225,9 @@ private struct ScrollingStrip: UIViewRepresentable {
 
         private func startAnimation() {
             let layer = host.view.layer
-            guard cycle > 0 else { return }
+            guard slide > 0 else { return }
             layer.removeAnimation(forKey: "marquee")
-            layer.add(marqueeAnimation(cycle: cycle, speed: speed, pause: pause), forKey: "marquee")
+            layer.add(marqueeAnimation(cycle: slide, speed: speed, pause: pause), forKey: "marquee")
         }
     }
 }

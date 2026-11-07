@@ -186,18 +186,23 @@ struct PlayerView: View {
                     .padding(.top, 18)
                 }
                 // Drawn in the content, not the toolbar (the bar would stack them down the camera's
-                // side), so they need the toolbar's Liquid Glass look given by hand; in the bottom
-                // corners, the same 18 pt in from both edges whichever way round the Duo is held.
-                .overlay(alignment: .bottom) {
-                    HStack {
-                        accountMenu
-                        Spacer()
-                        AirPlayButton()
-                    }
-                    .font(.title2)
-                    .glassButtons()
-                    .padding(.horizontal, 18)
-                    .padding(.bottom, 18)
+                // side), so they need the toolbar's Liquid Glass look given by hand, 18 pt in from
+                // the edges. Account bottom-left; AirPlay in whichever of the other two corners the
+                // camera isn't: top-left when the camera is bottom-right (trailing inset), opposite
+                // the star, and bottom-right when the camera is top-left.
+                .overlay(alignment: .bottomLeading) {
+                    accountMenu
+                        .font(.title2)
+                        .glassButtons()
+                        .padding(.leading, 18)
+                        .padding(.bottom, 18)
+                }
+                .overlay(alignment: geo.safeAreaInsets.trailing > geo.safeAreaInsets.leading ? .topLeading : .bottomTrailing) {
+                    AirPlayButton()
+                        .font(.title2)
+                        .glassButtons()
+                        .padding(.horizontal, 18)
+                        .padding(.vertical, 18)
                 }
                 .ignoresSafeArea(.container, edges: [.horizontal, .bottom])
         }
@@ -225,8 +230,8 @@ struct PlayerView: View {
                 Divider()
                 // Big art lies over the list or lyrics, as on the Mac.
                 if app.bigArt, let url = radio.shownArtURL { BigArtView(url: url) }
-                // The Duo's outer display (side bar) puts the search and chips on one row.
-                else if app.lyrics { LyricsView() } else { ChannelList(inlineFilters: sideEQ) }
+                // The search and chips on one row, as on the Duo.
+                else if app.lyrics { LyricsView() } else { ChannelList(inlineFilters: true) }
             }
             .ignoresSafeArea(.container, edges: sideEQ ? .top : [])
             .overlay(alignment: .bottomTrailing) {
@@ -684,12 +689,14 @@ struct ChannelFilters: View {
             let groups = CategoryBar(titles: ChannelGroup.groups(radio.channels), all: "All Channels", selected: $app.category,
                                      inset: inline ? 0 : 16)
             if inline {
+                // The search field takes the left half, the chips the right.
                 HStack(spacing: 0) {
                     SearchField(text: $app.search, prompt: "Search")
-                        .frame(width: 200)
                         .padding(.leading)
                         .padding(.trailing, 8)
+                        .frame(maxWidth: .infinity)
                     groups
+                        .frame(maxWidth: .infinity)
                 }
                 // With the chip bar's own 8: 10 above the chips, matching the 10 under the sub-chips.
                 .padding(.top, 2)
