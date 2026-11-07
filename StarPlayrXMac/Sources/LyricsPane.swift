@@ -45,7 +45,7 @@ struct LyricsPane: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            header
+            header.zIndex(1)   // over the lines fading out behind it
             if let lyrics = store.lyrics {
                 lines(lyrics)
             } else {
@@ -101,14 +101,18 @@ struct LyricsPane: View {
                 }
                 .equatable()
                 .padding(.trailing, 12)
+                // Room for the fades below, so at rest the first and last lines sit inside the field.
+                .padding(.vertical, 28)
                 // Timed lyrics scroll themselves: no scroller flashing on every line change.
                 .background(Group { if !lyrics.synced { SkinnyScrollers().frame(width: 0, height: 0) } })
             }
             .scrollIndicators(lyrics.synced ? .hidden : .automatic)
             .frame(maxHeight: .infinity)   // fills the channel list's area it lies over
             .padding(.trailing, -12)
-            // Lines fade out at the top and bottom edges instead of being cut off there.
+            // Reach 28 pt past the field at the top and bottom: lines fade out there, beyond the
+            // field, instead of being cut off at its edges or faded inside it.
             // (A fade, not a blur: crisper, and cheap enough to redraw while the lyrics scroll.)
+            .padding(.vertical, -28)
             .mask {
                 VStack(spacing: 0) {
                     LinearGradient(colors: [.clear, .black], startPoint: .top, endPoint: .bottom).frame(height: 28)
