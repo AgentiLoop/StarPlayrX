@@ -622,7 +622,6 @@ public final class Radio: ObservableObject {
         guard let current, let station = stationNowPlaying else { return }
         heard = Heard(channel: current.id, station: LyricsStore.key(station.artist, station.song),
                       artist: artist, song: song, startedAt: startedAt)
-        LyricSync.log.notice("now playing ch=\(current.id): station \"\(station.artist) – \(station.song)\" -> Shazam \"\(artist) – \(song)\"")
         applyHeard()
     }
 
