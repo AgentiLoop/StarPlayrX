@@ -225,9 +225,10 @@ struct PlayerView: View {
                     .padding(.horizontal)
                     // The Duo's empty top bar (its buttons are down the side) leaves a ~25 pt
                     // inset; that goes, so the art starts 15 pt down — about the side padding.
-                    .padding(.top, sideEQ ? 15 : 16)
-                    .padding(.bottom, 10)
-                Divider()
+                    // Other phones: 8, right under the toolbar, so the list gets more of the screen.
+                    .padding(.top, sideEQ ? 15 : 8)
+                    // The search field's own 8 above it makes 12 under the bars; no divider.
+                    .padding(.bottom, 4)
                 // Big art lies over the list or lyrics, as on the Mac.
                 if app.bigArt, let url = radio.shownArtURL { BigArtView(url: url) }
                 // The search and chips on one row, as on the Duo.
@@ -353,9 +354,11 @@ struct NowPlayingHeader: View {
     }
 
     private var stacked: some View {
-        VStack(spacing: 6) {
+        VStack(spacing: 0) {
             row
-            controls()
+            controls().padding(.top, 6)
+            // The bars grow up from the bottom of their 48 pt strip, so the strip's own headroom
+            // is the air under the controls; no spacing on top of it.
             if showsBars { bars }
         }
     }
