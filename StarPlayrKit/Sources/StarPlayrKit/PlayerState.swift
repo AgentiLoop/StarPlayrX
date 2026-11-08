@@ -23,6 +23,8 @@ public final class PlayerState: ObservableObject {
     @Published public var category: String? { didSet { if category != oldValue { subcategory = nil } } }
     /// The second-row chip inside `category` (NFL, Rock, …); nil is all of them.
     @Published public var subcategory: String?
+    /// The chips the user was in when "All Stars" went on, put back when it goes off.
+    private var categoryBeforeStars: (category: String?, subcategory: String?)?
     /// The current art full size, over the list or lyrics.
     @Published public var bigArt = false
 
@@ -60,6 +62,16 @@ public final class PlayerState: ObservableObject {
     /// again — and the list itself comes back in place of the lyrics or big art, so the change shows.
     public func tapStars() {
         starsOnly.toggle()
+        if starsOnly {
+            // Stars span every category: remember the chips, show "All Channels".
+            categoryBeforeStars = (category, subcategory)
+            category = nil
+        } else if let saved = categoryBeforeStars {
+            // Back to the category and subcategory the user was in (category first: it clears the sub).
+            category = saved.category
+            subcategory = saved.subcategory
+            categoryBeforeStars = nil
+        }
         bigArt = false
         lyrics = false
     }
