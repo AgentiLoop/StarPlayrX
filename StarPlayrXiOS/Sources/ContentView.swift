@@ -296,7 +296,7 @@ struct PlayerView: View {
             .glassCapsule()
         }
         .padding(.horizontal, 32)
-        .padding(.top, 2)
+        .padding(.top, -6)   // the list runs right down to the buttons
         .padding(.bottom, 24)   // lifted off the home indicator
     }
 
