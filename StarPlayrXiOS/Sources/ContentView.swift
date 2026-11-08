@@ -90,6 +90,8 @@ struct PlayerView: View {
     private var shaded: Bool { vSize == .compact }
     /// The wide layout with now playing and the list side by side (set from its geometry).
     @State private var sideBySide = false
+    /// The one bubble the phone's bottom-left buttons share: it slides to whichever is selected.
+    @Namespace private var modeBubble
 
     var body: some View {
         NavigationStack {
@@ -154,7 +156,7 @@ struct PlayerView: View {
         GeometryReader { geo in
             // The header's art fills whatever height it gets, so it's handed a share of the
             // shade; the slack goes above and below it — centred between the clock and the buttons.
-            NowPlayingHeader(spread: true)
+            NowPlayingHeader(spread: true, phone: true)
                 .frame(height: geo.size.height * 0.66)
                 .padding(.horizontal, 24)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -183,8 +185,8 @@ struct PlayerView: View {
                     .accessibilityLabel(app.starsOnly ? "All Stars On" : "All Stars Off")
                     .font(.title2)
                     .glassButtons()
-                    .padding(.trailing, 18)
-                    .padding(.top, 18)
+                    .padding(.trailing, 10)   // the same 10 from both edges, like the buttons below
+                    .padding(.top, 10)
                 }
                 // Drawn in the content, not the toolbar (the bar would stack them down the camera's
                 // side), so they need the toolbar's Liquid Glass look given by hand, 18 pt in from
@@ -195,15 +197,15 @@ struct PlayerView: View {
                     accountMenu
                         .font(.title2)
                         .glassButtons()
-                        .padding(.leading, 18)
-                        .padding(.bottom, 18)
+                        .padding(.leading, 10)
+                        .padding(.bottom, 10)
                 }
                 .overlay(alignment: geo.safeAreaInsets.trailing > geo.safeAreaInsets.leading ? .topLeading : .bottomTrailing) {
                     AirPlayButton()
                         .font(.title2)
                         .glassButtons()
-                        .padding(.horizontal, 18)
-                        .padding(.vertical, 18)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 10)
                 }
                 .ignoresSafeArea(.container, edges: [.horizontal, .bottom])
         }
@@ -222,20 +224,24 @@ struct PlayerView: View {
             let side = geo.safeAreaInsets.trailing
             let sideEQ = side >= 44
             VStack(spacing: 0) {
-                NowPlayingHeader(showsBars: !sideEQ)
+                NowPlayingHeader(showsBars: !sideEQ, phone: !sideEQ)
                     .padding(.horizontal)
                     // The Duo's empty top bar (its buttons are down the side) leaves a ~25 pt
                     // inset; that goes, so the art starts 15 pt down — about the side padding.
                     // Other phones: 8, right under the toolbar, so the list gets more of the screen.
-                    .padding(.top, sideEQ ? 15 : 8)
+                    .padding(.top, sideEQ ? 15 : -5)
                     // The search field's own 8 above it makes 12 under the bars; no divider.
                     .padding(.bottom, 4)
                 // Big art lies over the list or lyrics, as on the Mac.
                 if app.bigArt, let url = radio.shownArtURL { BigArtView(url: url) }
                 // The search and chips on one row, as on the Duo.
                 else if app.lyrics { LyricsView() } else { ChannelList(inlineFilters: true) }
+                if !sideEQ { phoneBar }
             }
-            .ignoresSafeArea(.container, edges: sideEQ ? .top : [])
+            // The phone has no top bar: All Stars sits in the header, the rest in the bottom bar.
+            // (The Duo's outer display keeps its toolbar down the side.)
+            .toolbar(sideEQ ? .automatic : .hidden, for: .navigationBar)
+            .ignoresSafeArea(.container, edges: sideEQ ? .top : .bottom)   // the phone's bar drops into the home-indicator strip
             .overlay(alignment: .bottomTrailing) {
                 if sideEQ, radio.current != nil {
                     // Turned clockwise: the first (heaviest) bars at the top, each bar growing
@@ -253,6 +259,64 @@ struct PlayerView: View {
                 }
             }
         }
+    }
+
+    /// The phone's bottom bar, as on the Mac: Channels, Lyrics and Album Art on a glass capsule at the
+    /// left (the lit one on a bubble that slides between them), AirPlay and the account at the right.
+    private var phoneBar: some View {
+        let artMode = app.bigArt && radio.shownArtURL != nil
+        let mode = artMode ? 2 : (app.lyrics ? 1 : 0)
+        return HStack {
+            HStack(spacing: 0) {
+                modeButton("list.bullet", label: "Channels", selected: mode == 0) { app.bigArt = false; app.lyrics = false }
+                modeButton("quote.bubble", label: "Lyrics", selected: mode == 1) { app.bigArt = false; app.lyrics = true }
+                modeButton("photo", label: "Album Art", selected: mode == 2) { app.bigArt = true }
+                    .disabled(radio.shownArtURL == nil)
+            }
+            .animation(.spring(response: 0.35, dampingFraction: 0.8), value: mode)
+            .glassCapsule()
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel("View")
+            Spacer()
+            HStack(spacing: 0) {
+                AirPlayButton().frame(width: 44, height: 36).contentShape(Rectangle())
+                Button { app.tapStars() } label: {
+                    Image(systemName: app.starsOnly ? "star.fill" : "star")
+                        .foregroundStyle(app.starsOnly ? Color.accentColor : Color.secondary)
+                        .frame(width: 44, height: 36)
+                        .contentShape(Rectangle())
+                }
+                .accessibilityLabel(app.starsOnly ? "All Stars On" : "All Stars Off")
+                .accessibilityHint(app.starsOnly ? "Shows every channel again" : "Shows only your starred channels")
+                accountMenu.frame(width: 44, height: 36).contentShape(Rectangle())
+            }
+            .font(.system(size: 18, weight: .semibold))
+            .foregroundStyle(.secondary)
+            .buttonStyle(.plain)
+            .glassCapsule()
+        }
+        .padding(.horizontal, 32)
+        .padding(.top, 4)
+        .padding(.bottom, 10)
+    }
+
+    private func modeButton(_ symbol: String, label: String, selected: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: symbol)
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(selected ? Color.primary : Color.secondary)
+                .frame(width: 44, height: 36)
+                .background {
+                    if selected {
+                        Capsule().fill(Color.primary.opacity(0.12))
+                            .matchedGeometryEffect(id: "modeBubble", in: modeBubble)
+                    }
+                }
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(label)
+        .accessibilityAddTraits(selected ? .isSelected : [])
     }
 
     /// iPad and the Duo open: now playing with the art or the lyrics under it, and the channel
@@ -349,6 +413,9 @@ struct NowPlayingHeader: View {
     var spread = false
     /// Off, the EQ bars are left out (the Duo's outer display draws them down its side strip).
     var showsBars = true
+    /// The phone: no star button beside the titles (a blue star ends the channel line instead); the
+    /// All Stars button is in the bottom bar.
+    var phone = false
 
     var body: some View {
         if spread { wide } else { stacked }
@@ -357,10 +424,11 @@ struct NowPlayingHeader: View {
     private var stacked: some View {
         VStack(spacing: 0) {
             row
-            controls().padding(.top, 6)
+            // Phone: lifted 8 pt by an offset, which moves the buttons without moving anything else.
+            controls().padding(.top, 6).offset(y: phone ? -8 : 0)
             // The bars grow up from the bottom of their 48 pt strip, so the strip's own headroom
             // is the air under the controls; no spacing on top of it.
-            if showsBars { bars }
+            if showsBars { bars.padding(.top, phone ? -14 : 0) }   // phone: half the air over the bars
         }
     }
 
@@ -379,7 +447,7 @@ struct NowPlayingHeader: View {
                 VStack(alignment: .leading, spacing: 0) {
                     HStack(alignment: .top, spacing: 12) {
                         titles(large: true)
-                        star
+                        if !phone { star }
                     }
                     Spacer(minLength: 8)
                     controls(large: true)
@@ -406,7 +474,7 @@ struct NowPlayingHeader: View {
         HStack(spacing: 12) {
             art(size: 72, cornerRadius: 16)
             titles(large: false)
-            star
+            if !phone { star }
         }
     }
 
@@ -438,7 +506,8 @@ struct NowPlayingHeader: View {
         let np = radio.current.flatMap { radio.displayed($0.id) }
         return VStack(alignment: .leading, spacing: large ? 4 : 2) {
             if let ch = radio.current {
-                MarqueeText(text: "\(ch.id) · \(ch.name)", font: large ? .headline : .caption, secondary: true).id("\(ch.id) · \(ch.name)")
+                MarqueeText(text: "\(ch.id) · \(ch.name)", font: large ? .headline : .caption, secondary: true,
+                            starred: phone && radio.presets.contains(ch.id)).id("\(ch.id) · \(ch.name)")
                 MarqueeText(text: np?.song ?? "", font: large ? .title.bold() : .headline).id(np?.song ?? "")
                 MarqueeText(text: np?.artist ?? "", font: large ? .title2 : .subheadline).id(np?.artist ?? "")
             } else {
@@ -533,11 +602,21 @@ struct AirPlayButton: View {
             Image(systemName: "airplay.audio")
         }
         .accessibilityLabel("AirPlay")
-        .background(RoutePickerHost(picker: picker).frame(width: 1, height: 1).opacity(0.01).allowsHitTesting(false))
+        .background(RoutePickerHost(picker: picker).frame(width: 1, height: 1).opacity(0.01).allowsHitTesting(false)
+            .accessibilityHidden(true))   // else VoiceOver finds a second, unlabelled AirPlay button
     }
 }
 
 extension View {
+    /// A Liquid Glass capsule behind a group of buttons (a material before iOS 26).
+    @ViewBuilder func glassCapsule() -> some View {
+        if #available(iOS 26.0, *) {
+            self.padding(.horizontal, 4).glassEffect(.regular.interactive(), in: Capsule())
+        } else {
+            self.padding(.horizontal, 4).background(.ultraThinMaterial, in: Capsule())
+        }
+    }
+
     /// The toolbar's round Liquid Glass buttons, for buttons drawn in the content (iOS 26 and up;
     /// plain bordered circles before).
     @ViewBuilder func glassButtons() -> some View {
@@ -599,7 +678,13 @@ struct StarButton: View {
             Image(systemName: isStarred ? "star.fill" : "star")
                 .foregroundStyle(isStarred ? Color.accentColor : Color.secondary)
                 .frame(width: 28, height: 28)
+                // A wider target than the glyph (the whole end of the row, 48 × 52): padded out for
+                // the hit area, then pulled back so the layout and the star's place don't change.
+                .padding(.horizontal, 10)
+                .padding(.vertical, 12)
                 .contentShape(Rectangle())
+                .padding(.horizontal, -10)
+                .padding(.vertical, -12)
         }
         .buttonStyle(.borderless)
         .accessibilityLabel(isStarred ? "Remove \(channel) from stars" : "Add \(channel) to stars")
