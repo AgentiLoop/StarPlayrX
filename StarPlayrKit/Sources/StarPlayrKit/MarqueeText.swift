@@ -20,16 +20,25 @@ public struct MarqueeText: View {
     let text: String
     let font: Font
     var secondary = false
+    /// Ends the line with a blue star (the channel is one of the stars).
+    var starred = false
     @State private var textWidth: CGFloat = 0
 
     private let gap: CGFloat = 40      // space between the end of the text and its repeat
     private let speed: CGFloat = 30    // points per second
     private let pause: Double = 2      // seconds held at the start of each pass
 
-    public init(text: String, font: Font, secondary: Bool = false) {
+    public init(text: String, font: Font, secondary: Bool = false, starred: Bool = false) {
         self.text = text
         self.font = font
         self.secondary = secondary
+        self.starred = starred
+    }
+
+    /// The line as one Text: the string, then the star graphic when `starred`.
+    private var line: Text {
+        starred ? Text(text) + Text(" · ") + Text(Image(systemName: "star.fill")).foregroundColor(.blue)
+                : Text(text)
     }
 
     public var body: some View {
@@ -37,7 +46,7 @@ public struct MarqueeText: View {
         Text(" ").font(font).hidden()
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(alignment: .leading) {
-                Text(text).font(font).fixedSize().hidden()
+                line.font(font).fixedSize().hidden()
                     .background(GeometryReader { g in
                         Color.clear.preference(key: MarqueeWidthKey.self, value: g.size.width)
                     })
@@ -46,17 +55,17 @@ public struct MarqueeText: View {
             .overlay(alignment: .leading) {
                 GeometryReader { geo in
                     if textWidth <= geo.size.width {
-                        Text(text).font(font).fixedSize().foregroundStyle(secondary ? .secondary : .primary)
+                        line.font(font).fixedSize().foregroundStyle(secondary ? .secondary : .primary)
                     } else {
                         // Drawn once, then moved by Core Animation in the render server: no per-frame work
                         // in the app. (A TimelineView rebuilt every scrolling line 60 times a second.)
                         ScrollingStrip(content: AnyView(
                             HStack(spacing: gap) {
-                                Text(text).font(font).fixedSize()
-                                Text(text).font(font).fixedSize()
+                                line.font(font).fixedSize()
+                                line.font(font).fixedSize()
                             }
                             .foregroundStyle(secondary ? .secondary : .primary)),
-                            key: "\(text)|\(secondary)", width: 2 * textWidth + gap, cycle: textWidth + gap, speed: speed, pause: pause)
+                            key: "\(text)|\(secondary)|\(starred)", width: 2 * textWidth + gap, cycle: textWidth + gap, speed: speed, pause: pause)
                     }
                 }
                 .clipped()
@@ -64,7 +73,7 @@ public struct MarqueeText: View {
             // One VoiceOver element with the whole line: the measuring copy and the second
             // copy the scrolling strip repeats would otherwise be read as extra text.
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel(text.trimmingCharacters(in: .whitespaces))
+            .accessibilityLabel(text.trimmingCharacters(in: .whitespaces) + (starred ? ", starred" : ""))
             .accessibilityHidden(text.trimmingCharacters(in: .whitespaces).isEmpty)
     }
 }

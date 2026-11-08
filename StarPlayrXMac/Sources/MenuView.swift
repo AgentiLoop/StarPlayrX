@@ -175,7 +175,7 @@ struct MenuView: View {
 
 
     /// Art and titles on top; previous, play/pause and next centred under them (as on iOS).
-    /// On the right, beside both rows: the "All Stars" glass button with the channel's star under it.
+    /// On the right, beside both rows: the "All Stars" glass button (a star after the channel name marks a starred channel).
     /// The controls are centred on the whole width, as if that column weren't there; only the
     /// titles make room for it.
     private var nowPlaying: some View {
@@ -185,11 +185,7 @@ struct MenuView: View {
                     .padding(.trailing, 34)   // the column's width (28) plus the gap (6)
                 controls
             }
-            VStack(spacing: 2) {
-                starsButton
-                channelStar
-                    .padding(.top, 11)   // just under the glass button
-            }
+            starsButton
         }
     }
 
@@ -243,7 +239,8 @@ struct MenuView: View {
             VStack(alignment: .leading, spacing: 2) {
                 if let ch = radio.current {
                     // A marquee like the song and artist (as on iOS), so a long channel name scrolls too.
-                    MarqueeText(text: "\(ch.id) · \(ch.name)", font: .caption, secondary: true).id("\(ch.id) · \(ch.name)")
+                    MarqueeText(text: "\(ch.id) · \(ch.name)", font: .caption, secondary: true, starred: radio.presets.contains(ch.id))
+                        .id("\(ch.id) · \(ch.name)")
                     MarqueeText(text: np?.song ?? "", font: .headline).id(np?.song ?? "")
                     MarqueeText(text: np?.artist ?? "", font: .body).id(np?.artist ?? "")
                 } else {
@@ -265,26 +262,6 @@ struct MenuView: View {
             // also toggle the lyrics).
             .onTapGesture(count: 2) {}
             .onTapGesture { PlayerState.shared.tapTitles() }
-        }
-    }
-
-    /// The current channel's star (in or out of the presets), top right of the panel.
-    /// Same size as the row stars; its glyph lines up with the toolbar group's first glyph.
-    @ViewBuilder private var channelStar: some View {
-        if let ch = radio.current {
-            let starred = radio.presets.contains(ch.id)
-            Button { radio.togglePreset(ch.id) } label: {
-                Image(starred ? "star_on" : "star_off")
-                    .renderingMode(starred ? .original : .template)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 16, height: 16)
-                    .foregroundStyle(Color.secondary)
-            }
-            .buttonStyle(.plain)
-            .help(starred ? "Remove from stars" : "Add to stars")
-            .accessibilityLabel(starred ? "Remove \(ch.name) from stars" : "Add \(ch.name) to stars")   // as on iOS
-            .padding(.top, 2)
         }
     }
 
@@ -329,7 +306,7 @@ struct MenuView: View {
 
     }
 
-    /// The "All Stars" filter star on its own Liquid Glass circle, above the channel's star.
+    /// The "All Stars" filter star on its own Liquid Glass circle.
     /// Clicking it also brings the channel list back over the lyrics or big art, so the change shows.
     @ViewBuilder private var starsButton: some View {
         let stars = Button { PlayerState.shared.tapStars() } label: {
