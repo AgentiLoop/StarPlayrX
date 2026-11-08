@@ -296,8 +296,8 @@ struct PlayerView: View {
             .glassCapsule()
         }
         .padding(.horizontal, 32)
-        .padding(.top, 2)
-        .padding(.bottom, 24)   // lifted off the home indicator
+        .padding(.top, 5)       // equal gap above (list) and below (home indicator)
+        .padding(.bottom, 17)
     }
 
     private func modeButton(_ symbol: String, label: String, selected: Bool, action: @escaping () -> Void) -> some View {
@@ -482,7 +482,7 @@ struct NowPlayingHeader: View {
         let np = radio.current.flatMap { radio.displayed($0.id) }
         let isAlbumArt = np?.image.isEmpty == false
         return ArtTile(url: (isAlbumArt ? np?.image : radio.current?.imageURL) ?? "", size: size,
-                       isAlbumArt: isAlbumArt, cornerRadius: cornerRadius)
+                       isAlbumArt: isAlbumArt, cornerRadius: cornerRadius, appIcon: true)
             // Tap the art: full size first; while it's big, album art → channel logo → show art,
             // and with nothing to switch to it closes again (as on the Mac). The tile is the tap
             // region (not the image, which may be scaled past it or not loaded yet).
@@ -645,6 +645,8 @@ struct ArtTile: View {
     let size: CGFloat
     var isAlbumArt = false
     var cornerRadius: CGFloat = 8
+    /// With no art yet: the StarPlayrX icon instead of the radio glyph (the now-playing tile).
+    var appIcon = false
 
     var body: some View {
         CachedArt(url: url, size: size, isAlbumArt: isAlbumArt) { art, isAlbumArt in
@@ -654,6 +656,9 @@ struct ArtTile: View {
                 ChannelLogo(image: art, inset: size / 16)
                     .frame(width: size, height: size)
                     .background(Color(white: 0.12))
+            } else if appIcon {
+                Image("StarPlayrIcon").resizable().scaledToFill()
+                    .frame(width: size, height: size)
             } else {
                 Image(systemName: "dot.radiowaves.left.and.right")
                     .font(.system(size: size / 2.5))
@@ -855,7 +860,7 @@ struct ChannelRow: View, Equatable {
                 .frame(width: 40, alignment: .trailing)
                 .accessibilityLabel("Channel \(channel.id)")
             let albumArt = nowPlaying?.image.isEmpty == false
-            ArtTile(url: (albumArt ? nowPlaying?.image : channel.imageURL) ?? "", size: 44, isAlbumArt: albumArt)
+            ArtTile(url: (albumArt ? nowPlaying?.image : channel.imageURL) ?? "", size: 44, isAlbumArt: albumArt, appIcon: true)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
                 MarqueeText(text: channel.name, font: isCurrent ? .body.bold() : .body).id(channel.name)

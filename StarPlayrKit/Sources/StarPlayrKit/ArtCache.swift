@@ -130,6 +130,23 @@ extension ChannelLogo {
 }
 
 
+/// Lets only a few art downloads run at once. The channel list prefetches hundreds of logos together,
+/// and that many at the same moment to one server stalled until they timed out.
+private actor ArtGate {
+    static let shared = ArtGate()
+    private var running = 0
+    private var waiting: [CheckedContinuation<Void, Never>] = []
+
+    func wait() async {
+        if running < 6 { running += 1; return }
+        await withCheckedContinuation { waiting.append($0) }
+    }
+
+    func leave() {
+        if waiting.isEmpty { running -= 1 } else { waiting.removeFirst().resume() }
+    }
+}
+
 /// Channel logos and album art kept in memory once loaded. Nothing is fetched until it's shown or about to be (list look-ahead),
 /// and a URL that is already loading is shared instead of downloaded twice. Each image is fetched
 /// (where the server can resize) and decoded at 2x the points it is shown at, so the 32pt channel
@@ -182,9 +199,20 @@ public final class ArtCache {
         guard !url.isEmpty, let address = URL(string: url) else { return nil }
         // Big art (Now Playing full size) is waited on by the user; list thumbnails can trail behind.
         let task = loading[key] ?? Task.detached(priority: pixels > 300 ? .userInitiated : .utility) {
-            guard let data = try? await ArtCache.session.data(from: address).0,
-                  let thumb = ArtCache.thumbnail(data, pixels: pixels, trimBorder: trimBorder) else { return nil }
-            return Thumbnail(image: thumb)
+            // The image server's QUIC (HTTP/3) connection can hang until the 60 s timeout while
+            // HTTP/2 answers at once: stay off HTTP/3, give up on a slow try sooner, and try twice.
+            var request = URLRequest(url: address, timeoutInterval: 12)
+            request.assumesHTTP3Capable = false
+            await ArtGate.shared.wait()
+            defer { Task { await ArtGate.shared.leave() } }
+            for _ in 0..<2 {
+                if let data = try? await ArtCache.session.data(for: request).0,
+                   let thumb = ArtCache.thumbnail(data, pixels: pixels, trimBorder: trimBorder) {
+                    return Thumbnail(image: thumb)
+                }
+                if Task.isCancelled { break }
+            }
+            return nil
         }
         loading[key] = task
         let thumb = await task.value?.image
