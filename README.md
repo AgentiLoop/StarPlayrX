@@ -242,7 +242,7 @@ More details: [How to fix popping sounds on macOS 26](https://medium.com/tech-bl
 StarPlayrX for Mac is in active development. Check out our other AgentiLoop projects too:
 [agentiloop.ai](https://agentiloop.ai) · [superbox64.com](https://superbox64.com) · [inkpen.io](https://inkpen.io) · [starplayrx.com](https://starplayrx.com)
 
-*Don't be a Satelliter, be a Star Player.* ⭐
+*Be a Star Player.* ⭐
 
 ---
 
