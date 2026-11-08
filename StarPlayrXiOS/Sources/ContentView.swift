@@ -296,8 +296,8 @@ struct PlayerView: View {
             .glassCapsule()
         }
         .padding(.horizontal, 32)
-        .padding(.top, 4)
-        .padding(.bottom, 10)
+        .padding(.top, 10)      // room between the buttons and the list, lyrics or art above
+        .padding(.bottom, 16)   // lifted 6 pt off the home indicator
     }
 
     private func modeButton(_ symbol: String, label: String, selected: Bool, action: @escaping () -> Void) -> some View {
