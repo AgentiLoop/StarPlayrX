@@ -185,7 +185,8 @@ struct MenuView: View {
                     .padding(.trailing, 34)   // the column's width (28) plus the gap (6)
                 controls
             }
-            starsButton
+            closeButton
+                .offset(x: 6, y: -6)   // tucked toward the panel's upper right corner
         }
     }
 
@@ -306,27 +307,44 @@ struct MenuView: View {
 
     }
 
-    /// The "All Stars" filter star on its own Liquid Glass circle.
+    /// Close on its own Liquid Glass circle, top right: under the menu bar it just hides the panel;
+    /// torn off it closes the window.
+    @ViewBuilder private var closeButton: some View {
+        let close = Button { menu.hide() } label: {
+            Image(systemName: "xmark")
+                .font(.system(size: 13, weight: .semibold))
+                .frame(width: 16, height: 16)
+                .foregroundStyle(Color.secondary)
+                .padding(7)   // same on every side, so the glass is a circle
+        }
+        .buttonStyle(.plain)
+        .help("Close")
+        .accessibilityLabel("Close")
+        if #available(macOS 26.0, *) {
+            close
+                .glassEffect(.regular.interactive(), in: Circle())
+        } else {
+            close
+        }
+    }
+
+    /// The "All Stars" filter star, in the footer's glass capsule.
     /// Clicking it also brings the channel list back over the lyrics or big art, so the change shows.
-    @ViewBuilder private var starsButton: some View {
-        let stars = Button { PlayerState.shared.tapStars() } label: {
+    private var starsButton: some View {
+        Button { PlayerState.shared.tapStars() } label: {
             Image(menu.starsOnly ? "star_on" : "star_off")
                 .renderingMode(menu.starsOnly ? .original : .template)
                 .resizable()
                 .scaledToFit()
                 .frame(width: 16, height: 16)
                 .foregroundStyle(Color.secondary)
-                .padding(7)   // same on every side, so the glass is a circle
+                .padding(.horizontal, 6)
+                .padding(.vertical, 3)
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .help(menu.starsOnly ? "Show every channel" : "Show only starred channels")
         .accessibilityLabel(menu.starsOnly ? "All Stars On" : "All Stars Off")
-        if #available(macOS 26.0, *) {
-            stars
-                .glassEffect(.regular.interactive(), in: Circle())
-        } else {
-            stars
-        }
     }
 
     /// One of the glass circle buttons: an SF Symbol sized like the star glyph, so the circles match.
@@ -503,7 +521,7 @@ struct MenuView: View {
         .overlay { WordMark().allowsHitTesting(false) }
     }
 
-    /// AirPlay, Close and the account menu on one horizontal Liquid Glass capsule where the system
+    /// AirPlay, All Stars and the account menu on one horizontal Liquid Glass capsule where the system
     /// has it (a grouped toolbar, like the Album Art and Lyrics one on the left).
     @ViewBuilder private var footerButtons: some View {
         let buttons = HStack(spacing: 0) {
@@ -511,12 +529,11 @@ struct MenuView: View {
                 .frame(width: 28, height: 22)
                 .help("AirPlay")
                 .accessibilityLabel("AirPlay")
-            // Close: under the menu bar it just hides the panel; torn off it closes the window.
-            glassButton("xmark", help: "Close", label: "Close") { menu.hide() }
+            starsButton
             accountMenu
         }
         .accessibilityElement(children: .contain)
-        .accessibilityLabel("AirPlay, Close and Account")
+        .accessibilityLabel("AirPlay, All Stars and Account")
         if #available(macOS 26.0, *) {
             buttons
                 .padding(.horizontal, 4)
