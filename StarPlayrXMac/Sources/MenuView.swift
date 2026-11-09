@@ -225,7 +225,7 @@ struct MenuView: View {
             .accessibilityLabel(radio.current.map { isAlbumArt ? "Album art, \($0.name)" : "Channel art, \($0.name)" } ?? "StarPlayrX")
             .accessibilityHint(bigArtURL == nil ? (shownArtURL != nil ? "Shows the art full size" : "Shows the channel in the list")
                                : "Switches between the album art, channel logo and show art")
-            .accessibilityAction { if !PlayerState.shared.tapArt() { revealCurrent() } }
+            .accessibilityAction { tapArt() }
             // Click the art: always full size over the list or lyrics first (album, channel or show art).
             // While it's big, each click steps album art → channel logo → show art, as the channel has
             // them (remembered per channel); with nothing to switch to it closes the big art again.
@@ -234,7 +234,7 @@ struct MenuView: View {
             // wait out the double-click time (so a double-click on the header, roll up, doesn't
             // also fire this), then the single-tap handler runs.
             .onTapGesture(count: 2) {}
-            .onTapGesture { if !PlayerState.shared.tapArt() { revealCurrent() } }
+            .onTapGesture { tapArt() }
 
             VStack(alignment: .leading, spacing: 2) {
                 if let ch = radio.current {
@@ -255,14 +255,14 @@ struct MenuView: View {
             .accessibilityAddTraits(.isButton)
             .accessibilityHint(bigArtURL != nil ? "Shows the \(menu.lyrics ? "lyrics" : "channel list") again"
                                : menu.lyrics ? "Shows the channel list" : "Shows the song's lyrics")
-            .accessibilityAction { PlayerState.shared.tapTitles() }
+            .accessibilityAction { if !shaded { PlayerState.shared.tapTitles() } }
             // Click the song/artist: the lyrics take the channel list's place, and back again.
             // Over big art it first just closes the art, so the user sees which view is underneath.
             // Same pattern as the EQ bars: the empty double-tap handler first makes the single tap
             // wait out the double-click time (so a double-click on the header, roll up, doesn't
             // also toggle the lyrics).
             .onTapGesture(count: 2) {}
-            .onTapGesture { PlayerState.shared.tapTitles() }
+            .onTapGesture { if !shaded { PlayerState.shared.tapTitles() } }
         }
     }
 
@@ -377,10 +377,11 @@ struct MenuView: View {
 
     /// Previous, play/pause and next, centred on their own row under the titles (as on iOS).
     private var controls: some View {
-        HStack(spacing: 36) {
+        HStack(spacing: 14) {
             // Previous / next: StarPlayrKit's playAdjacent, the same the iOS lock screen's ⏮ ⏭ send.
             Button { radio.playAdjacent(-1) } label: {
                 Image(systemName: "backward.fill").font(.system(size: 16))
+                    .frame(width: 40, height: 40).contentShape(Rectangle())
             }
             .help("Previous")
             .accessibilityLabel("Previous")
@@ -394,6 +395,7 @@ struct MenuView: View {
 
             Button { radio.playAdjacent(1) } label: {
                 Image(systemName: "forward.fill").font(.system(size: 16))
+                    .frame(width: 40, height: 40).contentShape(Rectangle())
             }
             .help("Next")
             .accessibilityLabel("Next")
@@ -401,8 +403,19 @@ struct MenuView: View {
         .buttonStyle(.plain)
         .disabled(radio.current == nil)
         .frame(maxWidth: .infinity)
+        .offset(y: -4)
     }
 
+
+    /// A click on the small art. Rolled up it only cycles the art (album, channel, show) and leaves the
+    /// hidden view (list, lyrics, big art) as it is; otherwise it opens or cycles the big art.
+    private func tapArt() {
+        if shaded {
+            if let id = radio.current?.id { radio.cycleArt(id) }
+        } else if !PlayerState.shared.tapArt() {
+            revealCurrent()
+        }
+    }
 
     /// Single click on the now-playing art or titles: bring the current channel's row into view.
     private func revealCurrent() {
@@ -499,16 +512,6 @@ struct MenuView: View {
             .padding(.leading, -8)
             .padding(.trailing, -12)
             .onAppear { if let id = radio.current?.id { proxy.scrollTo(id, anchor: .center) } }
-        }
-    }
-
-    /// Look-ahead: when a row appears, start loading the art of the 10 rows above and below it,
-    /// so it's usually already in `ArtCache` by the time those rows scroll into view.
-    private func prefetchArt(around index: Int, in list: [Channel]) {
-        for ch in list[max(0, index - 10)..<min(list.count, index + 11)] {
-            let albumArt = (radio.displayed(ch.id)?.image).flatMap { $0.isEmpty ? nil : $0 }
-            ArtCache.shared.prefetch(albumArt ?? ch.imageURL, pixels: ArtCache.pixels(32), trimBorder: albumArt != nil)
-        }
             // The list stays alive under the lyrics and big art, so onAppear doesn't fire when it comes back:
             // centre the current channel again when switching to the list, if it's in the list.
             .onValueChange(of: !menu.lyrics && !menu.bigArt) { listShowing in
@@ -522,6 +525,16 @@ struct MenuView: View {
                     proxy.scrollTo(id, anchor: .center)
                 }
             }
+        }
+    }
+
+    /// Look-ahead: when a row appears, start loading the art of the 10 rows above and below it,
+    /// so it's usually already in `ArtCache` by the time those rows scroll into view.
+    private func prefetchArt(around index: Int, in list: [Channel]) {
+        for ch in list[max(0, index - 10)..<min(list.count, index + 11)] {
+            let albumArt = (radio.displayed(ch.id)?.image).flatMap { $0.isEmpty ? nil : $0 }
+            ArtCache.shared.prefetch(albumArt ?? ch.imageURL, pixels: ArtCache.pixels(32), trimBorder: albumArt != nil)
+        }
     }
 
     /// "v1.1.8" from the bundle; Debug builds add "-dev" (StarPlayrKit's AppVersion).
@@ -561,26 +574,27 @@ struct MenuView: View {
     /// Sign Out and Quit in a pop-up menu, as the iOS app's account menu has Sign Out.
     private var accountMenu: some View {
         Menu {
-            Text("StarPlayrX \(Self.version)")
-            if radio.isLoggedIn {
-                Button("Sign Out", role: .destructive) { radio.signOut() }
-            }
+            Text(Self.version)
             Menu("Window Level") {
-                ForEach(WindowLevel.allCases) { level in
-                    Button { menu.windowLevel = level } label: {
-                        if menu.windowLevel == level { Label(level.title, systemImage: "checkmark") } else { Text(level.title) }
-                    }
+                Picker("Window Level", selection: $menu.windowLevel) {
+                    ForEach(WindowLevel.allCases) { level in Text(level.title).tag(level) }
                 }
+                .pickerStyle(.inline)
+                .labelsHidden()
             }
 
             Menu("Window Mode") {
-                ForEach(WindowStyle.allCases) { style in
-                    Button { menu.windowStyle = style } label: {
-                        if menu.windowStyle == style { Label(style.title, systemImage: "checkmark") } else { Text(style.title) }
-                    }
+                Picker("Window Mode", selection: $menu.windowStyle) {
+                    ForEach(WindowStyle.allCases) { style in Text(style.title).tag(style) }
                 }
+                .pickerStyle(.inline)
+                .labelsHidden()
             }
             Button("Quit StarPlayrX") { NSApp.terminate(nil) }
+            if radio.isLoggedIn {
+                Button("Sign Out", role: .destructive) { radio.signOut() }
+            }
+
         } label: {
             Image(systemName: "person.crop.circle")
                 .font(.system(size: 13, weight: .semibold))

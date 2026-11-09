@@ -37,6 +37,90 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    /// The Dock icon's menu: what is playing, the starred channels to switch between, and play/pause.
+    @MainActor
+    func applicationDockMenu(_ sender: NSApplication) -> NSMenu? {
+        do {
+            let radio = Radio.shared
+            let menu = NSMenu()
+
+            if radio.isPlaying, let current = radio.current {
+                let now = radio.playingNow
+                let header = NSMenuItem(title: Self.dockTitle(current, pad: false), action: nil, keyEquivalent: "")
+                header.isEnabled = false
+                menu.addItem(header)
+                for line in [now?.song, now?.artist] {
+                    guard let line, !line.isEmpty else { continue }
+                    let item = NSMenuItem(title: line, action: nil, keyEquivalent: "")
+                    item.isEnabled = false
+                    menu.addItem(item)
+                }
+                menu.addItem(.separator())
+            }
+
+            let stars = radio.channels.filter { radio.presets.contains($0.id) }
+            if !stars.isEmpty {
+                let title = NSMenuItem(title: "Favorites", action: nil, keyEquivalent: "")
+                title.isEnabled = false
+                menu.addItem(title)
+                let numberWidth = stars.map { Self.dockTextWidth($0.id) }.max() ?? 0
+                for channel in stars {
+                    let item = NSMenuItem(title: Self.dockTitle(channel, width: numberWidth), action: #selector(playFromDock(_:)), keyEquivalent: "")
+                    item.target = self
+                    item.representedObject = channel.id
+                    item.state = radio.isPlaying && radio.current?.id == channel.id ? .on : .off
+                    menu.addItem(item)
+                }
+                menu.addItem(.separator())
+            }
+
+            if radio.isPlaying || radio.current != nil {
+                let item = NSMenuItem(title: radio.isPlaying ? "Pause" : "Play", action: #selector(togglePlayFromDock), keyEquivalent: "")
+                item.target = self
+                menu.addItem(item)
+            }
+            return menu.items.isEmpty ? nil : menu
+        }
+    }
+
+    /// "  8 · 80s on 8" for a Favorites row. The Dock draws this menu itself with a proportional font and ignores fonts,
+    /// tab stops and item images, so the number is right-aligned by left-padding it with space characters whose widths
+    /// are measured in the system font, until it is as wide as the widest favorite's number.
+    private static func dockTitle(_ channel: Channel, pad: Bool = true, width: CGFloat = 0) -> String {
+        guard pad else { return "\(channel.id) · \(channel.name)" }
+        return "\(dockPadding(for: channel.id, width: width))\(channel.id) · \(channel.name)"
+    }
+
+    private static func dockTextWidth(_ text: String) -> CGFloat {
+        NSAttributedString(string: text, attributes: [.font: NSFont.systemFont(ofSize: 14)]).size().width
+    }
+
+    private static func dockPadding(for id: String, width: CGFloat) -> String {
+        var remaining = width - dockTextWidth(id)
+        var padding = ""
+        // Widest to narrowest: em space, en space, figure space, thin space, hair space.
+        for space in ["\u{2003}", "\u{2002}", "\u{2007}", "\u{2009}", "\u{200A}"] {
+            let w = dockTextWidth(space)
+            guard w > 0 else { continue }
+            while remaining >= w - 0.01 {
+                padding += space
+                remaining -= w
+            }
+        }
+        return padding
+    }
+
+    @objc private func playFromDock(_ sender: NSMenuItem) {
+        guard let id = sender.representedObject as? String else { return }
+        MainActor.assumeIsolated {
+            if let channel = Radio.shared.channels.first(where: { $0.id == id }) { Radio.shared.play(channel) }
+        }
+    }
+
+    @objc private func togglePlayFromDock() {
+        MainActor.assumeIsolated { Radio.shared.togglePlayPause() }
+    }
+
     /// Clicking the app's icon while it's running opens the panel on the display clicked on.
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
         MainActor.assumeIsolated { MenuController.shared.showOnMouseDisplay() }

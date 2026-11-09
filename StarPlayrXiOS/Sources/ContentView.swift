@@ -535,10 +535,11 @@ struct NowPlayingHeader: View {
     /// Previous, play/pause and next, centred on their own row under the titles; `large` is the
     /// wide layout, where they get the room of a full player screen.
     private func controls(large: Bool = false) -> some View {
-        HStack(spacing: large ? 56 : 44) {
+        HStack(spacing: large ? 28 : 20) {
             // Previous / next: the same playAdjacent the lock screen's ⏮ ⏭ send (RadioSession.swift).
             Button { radio.playAdjacent(-1) } label: {
                 Image(systemName: "backward.fill").font(.system(size: large ? 30 : 22))
+                    .frame(width: large ? 64 : 44, height: large ? 64 : 44).contentShape(Rectangle())
             }
             .accessibilityLabel("Previous")
 
@@ -550,6 +551,7 @@ struct NowPlayingHeader: View {
 
             Button { radio.playAdjacent(1) } label: {
                 Image(systemName: "forward.fill").font(.system(size: large ? 30 : 22))
+                    .frame(width: large ? 64 : 44, height: large ? 64 : 44).contentShape(Rectangle())
             }
             .accessibilityLabel("Next")
         }

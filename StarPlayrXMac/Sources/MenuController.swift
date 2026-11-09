@@ -693,7 +693,7 @@ private struct PanelRoot: View {
             MenuView().background(Color(nsColor: .windowBackgroundColor))
                 .clipShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
         case .translucent:
-            MenuView().background(MenuMaterial())
+            MenuView().background(MenuMaterial().opacity(0.5))
                 .clipShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
         case .hud:
             if #available(macOS 26, *) {
