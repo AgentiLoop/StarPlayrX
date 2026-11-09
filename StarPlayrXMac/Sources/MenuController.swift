@@ -69,6 +69,8 @@ final class MenuController: NSObject, ObservableObject {
         }
     }
     @Published var shaded = false
+    /// Bumped each time the panel is shown under the menu bar; the list re-centres the playing channel on it.
+    @Published private(set) var shownCount = 0
     /// Height of the channel list and lyrics: drag the panel's bottom edge to change it. Remembered.
     @Published var listHeight: CGFloat = MenuController.savedListHeight
     static let listHeightRange: ClosedRange<CGFloat> = 200...1600
@@ -284,6 +286,7 @@ final class MenuController: NSObject, ObservableObject {
         // Like MenuBarExtra: the app becomes active, so controls draw active rather than greyed.
         NSApp.activate(ignoringOtherApps: true)
         panel.makeKeyAndOrderFront(nil)
+        shownCount += 1
         // The panel's own screen, now it is placed: with a menu bar on every display, the status
         // item's window can be on a different display than the one the panel opened on.
         routeToPanelDisplay(force: true)

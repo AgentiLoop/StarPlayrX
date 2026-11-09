@@ -516,6 +516,12 @@ struct MenuView: View {
                     proxy.scrollTo(id, anchor: .center)
                 }
             }
+            // The panel is only ordered out when hidden, so onAppear doesn't run on reopen either.
+            .onValueChange(of: menu.shownCount) { _ in
+                if !menu.lyrics, !menu.bigArt, let id = radio.current?.id, list.contains(where: { $0.id == id }) {
+                    proxy.scrollTo(id, anchor: .center)
+                }
+            }
     }
 
     /// "v1.1.8" from the bundle; Debug builds add "-dev" (StarPlayrKit's AppVersion).
