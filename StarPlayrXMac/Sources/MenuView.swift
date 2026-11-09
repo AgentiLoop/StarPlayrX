@@ -509,6 +509,13 @@ struct MenuView: View {
             let albumArt = (radio.displayed(ch.id)?.image).flatMap { $0.isEmpty ? nil : $0 }
             ArtCache.shared.prefetch(albumArt ?? ch.imageURL, pixels: ArtCache.pixels(32), trimBorder: albumArt != nil)
         }
+            // The list stays alive under the lyrics and big art, so onAppear doesn't fire when it comes back:
+            // centre the current channel again when switching to the list, if it's in the list.
+            .onValueChange(of: !menu.lyrics && !menu.bigArt) { listShowing in
+                if listShowing, let id = radio.current?.id, list.contains(where: { $0.id == id }) {
+                    proxy.scrollTo(id, anchor: .center)
+                }
+            }
     }
 
     /// "v1.1.8" from the bundle; Debug builds add "-dev" (StarPlayrKit's AppVersion).

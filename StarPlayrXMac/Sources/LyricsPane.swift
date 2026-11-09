@@ -206,7 +206,7 @@ private struct LyricLines: View, Equatable {
 
 /// `onChange` that hands over just the new value. The one-parameter form is deprecated in
 /// macOS 14 and the two-parameter one doesn't exist before it, and the app runs on macOS 13.
-private extension View {
+extension View {
     @ViewBuilder
     func onValueChange<V: Equatable>(of value: V, perform action: @escaping (V) -> Void) -> some View {
         if #available(macOS 14, *) {
