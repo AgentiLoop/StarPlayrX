@@ -18,6 +18,18 @@ StarPlayrX was built for visually impaired listeners, a group of paying subscrib
 | `SwifterLite/` | Small embedded HTTP server used by StarPlayrRadioKit ([iOS](StarPlayrX/StarPlayrX/StarPlayrX/StarPlayrX/SwifterLite)) |
 
 
+## 📱 StarPlayrX for iPhone and iPad (TestFlight beta)
+
+StarPlayrX is now on iPhone and iPad, built from the same code as the Mac app: 500+ live and 1,000+ Xtra channels, album art, the lava-lamp equalizer, time-synced lyrics, stars, category chips, AirPlay, and now playing on the lock screen. It has dark mode and Liquid Glass, and it is made for iPhone Duo.
+
+**[Join the iPhone beta on TestFlight](https://testflight.apple.com/join/Ecz0xXvf)**
+
+- iOS 17 or later, iPhone and iPad
+- Free TestFlight beta
+- A SiriusXM subscription is required
+
+Install [TestFlight](https://apps.apple.com/app/testflight/id899247664) from the App Store, then open the link above on your iPhone or iPad to join.
+
 ## 🎛️ StarPlayrX for Mac (menu bar app)
 
 <p align="center">
@@ -204,7 +216,7 @@ cd StarPlayrXMac && xcodegen generate
 
 ### Catalyst / iOS / iPadOS app
 
-Open `SPX.xcworkspace`, choose the `StarPlayrX` scheme and a destination, then build. iOS and iPadOS builds have to be built and installed locally.
+Open `SPX.xcworkspace`, choose the `StarPlayrX` scheme and a destination, then build. To skip building, join the [TestFlight beta](https://testflight.apple.com/join/Ecz0xXvf) for iPhone and iPad.
 
 ### Release: Developer ID and notarization
 
