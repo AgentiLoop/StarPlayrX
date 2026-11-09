@@ -182,7 +182,6 @@ struct MenuView: View {
         ZStack(alignment: .topTrailing) {
             VStack(spacing: 6) {
                 nowPlayingRow
-                    .padding(.trailing, 34)   // the column's width (28) plus the gap (6)
                 controls
             }
             closeButton
@@ -241,6 +240,7 @@ struct MenuView: View {
                 if let ch = radio.current {
                     // A marquee like the song and artist (as on iOS), so a long channel name scrolls too.
                     MarqueeText(text: "\(ch.id) · \(ch.name)", font: .caption, secondary: true, starred: radio.presets.contains(ch.id))
+                        .padding(.trailing, 34)   // only the channel line, level with the close button, makes room for it
                         .id("\(ch.id) · \(ch.name)")
                     MarqueeText(text: np?.song ?? "", font: .headline).id(np?.song ?? "")
                     MarqueeText(text: np?.artist ?? "", font: .body).id(np?.artist ?? "")
@@ -312,10 +312,12 @@ struct MenuView: View {
     @ViewBuilder private var closeButton: some View {
         let close = Button { menu.hide() } label: {
             Image(systemName: "xmark")
-                .font(.system(size: 13, weight: .semibold))
-                .frame(width: 16, height: 16)
+                .font(.system(size: 11, weight: .semibold))
+                .frame(width: 14, height: 14)
                 .foregroundStyle(Color.secondary)
-                .padding(7)   // same on every side, so the glass is a circle
+                .padding(6)   // same on every side, so the glass is a circle
+                .frame(width: 26, height: 26)
+                .contentShape(Circle())
         }
         .buttonStyle(.plain)
         .help("Close")

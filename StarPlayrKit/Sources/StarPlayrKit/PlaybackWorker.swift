@@ -53,7 +53,6 @@ public final class PlaybackWorker: @unchecked Sendable {
     private var lastItem: AVPlayerItem?
     private var trackChanged: (@Sendable (UUID) -> Void)?
     private var timer: DispatchSourceTimer?
-    private static let log = Log(subsystem: "com.starplayrx.mac", category: "playback")
 
     private init() {
         queue.async {
@@ -171,12 +170,8 @@ public final class PlaybackWorker: @unchecked Sendable {
         state.track = item.flatMap { tracks[$0]?.track }
         state.queueCount = queued.count
         lock.lock()
-        let previous = cached
         cached = state
         lock.unlock()
-        if previous.liveStatus != state.liveStatus || previous.xtraStatus != state.xtraStatus {
-            Self.log.notice("worker live=\(state.liveStatus.rawValue) xtra=\(state.xtraStatus.rawValue) liveTime=\(state.liveTime) xtraTime=\(state.xtraTime)")
-        }
         if item !== lastItem {
             lastItem = item
             trackChanged?(id)

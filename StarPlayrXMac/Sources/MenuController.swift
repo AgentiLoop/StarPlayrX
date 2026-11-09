@@ -190,7 +190,6 @@ final class MenuController: NSObject, ObservableObject {
     /// Puts the panel under the menu bar — gliding it back first if it was torn off.
     /// `target`: that display's menu bar instead of the one the status item's window is on.
     private func showUnderMenuBar(on target: NSScreen? = nil) {
-        menuLog.log("show visible=\(self.panel.isVisible) detached=\(self.detached)")
         // Shaded and torn off: glide back still rolled up, then unroll once in place.
         let unshade = panel.isVisible && detached && shaded
         let wasTornOff = panel.isVisible && detached
@@ -285,7 +284,6 @@ final class MenuController: NSObject, ObservableObject {
     }
 
     func hide() {
-        menuLog.log("hide visible=\(self.panel.isVisible)")
         glide?.invalidate()
         glide = nil
         panel.orderOut(nil)
@@ -491,7 +489,6 @@ final class MenuController: NSObject, ObservableObject {
 @available(macOS 27, *)
 extension MenuController: @preconcurrency NSStatusItemExpandedInterfaceDelegate {
     func statusItem(_ statusItem: NSStatusItem, didBegin session: NSStatusItemExpandedInterfaceSession) {
-        menuLog.log("didBegin visible=\(self.panel.isVisible) detached=\(self.detached) closingPress=\(self.closingPress)")
         // The press that just closed the panel can also begin a session: cancel it, or the click
         // that closed the panel opens it straight back up. (If its mouse-up was somehow missed,
         // don't stay stuck: a press can't last that long.)
@@ -513,7 +510,6 @@ extension MenuController: @preconcurrency NSStatusItemExpandedInterfaceDelegate 
     }
 
     func statusItemDidEndExpandedInterfaceSession(_ statusItem: NSStatusItem, animated: Bool) {
-        menuLog.log("didEnd visible=\(self.panel.isVisible) detached=\(self.detached)")
         // Torn off, it is no longer the icon's interface: it stays put and only the highlight ends.
         guard panel.isVisible, !detached else { return }
         // Clicking the icon on a display whose menu bar is dimmed makes that display the active
