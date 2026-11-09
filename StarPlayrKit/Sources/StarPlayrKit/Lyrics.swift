@@ -111,8 +111,12 @@ public class LyricsStore: ObservableObject {
     public private(set) var missed = false
 
     private var key = ""
-    /// The Shazam names last tried for this song, so each is only looked up once.
+    /// The Shazam names last tried for this song, and how many searches they have had.
     private var heardKey = ""
+    private var heardTries = 0
+    /// When the last search for this song began; Shazam's names get another go after `retryAfter`.
+    private var searchedAt = Date.distantPast
+    private static let retryAfter: TimeInterval = 15
     private var cache = [String: Lyrics?]()
     private var task: Task<Void, Never>?
 
@@ -127,6 +131,8 @@ public class LyricsStore: ObservableObject {
         guard k != key else { return }
         key = k
         heardKey = ""
+        heardTries = 0
+        searchedAt = Date()
         missed = false
         task?.cancel()
         guard !song.isEmpty else {
@@ -175,8 +181,16 @@ public class LyricsStore: ObservableObject {
     /// are kept under the station's names too, so the song loads straight away next time.
     public func tryHeard(artist: String, song: String, duration: TimeInterval?) {
         let k = key, heard = Self.key(artist, song)
-        guard missed, !song.isEmpty, heard != k, heard != heardKey else { return }
-        heardKey = heard
+        guard missed, !song.isEmpty else { return }
+        if heard != heardKey { heardKey = heard; heardTries = 0 }
+        // Shazam's names, when they differ from the station's, are searched at once; every other
+        // go (the same names again, or a second look at Shazam's) waits 15 s after the last search,
+        // in case the lyrics servers have caught up by then. Twice per name, then give up.
+        guard heardTries < 2,
+              (heardTries == 0 && heard != k) || Date().timeIntervalSince(searchedAt) >= Self.retryAfter else { return }
+        let retrying = heardTries > 0 || heard == k
+        heardTries += 1
+        searchedAt = Date()
         let station = k.split(separator: "|", maxSplits: 1).map(String.init)
         func adopt(_ found: Lyrics?) {
             guard let found else {
@@ -191,7 +205,7 @@ public class LyricsStore: ObservableObject {
                 LyricsCache.shared.save(found, for: k, artist: station[0], song: station[1])
             }
         }
-        if let cached = cache[heard] ?? LyricsCache.shared.lyrics(for: heard) {
+        if !retrying, let cached = cache[heard] ?? LyricsCache.shared.lyrics(for: heard) {
             adopt(cached)
             return
         }
