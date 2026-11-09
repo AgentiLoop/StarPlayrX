@@ -552,6 +552,11 @@ struct MenuView: View {
             if radio.isLoggedIn {
                 Button("Sign Out", role: .destructive) { radio.signOut() }
             }
+            if menu.detached {
+                Picker("Window Level", selection: $menu.windowLevel) {
+                    ForEach(WindowLevel.allCases) { Text($0.title).tag($0) }
+                }
+            }
             Button("Quit StarPlayrX") { NSApp.terminate(nil) }
         } label: {
             Image(systemName: "person.crop.circle")

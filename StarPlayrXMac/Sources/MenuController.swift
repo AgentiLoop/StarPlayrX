@@ -14,6 +14,17 @@ import StarPlayrKit
 
 let menuLog = Log(subsystem: "com.starplayrx.mac", category: "menu")
 
+/// Where the torn-off panel sits: on the desktop like a widget, among normal windows, or above them.
+enum WindowLevel: String, CaseIterable, Identifiable {
+    case widget, normal, float
+    var id: String { rawValue }
+    var title: String { rawValue.capitalized }
+    static let key = "windowLevel"
+    static var saved: WindowLevel {
+        UserDefaults.standard.string(forKey: key).flatMap(WindowLevel.init) ?? .widget
+    }
+}
+
 /// Owns the menu bar item and the one panel used both under the menu bar and torn off.
 @MainActor
 final class MenuController: NSObject, ObservableObject {
@@ -23,7 +34,14 @@ final class MenuController: NSObject, ObservableObject {
     /// wallpaper icons, behind every app window, on every Space, staying put for Show Desktop.
     /// Under the menu bar it floats above apps, like a menu.
     @Published private(set) var detached = false {
-        didSet { panel.sitOnDesktop(detached) }
+        didSet { panel.setLevel(detached ? windowLevel : nil) }
+    }
+    /// Level of the torn-off panel (also while rolled up). Under the menu bar it always floats.
+    @Published var windowLevel = WindowLevel.saved {
+        didSet {
+            UserDefaults.standard.set(windowLevel.rawValue, forKey: WindowLevel.key)
+            if detached { panel.setLevel(windowLevel) }
+        }
     }
     @Published var shaded = false
     /// Height of the channel list and lyrics: drag the panel's bottom edge to change it. Remembered.
@@ -194,7 +212,7 @@ final class MenuController: NSObject, ObservableObject {
         let unshade = panel.isVisible && detached && shaded
         let wasTornOff = panel.isVisible && detached
         // Off the desktop layer before gliding back (a shaded panel is still `detached` meanwhile).
-        if wasTornOff { panel.sitOnDesktop(false) }
+        if wasTornOff { panel.setLevel(nil) }
         if !unshade {
             detached = false
             shaded = false
@@ -587,12 +605,17 @@ final class MenuPanel: NSPanel {
 
     private lazy var floatingBehavior = collectionBehavior
 
-    /// Desktop-widget level (desktop icons + 2, the layer macOS puts its own widgets on) or back to floating.
-    func sitOnDesktop(_ onDesktop: Bool) {
-        if onDesktop {
+    /// Torn off: the chosen level. `nil`: floating under the menu bar.
+    func setLevel(_ chosen: WindowLevel?) {
+        switch chosen {
+        case .widget:
+            // Desktop icons + 2, the layer macOS puts its own widgets on.
             level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.desktopIconWindow)) + 2)
             collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle]
-        } else {
+        case .normal:
+            level = .normal
+            collectionBehavior = floatingBehavior
+        case .float, nil:
             level = .floating
             collectionBehavior = floatingBehavior
         }
