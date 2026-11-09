@@ -29,8 +29,8 @@ targets:
       path: Sources/Info.plist
       properties:
         CFBundleDisplayName: StarPlayrX
-        CFBundleShortVersionString: "1.1.33"
-        CFBundleVersion: "39"
+        CFBundleShortVersionString: "1.1.34"
+        CFBundleVersion: "40"
         LSUIElement: true
         NSAppleScriptEnabled: true
         OSAScriptingDefinition: StarPlayrX.sdef

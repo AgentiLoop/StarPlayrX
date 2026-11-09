@@ -25,6 +25,24 @@ enum WindowLevel: String, CaseIterable, Identifiable {
     }
 }
 
+/// The panel's look: HUD (Liquid Glass on macOS 26, a blurred material before), translucent (blurred material on every version) or a plain opaque window.
+enum WindowStyle: String, CaseIterable, Identifiable {
+    case hud, translucent, opaque
+    var id: String { rawValue }
+    var title: String {
+        switch self {
+        case .hud: "HUD"
+        case .translucent: "Translucent"
+        case .opaque: "Opaque"
+        }
+    }
+
+    static let key = "windowStyle"
+    static var saved: WindowStyle {
+        UserDefaults.standard.string(forKey: key).flatMap(WindowStyle.init) ?? .hud
+    }
+}
+
 /// Owns the menu bar item and the one panel used both under the menu bar and torn off.
 @MainActor
 final class MenuController: NSObject, ObservableObject {
@@ -41,6 +59,13 @@ final class MenuController: NSObject, ObservableObject {
         didSet {
             UserDefaults.standard.set(windowLevel.rawValue, forKey: WindowLevel.key)
             if detached { panel.setLevel(windowLevel) }
+        }
+    }
+    /// HUD (glass) or opaque look of the panel, torn off or under the menu bar.
+    @Published var windowStyle = WindowStyle.saved {
+        didSet {
+            UserDefaults.standard.set(windowStyle.rawValue, forKey: WindowStyle.key)
+            DispatchQueue.main.async { [panel] in panel.refreshShadow() }
         }
     }
     @Published var shaded = false
@@ -641,17 +666,7 @@ final class MenuPanel: NSPanel {
         panel.isOpaque = false
         panel.backgroundColor = .clear
         panel.hasShadow = true
-        let menu = MenuView().environmentObject(Radio.shared)
-        let root: AnyView
-        if #available(macOS 26, *) {
-            // Same Liquid Glass look as a MenuBarExtra window. AppKit's NSGlassEffectView, not
-            // SwiftUI's .glassEffect, which leaves a dark rim in a borderless clear window.
-            root = AnyView(menu.background(MenuGlass())
-                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous)))
-        } else {
-            root = AnyView(menu.background(MenuMaterial())
-                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous)))
-        }
+        let root = PanelRoot().environmentObject(Radio.shared)
         // A hosting controller sizes the panel to the view (and follows it when the
         // spectrum appears); a bare hosting view in a .zero rect leaves it 0×0 and invisible.
         let host = NSHostingController(rootView: root)
@@ -660,6 +675,37 @@ final class MenuPanel: NSPanel {
         return panel
     }
 }
+
+/// The menu view on the chosen background: glass (HUD), a blurred material (translucent) or a plain window background (opaque).
+private struct PanelRoot: View {
+    @ObservedObject private var menu = MenuController.shared
+
+    private var radius: CGFloat {
+        if #available(macOS 26, *) { return 16 } else { return 10 }
+    }
+
+    var body: some View {
+        switch menu.windowStyle {
+        case .opaque:
+            MenuView().background(Color(nsColor: .windowBackgroundColor))
+                .clipShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
+        case .translucent:
+            MenuView().background(MenuMaterial())
+                .clipShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
+        case .hud:
+            if #available(macOS 26, *) {
+                // Same Liquid Glass look as a MenuBarExtra window. AppKit's NSGlassEffectView, not
+                // SwiftUI's .glassEffect, which leaves a dark rim in a borderless clear window.
+                MenuView().background(MenuGlass())
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            } else {
+                MenuView().background(MenuMaterial())
+                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            }
+        }
+    }
+}
+
 
 /// Liquid Glass background (macOS 26+).
 @available(macOS 26, *)

@@ -552,9 +552,19 @@ struct MenuView: View {
             if radio.isLoggedIn {
                 Button("Sign Out", role: .destructive) { radio.signOut() }
             }
-            if menu.detached {
-                Picker("Window Level", selection: $menu.windowLevel) {
-                    ForEach(WindowLevel.allCases) { Text($0.title).tag($0) }
+            Menu("Window Level") {
+                ForEach(WindowLevel.allCases) { level in
+                    Button { menu.windowLevel = level } label: {
+                        if menu.windowLevel == level { Label(level.title, systemImage: "checkmark") } else { Text(level.title) }
+                    }
+                }
+            }
+
+            Menu("Window Mode") {
+                ForEach(WindowStyle.allCases) { style in
+                    Button { menu.windowStyle = style } label: {
+                        if menu.windowStyle == style { Label(style.title, systemImage: "checkmark") } else { Text(style.title) }
+                    }
                 }
             }
             Button("Quit StarPlayrX") { NSApp.terminate(nil) }
