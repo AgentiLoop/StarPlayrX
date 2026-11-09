@@ -300,6 +300,8 @@ public final class LyricSync: ObservableObject {
         guard let lyrics = LyricsStore.shared.lyrics, lyrics.synced,
               Date().timeIntervalSince(xtraAlignedAt) >= Self.xtraSegment,
               let onsets = SpectrumTimeline.shared.onsets(track: file) else { return }
+        // Nothing is sung in an instrumental, so the aligner would only be guessing there.
+        if let at = Radio.shared.trackPosition, LyricsLayout.isInstrumental(lyrics, at: at) { return }
         xtraAlignedAt = Date()
         let times = Self.lineTimes(lyrics)
         guard times.count >= LyricAligner.minimumLines else { return }
@@ -448,6 +450,9 @@ public final class LyricSync: ObservableObject {
                 return
             }
         }
+        // In an instrumental there is nothing sung to measure against: whatever the aligner would say
+        // is a guess, so a lock the song already has stands until the singing comes back.
+        if shift != nil, let at = Radio.shared.trackPosition, LyricsLayout.isInstrumental(lyrics, at: at) { return }
         // Shazam already placed this song: its lock stands, and from here the aligner only fine-tunes
         // it (`liveTune`), as `xtraTune` does for an Xtra track; it never moves the lock itself.
         let tuning = heldBy == .shazam

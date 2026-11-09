@@ -147,7 +147,7 @@ struct LyricsPane: View {
         .task(id: id) {
             tapped = nil
             while !Task.isCancelled {
-                let now = LyricsLayout.line(of: lyrics) ?? tapped
+                let now = LyricsLayout.shown(in: lyrics, tapped: tapped)
                 if now != current { current = now }
                 try? await Task.sleep(nanoseconds: 100_000_000)
             }

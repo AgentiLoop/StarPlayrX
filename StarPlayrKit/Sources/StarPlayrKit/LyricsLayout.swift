@@ -40,37 +40,63 @@ public enum LyricsLayout {
     /// The last line whose timestamp has passed. Nothing is highlighted before the first line or
     /// once the song has run well past the last one (a radio edit, or the wrong record): parking
     /// on the final line for minutes looks broken and is worse than no highlight at all.
-    /// `singing`: whether the classifier hears someone singing right now (nil: unknown).
-    public static func line(of lyrics: Lyrics, at position: TimeInterval, singing: Bool? = nil) -> Int? {
+    /// The stamps decide instrumentals (see `instrumental`); the sound classifier is not consulted,
+    /// it mistakes a solo for singing.
+    public static func line(of lyrics: Lyrics, at position: TimeInterval) -> Int? {
         guard lyrics.synced else { return nil }
         guard let last = lyrics.lines.last?.at, position < last + 30 else { return nil }
+        guard let found = scan(lyrics, at: position) else { return nil }
+        return found.instrumental ? nil : found.id
+    }
+
+    /// The last drawn line whose stamp has passed, and whether the song is in an instrumental after it.
+    /// LRC files stamp an empty line where the singing stops, so once that stamp has passed and the
+    /// next drawn line is a while off, that is an instrumental; without such a stamp, a long gap
+    /// between two drawn lines is one (the line stays lit for its first seconds).
+    private static func scan(_ lyrics: Lyrics, at position: TimeInterval) -> (id: Int, instrumental: Bool)? {
         var found: (id: Int, at: TimeInterval)?
-        var next: TimeInterval?
+        var ended: TimeInterval?      // the first empty stamp after `found`
+        var next: TimeInterval?       // the next drawn line
         for line in lyrics.lines {
             guard let at = line.at else { continue }
-            guard at <= position else { next = at; break }
-            // Only a line the pane actually draws. LRC files time the gaps between verses as empty
-            // lines, and `sections(of:)` drops those: asking the scroll view for an id it hasn't
-            // got sends it to the bottom of the lyrics instead of to the line being sung.
-            if !line.text.isEmpty { found = (line.id, at) }
+            if at <= position {
+                // Only a line the pane actually draws: asking the scroll view for an id it hasn't
+                // got sends it to the bottom of the lyrics instead of to the line being sung.
+                if !line.text.isEmpty { found = (line.id, at); ended = nil }
+                else if found != nil, ended == nil { ended = at }
+            } else if !line.text.isEmpty {
+                next = at; break
+            }
         }
         guard let found else { return nil }
-        // An instrumental (a solo, a long intro or break): nobody is singing, so nothing is lit.
-        // A line stays lit for its first seconds; past that, with the next line still well away,
-        // the highlight goes out until the singing comes back — unless the classifier hears
-        // singing, in which case the stamps are just sparse and the last line is the best there is.
-        if let next, next - found.at > instrumentalGap, position - found.at > lineHold, singing != true { return nil }
-        return found.id
+        guard let next else { return (found.id, ended != nil) }   // after the last line: the outro
+        if let ended, next - ended > breakGap { return (found.id, true) }
+        return (found.id, next - found.at > instrumentalGap && position - found.at > lineHold)
     }
 
     /// The line being sung right now, for the views: the song's position against the stamps,
-    /// with the classifier's word on whether anyone is singing.
+    /// against the stamps.
     @MainActor public static func line(of lyrics: Lyrics) -> Int? {
-        position.flatMap { line(of: lyrics, at: $0, singing: Radio.shared.singingNow) }
+        position.flatMap { line(of: lyrics, at: $0) }
+    }
+
+    /// The line to light: the song's place against the stamps, or — only while the song's position
+    /// isn't known at all — the line the user last tapped. Once the position is known, an instrumental
+    /// lights nothing; an old tap never stands in for it.
+    @MainActor public static func shown(in lyrics: Lyrics, tapped: Int?) -> Int? {
+        position == nil ? tapped : line(of: lyrics)
+    }
+
+    /// Whether `position` falls in an instrumental stretch between two timed lines, where nobody
+    /// is singing and nothing says how the stamps line up with the audio.
+    public static func isInstrumental(_ lyrics: Lyrics, at position: TimeInterval) -> Bool {
+        lyrics.synced && scan(lyrics, at: position)?.instrumental == true
     }
 
     /// A stretch between two timed lines longer than this is an instrumental, not a long line.
     public static let instrumentalGap: TimeInterval = 12
+    /// After the empty stamp that ends a line, this much until the next line is an instrumental too.
+    public static let breakGap: TimeInterval = 6
     /// How long a line stays lit into such a stretch.
     public static let lineHold: TimeInterval = 7
 

@@ -127,8 +127,8 @@ final class LogicTests: XCTestCase {
             LyricLine(id: 1, at: 14, text: ""),
             LyricLine(id: 2, at: 25, text: "first line of the chorus")], synced: true)
         XCTAssertEqual(LyricsPane.line(of: lyrics, at: 12), 0)
-        XCTAssertEqual(LyricsPane.line(of: lyrics, at: 16), 0)   // in the gap: not the empty line
-        XCTAssertNil(LyricsPane.line(of: lyrics, at: 18))        // 8 s into a 15 s gap: instrumental
+        XCTAssertEqual(LyricsPane.line(of: lyrics, at: 13), 0)   // before the empty stamp: still the line
+        XCTAssertNil(LyricsPane.line(of: lyrics, at: 16))        // past the empty stamp, 11 s to the next line: instrumental
         XCTAssertEqual(LyricsPane.line(of: lyrics, at: 26), 2)
         // Every id the highlight can return is one the pane draws.
         let drawn = Set(LyricsPane.sections(of: lyrics).flatMap { $0 }.map(\.id))
