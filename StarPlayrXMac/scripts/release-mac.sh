@@ -75,6 +75,10 @@ xcodebuild -exportArchive -archivePath $R/arch.xcarchive -exportPath $R/out \
   -exportOptionsPlist $R/export.plist -allowProvisioningUpdates | tail -3
 
 APP=$R/out/StarPlayrX.app
+# Date.<= / Date.>= are @backDeployed(before: macOS 27.2): weak-linked, and missing from early 27.2 betas (jump to 0x0).
+if nm -m -arch all "$APP/Contents/MacOS/StarPlayrX" | grep -q 'weak external _\$s10Foundation4DateV2[lg]eoi'; then
+  echo "== ABORT: binary weak-links Date.<= / Date.>= (write !(a > b) / !(a < b) instead)" >&2; exit 1
+fi
 codesign -dv --verbose=2 "$APP" 2>&1 | grep -E "Authority=Developer|flags|TeamIdentifier"
 lipo -archs "$APP/Contents/MacOS/StarPlayrX"
 plutil -p "$APP/Contents/Info.plist" | grep -E "CFBundleShortVersionString|CFBundleVersion"
