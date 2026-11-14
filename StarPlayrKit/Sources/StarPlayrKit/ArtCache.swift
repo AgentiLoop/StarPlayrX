@@ -81,7 +81,7 @@ extension ChannelLogo {
         let margin = blankMargin(image)
         // scaleEffect shows 1/s of the art, centred, so each side loses (1 - 1/s)/2.
         let scale = margin < 0.01 ? 1 : min(maxFill, 1 / (1 - 2 * margin))
-        if fillScales.count > 400 { fillScales.removeAll() }   // art evicted from the cache never comes back here
+        if fillScales.count > 1600 { fillScales.removeAll() }   // art evicted from the cache never comes back here
         fillScales[ObjectIdentifier(image)] = scale
         return scale
     }
@@ -154,12 +154,22 @@ private actor ArtGate {
 @MainActor
 public final class ArtCache {
     public static let shared = ArtCache()
+    /// List and header art: room for the logo and the album or show art of every channel (about
+    /// 760 channels), so switching category or scrolling back shows what was already loaded
+    /// instead of loading it again.
     private let images: NSCache<NSString, PlatformImage> = {
         let cache = NSCache<NSString, PlatformImage>()
-        cache.countLimit = 200
-        cache.totalCostLimit = 200 * 192 * 192 * 4
+        cache.countLimit = 1600
         return cache
     }()
+    /// Full-size art (Now Playing, lock screen) is megabytes each: only the last few are kept,
+    /// apart from the rest so they never take the place of list art.
+    private let bigImages: NSCache<NSString, PlatformImage> = {
+        let cache = NSCache<NSString, PlatformImage>()
+        cache.countLimit = 6
+        return cache
+    }()
+    private func store(_ pixels: Int) -> NSCache<NSString, PlatformImage> { pixels > 300 ? bigImages : images }
     /// Its own on-disk URL cache (small in memory), so art evicted from `images` or from a
     /// previous launch comes back from disk instead of the network.
     nonisolated private static let session: URLSession = {
@@ -188,13 +198,14 @@ public final class ArtCache {
     // Keyed by pixels too: hosts with one size give the 32pt row and the 64pt header the same URL,
     // and the header must not get the row's small bitmap.
     public func cached(_ url: String, pixels: Int) -> PlatformImage? {
-        images.object(forKey: "\(pixels) \(sizedURL(url, pixels: pixels))" as NSString)
+        store(pixels).object(forKey: "\(pixels) \(sizedURL(url, pixels: pixels))" as NSString)
     }
 
     /// `trimBorder` (album art): a solid frame around the picture is cropped off, see `trimmedBorder`.
     public func image(_ url: String, pixels: Int, trimBorder: Bool = false) async -> PlatformImage? {
         let url = sizedURL(url, pixels: pixels)
         let key = "\(pixels) \(url)"
+        let images = store(pixels)
         if let image = images.object(forKey: key as NSString) { return image }
         guard !url.isEmpty, let address = URL(string: url) else { return nil }
         // Big art (Now Playing full size) is waited on by the user; list thumbnails can trail behind.
@@ -220,7 +231,7 @@ public final class ArtCache {
         if let image = images.object(forKey: key as NSString) { return image }   // another caller already made it
         guard let thumb else { return nil }
         let image = PlatformImage.make(thumb, scale: Self.scale)
-        images.setObject(image, forKey: key as NSString, cost: thumb.bytesPerRow * thumb.height)
+        images.setObject(image, forKey: key as NSString)
         return image
     }
 
