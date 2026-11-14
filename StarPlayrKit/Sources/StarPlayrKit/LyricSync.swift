@@ -129,7 +129,8 @@ public final class LyricSync: ObservableObject {
         // artist and title. Only a match heard since this song started counts.
         if live, LyricsStore.shared.missed, let channel = radio.current, let np = radio.nowPlaying[channel.id] {
             let match = ShazamSync.shared.current.match
-            let fresh = match.flatMap { m in np.startedAt.map { m.real >= $0 } ?? true } ?? false
+            // Not `>=`: Date.>= is @backDeployed(before: iOS 27.2) and missing from early 27.2 betas (jump to 0x0).
+            let fresh = match.flatMap { m in np.startedAt.map { !(m.real < $0) } ?? true } ?? false
             ShazamSync.shared.want(eager: !fresh)
             if fresh, let match {
                 LyricsStore.shared.tryHeard(artist: match.artist, song: match.title, duration: nil)
@@ -164,7 +165,7 @@ public final class LyricSync: ObservableObject {
         ShazamSync.shared.want(eager: (blank && shown == LyricsStore.key(station.artist, station.song)) || doubted != nil)
         // Only a match heard since this cut started counts.
         guard let match = ShazamSync.shared.current.match, !match.title.isEmpty,
-              station.startedAt.map({ match.real >= $0 }) ?? true else { return }
+              station.startedAt.map({ !(match.real < $0) }) ?? true else { return }
         guard blank || !Self.same(match, as: LyricsStore.key(station.artist, station.song)) else { doubted = nil; return }
         let heard = LyricsStore.key(match.artist, match.title)
         guard heard != shown else { doubted = nil; return }

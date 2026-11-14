@@ -258,7 +258,8 @@ public actor XtraClient {
         var result = [String: NowPlaying]()
         for (id, ch) in lookAroundChannels {
             func current(_ key: String) -> [String: Any]? {
-                (ch[key] as? [[String: Any]] ?? []).last { $0["isAd"] as? Bool != true && (validFrom($0["validFrom"] as? String) ?? now) <= now }
+                // Not `<= now`: Date.<= is @backDeployed(before: iOS 27.2) and missing from early 27.2 betas (jump to 0x0).
+                (ch[key] as? [[String: Any]] ?? []).last { $0["isAd"] as? Bool != true && !((validFrom($0["validFrom"] as? String) ?? now) > now) }
             }
             guard let cut = current("cuts") else { continue }
             let show = current("shows")
