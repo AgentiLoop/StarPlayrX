@@ -135,6 +135,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 enum CredentialPrompt {
     static func signIn() async {
         var message = "Sign in with your SiriusXM account.\n\nYour username and password are kept only in your Mac's Keychain."
+        // The username stays in the form: the last one signed in with, then whatever was typed.
+        var lastUser = Keychain.user ?? ""
         while true {
             let width: CGFloat = 320, margin: CGFloat = 20, gap: CGFloat = 12
             let content = NSView(frame: NSRect(x: 0, y: 0, width: width + 2 * margin, height: 0))
@@ -164,7 +166,7 @@ enum CredentialPrompt {
             let user = NSTextField(frame: NSRect(x: margin, y: y, width: width, height: 24))
             user.placeholderString = "Username or email"
             user.setAccessibilityLabel("Username or email")
-            user.stringValue = Keychain.load()?.user ?? ""
+            user.stringValue = lastUser
             y += 24 + 16
             let info = NSTextField(wrappingLabelWithString: message)
             info.isSelectable = false
@@ -202,6 +204,7 @@ enum CredentialPrompt {
             Radio.shared.setRegion(ca: canada.state == .on)
             let u = user.stringValue.trimmingCharacters(in: .whitespaces)
             let p = pass.stringValue
+            lastUser = u
             if u.isEmpty || p.isEmpty { message = "Username and password are required."; continue }
             if await Radio.shared.login(user: u, pass: p) { return }
             message = Radio.shared.status

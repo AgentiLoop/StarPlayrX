@@ -63,7 +63,7 @@ struct SignInView: View {
             }
             .navigationTitle("StarPlayrX")
             // Once, not on every init of this view (each Radio change re-creates it).
-            .task { if user.isEmpty { user = Keychain.load()?.user ?? "" } }
+            .task { if user.isEmpty { user = Keychain.user ?? "" } }
         }
     }
 

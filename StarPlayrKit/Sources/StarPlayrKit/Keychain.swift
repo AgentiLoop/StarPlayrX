@@ -30,12 +30,22 @@ public enum Keychain {
     }
 
     public static func load() -> (user: String, pass: String)? {
-        if let creds = load(dataProtection: true) { return creds }
+        // Signed out: the username is still there, without a password.
+        if let creds = load(dataProtection: true) { return creds.pass.isEmpty ? nil : creds }
         // One-time migration from the legacy login keychain (may prompt one last time).
         guard let legacy = load(dataProtection: false) else { return nil }
         save(user: legacy.user, pass: legacy.pass)
         delete(dataProtection: false)
         return legacy
+    }
+
+    /// The last username signed in with, to fill in the sign-in form. Signing out keeps it.
+    public static var user: String? { load(dataProtection: true)?.user }
+
+    /// Signing out: forgets the password, keeps the username.
+    public static func deletePassword() {
+        guard let user else { return }
+        save(user: user, pass: "")
     }
 
     public static func delete() {
@@ -54,10 +64,9 @@ public enum Keychain {
         var item: CFTypeRef?
         guard SecItemCopyMatching(query as CFDictionary, &item) == errSecSuccess,
               let dict = item as? [String: Any],
-              let user = dict[kSecAttrAccount as String] as? String,
-              let data = dict[kSecValueData as String] as? Data,
-              let pass = String(data: data, encoding: .utf8)
+              let user = dict[kSecAttrAccount as String] as? String
         else { return nil }
+        let pass = (dict[kSecValueData as String] as? Data).flatMap { String(data: $0, encoding: .utf8) } ?? ""
         return (user, pass)
     }
 

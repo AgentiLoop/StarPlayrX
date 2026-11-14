@@ -253,7 +253,7 @@ public final class Radio: ObservableObject {
     public func signOut() {
         stop()
         pdtTimer?.invalidate()
-        Keychain.delete()
+        Keychain.deletePassword()
         // The list is per account; the next one shouldn't see this one's.
         for locale in ["en-US", "en-CA"] { if let url = Self.channelCache(locale: locale) { try? FileManager.default.removeItem(at: url) } }
         Task { await xtra.signOut() }
