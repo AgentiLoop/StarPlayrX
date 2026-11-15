@@ -31,6 +31,15 @@ final class AccessibilityAuditTests: XCTestCase {
         try app.performAccessibilityAudit()
     }
 
+    func testTabMovesFromUsernameToPassword() throws {
+        try XCTSkipIf(signedIn, "A saved account skips the sign-in screen")
+        let field = app.textFields["Username or email"]
+        field.tap(); field.typeText("someone\t")
+        app.typeText("secret")
+        XCTAssertEqual(field.value as? String, "someone", "Tab is not typed into the username")
+        XCTAssertEqual((app.secureTextFields["Password"].value as? String)?.count, 6, "Typing after Tab lands in the password")
+    }
+
     func testPlayerScreenVoiceOver() throws {
         try signInIfNeeded()
         for label in ["Account", "Previous", "Next"] {

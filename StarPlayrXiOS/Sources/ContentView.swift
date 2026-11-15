@@ -26,6 +26,7 @@ struct SignInView: View {
     @EnvironmentObject var radio: Radio
     @State private var user = ""
     @State private var pass = ""
+    @FocusState private var passFocused: Bool
 
     var body: some View {
         NavigationStack {
@@ -37,8 +38,15 @@ struct SignInView: View {
                         .keyboardType(.emailAddress)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
+                        // A wrapping field types Tab as text: take it back out and move to the password.
+                        .onChange(of: user) {
+                            guard user.contains("\t") else { return }
+                            user.removeAll { $0 == "\t" }
+                            passFocused = true
+                        }
                     SecureField("Password", text: $pass, prompt: Text("Password").foregroundStyle(Color.primary))
                         .textContentType(.password)
+                        .focused($passFocused)
                         .onSubmit(signIn)
                     Toggle("Canada", isOn: Binding(get: { radio.localeIsCA }, set: { radio.setRegion(ca: $0) }))
                 } header: {
